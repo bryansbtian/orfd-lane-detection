@@ -1,4 +1,7 @@
-checkpoints
 datasets
-venv
 __pycache__
+carla
+test_videos
+output_videos
+checkpoints
+.claude

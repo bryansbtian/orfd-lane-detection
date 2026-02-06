@@ -1,27 +1,71 @@
 # Off-Road Lane Detection
 
-A deep learning system for detecting traversable road areas in off-road environments using U-Net semantic segmentation. The model identifies drivable paths and overlays them with a green highlight for visualization.
+A deep learning system for detecting traversable road areas in off-road environments using semantic segmentation with pretrained encoders. The model identifies drivable paths and overlays them with a green highlight for visualization.
 
 ## Features
 
-- **U-Net architecture** with two variants (small and full)
-- **Real-time inference** on images, videos, and webcam feeds
-- **Green overlay visualization** of traversable road areas
-- **Training pipeline** with mixed precision support and early stopping
-- **ORFD dataset** support (Off-Road Freespace Detection)
+- **Multiple architectures**: U-Net, U-Net++, DeepLabV3+, FPN, PSPNet
+- **Pretrained encoders**: ResNet, EfficientNet, MobileNet, and more via ImageNet weights
+- **Strong data augmentation**: Rain, fog, sun flare, shadows, color jitter using albumentations
+- **Real-time inference** on images, videos, webcam feeds, and CARLA simulator
+- **CARLA 0.10 integration** for testing in simulation
+- **Training pipeline** with mixed precision, cosine annealing, and focal loss
 
-## Model Variants
+## Project Structure
 
-| Model       | Parameters | Input Size | GPU Memory |
-| ----------- | ---------- | ---------- | ---------- |
-| U-Net Small | 7.7M       | 256x256    | ~2GB       |
-| U-Net Full  | 31M        | 256x256    | ~3GB       |
+```
+Off Road/
+├── train.py             # Training script
+├── model.py             # Model architectures and loss functions
+├── preprocessing.py     # Dataset loaders with augmentation
+├── demo.py              # Demo/inference script (image, video, webcam)
+├── carla_inference.py   # CARLA simulator testing
+├── requirements.txt     # Python dependencies
+├── .gitignore
+├── README.md
+├── carla/               # CARLA 0.10 simulator
+├── checkpoints/         # Saved model checkpoints
+├── datasets/
+│   ├── ORFD/            # ORFD dataset
+│   │   ├── training/
+│   │   │   ├── image_data/
+│   │   │   └── gt_image/
+│   │   ├── validation/
+│   │   └── testing/
+│   └── RELLIS/          # Rellis-3D dataset
+│       ├── raw/
+│       └── labeled/
+├── test_videos/         # Input test videos
+└── output_videos/       # Inference output videos
+```
+
+## Model Options
+
+### Architectures
+
+| Architecture | Description                                    |
+| ------------ | ---------------------------------------------- |
+| `unet`       | Classic U-Net with skip connections            |
+| `unetpp`     | U-Net++ with nested skip connections           |
+| `deeplabv3p` | DeepLabV3+ with ASPP and decoder (recommended) |
+| `fpn`        | Feature Pyramid Network                        |
+| `pspnet`     | Pyramid Scene Parsing Network                  |
+
+### Encoders (Backbones)
+
+| Encoder           | Parameters | Speed   | Accuracy |
+| ----------------- | ---------- | ------- | -------- |
+| `resnet34`        | 24M        | Fast    | Good     |
+| `resnet50`        | 26M        | Medium  | Better   |
+| `efficientnet-b0` | 5M         | Fast    | Good     |
+| `efficientnet-b3` | 12M        | Medium  | Better   |
+| `mobilenet_v2`    | 3.5M       | Fastest | Decent   |
 
 ## Installation
 
 ### Requirements
 
-- Python 3.8+
+- Python 3.12
 - CUDA-capable GPU (recommended)
 
 ### Setup
@@ -31,42 +75,47 @@ A deep learning system for detecting traversable road areas in off-road environm
 git clone https://github.com/bryansbtian/orfd-lane-detection.git
 cd "Off Road"
 
-# Create virtual environment (optional but recommended)
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
+# Create conda environment
+conda create -n offroad python=3.12 -y
+conda activate offroad
+
+# Install PyTorch with CUDA support
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 
 # Install dependencies
 pip install -r requirements.txt
-```
 
-Install PyTorch with CUDA support for GPU acceleration:
-
-```bash
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+# Install additional packages for pretrained models and augmentation
+pip install segmentation-models-pytorch albumentations
 ```
 
 ## Dataset Setup
 
-Extract the ORFD dataset:
+Extract the datasets into the `datasets/` folder:
 
 ```bash
-# Extract the dataset zip file
+# ORFD dataset
 unzip ORFD.zip -d datasets/
+
+# Rellis-3D dataset
+unzip RELLIS.zip -d datasets/
 ```
 
 This will create the following structure:
 
 ```
 datasets/
-└── ORFD/
-    ├── training/
-    │   ├── image_data/     # RGB images (*.png)
-    │   └── gt_image/       # Ground truth masks (*_fillcolor.png)
-    ├── validation/
-    │   └── ...
-    └── testing/
-        └── ...
+├── ORFD/
+│   ├── training/
+│   │   ├── image_data/     # RGB images (*.png)
+│   │   └── gt_image/       # Ground truth masks (*_fillcolor.png)
+│   ├── validation/
+│   │   └── ...
+│   └── testing/
+│       └── ...
+└── RELLIS/
+    ├── raw/                # RGB images organized by sequence
+    └── labeled/            # Label masks organized by sequence
 ```
 
 ## Usage
@@ -74,92 +123,131 @@ datasets/
 ### Training
 
 ```bash
-# Train U-Net Small (recommended)
-python train_unet.py --model unet_small --epochs 50 --batch_size 8 --amp
+# DeepLabV3+ with ResNet50 on ORFD and Rellis-3D datasets
+python train.py --arch deeplabv3p --encoder resnet50 --orfd_root datasets/ORFD --rellis_root datasets/RELLIS --img_size 512 --amp
 
-# Train U-Net Full (more parameters)
-python train_unet.py --model unet --epochs 50 --batch_size 4 --amp
+# U-Net with ResNet34 (best balance of speed and accuracy)
+python train.py --arch unet --encoder resnet34 --img_size 512 --amp
+
+# Lightweight model for edge deployment
+python train.py --arch unet --encoder efficientnet-b0 --img_size 512 --amp
+
+# Original U-Net without pretrained encoder (not recommended)
+python train.py --arch unet_basic --img_size 256
 ```
 
 #### Training Options
 
-| Parameter      | Type  | Default         | Description                         |
-| -------------- | ----- | --------------- | ----------------------------------- |
-| `--model`      | str   | `unet_small`    | `unet_small` (7.7M) or `unet` (31M) |
-| `--img_size`   | int   | 256             | Input image size                    |
-| `--batch_size` | int   | 8               | Batch size                          |
-| `--epochs`     | int   | 50              | Number of epochs                    |
-| `--lr`         | float | 1e-4            | Learning rate                       |
-| `--patience`   | int   | 15              | Early stopping patience             |
-| `--amp`        | flag  | False           | Enable mixed precision training     |
-| `--data_root`  | str   | `datasets/ORFD` | Dataset root directory              |
+| Parameter         | Type  | Default         | Description                                                                                            |
+| ----------------- | ----- | --------------- | ------------------------------------------------------------------------------------------------------ |
+| `--arch`          | str   | `unet`          | Architecture: `unet`, `unetpp`, `deeplabv3`, `deeplabv3p`, `fpn`, `pspnet`, `unet_basic`, `unet_small` |
+| `--encoder`       | str   | `resnet34`      | Encoder backbone (see table above)                                                                     |
+| `--no_pretrained` | flag  | False           | Don't use ImageNet pretrained weights                                                                  |
+| `--img_size`      | int   | 512             | Input image size                                                                                       |
+| `--batch_size`    | int   | 8               | Batch size                                                                                             |
+| `--epochs`        | int   | 100             | Number of epochs                                                                                       |
+| `--lr`            | float | 1e-4            | Learning rate                                                                                          |
+| `--patience`      | int   | 20              | Early stopping patience                                                                                |
+| `--loss`          | str   | `focal_dice`    | Loss function: `focal_dice` or `combined`                                                              |
+| `--scheduler`     | str   | `cosine`        | LR scheduler: `cosine` or `plateau`                                                                    |
+| `--amp`           | flag  | False           | Enable mixed precision training                                                                        |
+| `--resume`        | str   | None            | Resume from checkpoint                                                                                 |
+| `--data_root`     | str   | `datasets/ORFD` | Dataset root directory                                                                                 |
 
 Training creates a timestamped folder in `checkpoints/` containing:
 
 - `best_model.pth` - Model with best validation IoU
 - `latest_model.pth` - Most recent checkpoint
 - `training_history.png` - Loss and metrics plots
+- `results.txt` - Final metrics summary
 
 ### Demo / Inference
 
 ```bash
 # Run on test dataset samples
-python demo.py --checkpoint checkpoints/unet_XXXXXX/best_model.pth
+python demo.py --checkpoint checkpoints/unet_resnet34_XXXXX/best_model.pth --arch unet --encoder resnet34
 
 # Run on single image
-python demo.py --checkpoint path/to/model.pth --mode image --input photo.jpg --output result.png
+python demo.py --checkpoint path/to/model.pth --arch unet --encoder resnet34 --mode image --input photo.jpg --output result.png
 
 # Run on video
-python demo.py --checkpoint path/to/model.pth --mode video --input video.mp4 --output output.mp4
+python demo.py --checkpoint path/to/model.pth --arch unet --encoder resnet34 --mode video --input video.mp4 --output output.mp4
 
 # Run with webcam
-python demo.py --checkpoint path/to/model.pth --mode webcam
+python demo.py --checkpoint path/to/model.pth --arch unet --encoder resnet34 --mode webcam
 ```
 
-#### Demo Options
+### CARLA Simulator Testing
 
-| Parameter       | Type  | Default         | Description                           |
-| --------------- | ----- | --------------- | ------------------------------------- |
-| `--checkpoint`  | str   | **required**    | Path to trained model checkpoint      |
-| `--model`       | str   | `unet_small`    | `unet_small` or `unet`                |
-| `--mode`        | str   | `dataset`       | `image`, `video`, `webcam`, `dataset` |
-| `--input`       | str   | None            | Input path (for image/video modes)    |
-| `--output`      | str   | None            | Output path                           |
-| `--img_size`    | int   | 256             | Input image size                      |
-| `--threshold`   | float | 0.5             | Prediction threshold                  |
-| `--data_root`   | str   | `datasets/ORFD` | Dataset root (for dataset mode)       |
-| `--num_samples` | int   | 5               | Number of samples (for dataset mode)  |
+Test your model in CARLA 0.10 simulator:
 
-## Project Structure
+```bash
+# 1. Start CARLA server
+cd carla
+CarlaUnreal.exe
 
+# 2. Run inference in CARLA
+python carla_inference.py --checkpoint checkpoints/unet_resnet34_XXXXX/best_model.pth --arch unet --encoder resnet34 --map Mine_01
 ```
-Off Road/
-├── demo.py              # Demo/inference script
-├── train.py             # Training script
-├── model.py             # U-Net architecture
-├── dataset.py           # Dataset loader
-├── requirements.txt     # Dependencies
-├── checkpoints/         # Saved models (created during training)
-└── datasets/ORFD/       # Dataset
-```
+
+#### CARLA Controls
+
+| Key   | Action              |
+| ----- | ------------------- |
+| W/S   | Throttle / Brake    |
+| A/D   | Steer left / right  |
+| SPACE | Handbrake           |
+| P     | Toggle autopilot    |
+| R     | Toggle recording    |
+| T     | Toggle lane overlay |
+| M     | Cycle maps          |
+| N     | Next spawn point    |
+| Q/ESC | Quit                |
+
+#### CARLA Options
+
+| Parameter      | Type  | Default      | Description                   |
+| -------------- | ----- | ------------ | ----------------------------- |
+| `--checkpoint` | str   | **required** | Path to model checkpoint      |
+| `--arch`       | str   | `unet`       | Model architecture            |
+| `--encoder`    | str   | `resnet34`   | Encoder backbone              |
+| `--map`        | str   | None         | Map to load (e.g., `Mine_01`) |
+| `--img_size`   | int   | 512          | Model input size              |
+| `--threshold`  | float | 0.5          | Prediction threshold          |
+| `--fov`        | int   | 120          | Camera field of view          |
+
+## Data Augmentation
+
+The training pipeline includes strong augmentation via albumentations:
+
+- Horizontal flip
+- Shift, scale, rotate
+- Gaussian noise, blur, motion blur
+- Brightness, contrast, hue/saturation changes
+- Random rain, fog, sun flare
+- Random shadows
+- CLAHE (adaptive histogram equalization)
+- Cutout / coarse dropout
 
 ## Tips
 
 ### Memory Issues
 
-- Use `unet_small` instead of `unet`
-- Reduce `--batch_size` (try 2 or 1)
-- Reduce `--img_size` (try 128)
+- Use smaller encoder: `efficientnet-b0` or `mobilenet_v2`
+- Reduce `--batch_size` (try 4 or 2)
+- Reduce `--img_size` (try 384 or 256)
 - Enable `--amp` for mixed precision
 
 ### Better Results
 
+- Use pretrained encoders (default) - significantly improves performance
+- Use `--img_size 512` or higher for finer details
+- Try `deeplabv3p` architecture for best segmentation quality
 - Lower `--threshold` (e.g., 0.3) for more sensitive detection
-- Higher `--threshold` (e.g., 0.7) for more confident predictions
-- Train longer with more `--epochs`
+- Collect domain-specific data and fine-tune
 
 ## Metrics
 
 - **IoU (Intersection over Union)**: Measures overlap between prediction and ground truth
 - **Dice Score**: Similar to IoU, emphasizes overlap
-- **Loss**: BCE + Dice loss combination
+- **Focal + Dice Loss**: Handles class imbalance better than BCE
