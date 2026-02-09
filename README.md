@@ -164,6 +164,9 @@ Training creates a timestamped folder in `checkpoints/` containing:
 ### Demo / Inference
 
 ```bash
+# Run on AA2 test video
+python demo.py --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50 --mode video --input test_videos/aa2.mp4 --output output_videos/aa2_overlay.mp4
+
 # Run on test dataset samples
 python demo.py --checkpoint checkpoints/unet_resnet34_XXXXX/best_model.pth --arch unet --encoder resnet34
 

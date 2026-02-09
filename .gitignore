@@ -1,7 +1,7 @@
 datasets
 __pycache__
 carla
-test_videos
-output_videos
 checkpoints
+output_videos
+test_videos
 .claude
