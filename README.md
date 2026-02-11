@@ -7,8 +7,9 @@ A deep learning system for detecting traversable road areas in off-road environm
 - **Multiple architectures**: U-Net, U-Net++, DeepLabV3+, FPN, PSPNet
 - **Pretrained encoders**: ResNet, EfficientNet, MobileNet, and more via ImageNet weights
 - **Strong data augmentation**: Rain, fog, sun flare, shadows, color jitter using albumentations
-- **Real-time inference** on images, videos, webcam feeds, and CARLA simulator
+- **Real-time inference** on images, videos, webcam feeds, and simulators
 - **CARLA 0.10 integration** for testing in simulation
+- **AirSim integration** for testing in Unreal Engine environments (Africa, LandscapeMountains)
 - **Training pipeline** with mixed precision, cosine annealing, and focal loss
 
 ## Project Structure
@@ -21,11 +22,13 @@ Off Road/
 ├── demo.py              # Demo/inference script (image, video, webcam)
 ├── lane_detector.py     # Simulator-agnostic lane detection wrapper
 ├── carla_inference.py   # CARLA simulator testing
+├── airsim_inference.py  # AirSim simulator testing
 ├── requirements.txt     # Python dependencies
 ├── .gitignore
 ├── README.md
 ├── carla/               # CARLA 0.10 simulator
 ├── carla916/            # CARLA 0.9.16 simulator
+├── airsim_recordings/   # AirSim recorded videos
 ├── checkpoints/         # Saved model checkpoints
 ├── datasets/
 │   ├── ORFD/            # ORFD dataset
@@ -226,6 +229,98 @@ The script will automatically find the CARLA installation in the corresponding f
 | `--img_size`      | int              | 512          | Model input size                          |
 | `--threshold`     | float            | 0.5          | Prediction threshold                      |
 | `--fov`           | int              | 120          | Camera field of view                      |
+
+### AirSim Simulator Testing
+
+Test your model in AirSim using pre-built Unreal Engine environments. The script pulls frames directly from AirSim via `simGetImages()`, runs inference, and shows a green overlay on drivable areas.
+
+**Supported Environments:**
+
+- Africa
+- LandscapeMountains
+
+#### AirSim Setup
+
+1. Download an AirSim pre-built environment (e.g., Africa, LandscapeMountains) and extract it.
+
+2. Configure AirSim settings at `Documents/AirSim/settings.json`:
+
+```json
+{
+  "SettingsVersion": 1.2,
+  "SimMode": "Car",
+  "ViewMode": "FPV",
+  "Vehicles": {
+    "Car1": {
+      "VehicleType": "PhysXCar",
+      "X": 0,
+      "Y": 0,
+      "Z": 0
+    }
+  },
+  "CameraDefaults": {
+    "CaptureSettings": [
+      {
+        "ImageType": 0,
+        "Width": 1280,
+        "Height": 720,
+        "FOV_Degrees": 90,
+        "AutoExposureSpeed": 100,
+        "MotionBlurAmount": 0
+      }
+    ]
+  },
+  "ClockSpeed": 1.0
+}
+```
+
+3. Install the required packages:
+
+```bash
+conda activate offroad
+pip install airsim==1.8.1 msgpack-rpc-python backports.ssl_match_hostname
+```
+
+> **Note:** Use `airsim` 1.8.1 with `msgpack-rpc-python` (not `cosysairsim` or `rpc-msgpack`, which are incompatible with older AirSim servers).
+
+#### Running AirSim Inference
+
+1. Launch the AirSim environment (e.g., run `Africa.exe` or `LandscapeMountains.exe`).
+2. Drive the car using the arrow keys in the AirSim window.
+3. Run the inference script:
+
+```bash
+conda activate offroad
+python airsim_inference.py --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50 --camera 0 --viz
+```
+
+#### AirSim Controls
+
+Drive the car using the **AirSim window** (arrow keys). The OpenCV overlay window supports:
+
+| Key   | Action                                          |
+| ----- | ----------------------------------------------- |
+| R     | Toggle recording (side-by-side raw + segmented) |
+| Q/ESC | Quit                                            |
+
+Recorded videos are saved to `airsim_recordings/` as `.mp4` files.
+
+#### AirSim Options
+
+| Parameter      | Type  | Default             | Description                                     |
+| -------------- | ----- | ------------------- | ----------------------------------------------- |
+| `--checkpoint` | str   | **required**        | Path to model checkpoint                        |
+| `--arch`       | str   | **required**        | Model architecture (e.g., `deeplabv3p`, `unet`) |
+| `--encoder`    | str   | **required**        | Encoder backbone (e.g., `resnet50`, `mit_b0`)   |
+| `--camera`     | str   | `0`                 | AirSim camera name                              |
+| `--ip`         | str   | `127.0.0.1`         | AirSim server IP address                        |
+| `--vehicle`    | str   | `Car1`              | Vehicle name in settings.json                   |
+| `--fps`        | float | `30.0`              | Target FPS (also used for recording framerate)  |
+| `--input-size` | int×2 | `512 512`           | Model input resolution (H W)                    |
+| `--threshold`  | float | `0.5`               | Sigmoid threshold for binary mask               |
+| `--alpha`      | float | `0.45`              | Overlay transparency                            |
+| `--output-dir` | str   | `airsim_recordings` | Directory for recorded videos                   |
+| `--viz`        | flag  | off                 | Show overlay window                             |
 
 ## Data Augmentation
 
