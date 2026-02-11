@@ -19,11 +19,13 @@ Off Road/
 ├── model.py             # Model architectures and loss functions
 ├── preprocessing.py     # Dataset loaders with augmentation
 ├── demo.py              # Demo/inference script (image, video, webcam)
+├── lane_detector.py     # Simulator-agnostic lane detection wrapper
 ├── carla_inference.py   # CARLA simulator testing
 ├── requirements.txt     # Python dependencies
 ├── .gitignore
 ├── README.md
 ├── carla/               # CARLA 0.10 simulator
+├── carla916/            # CARLA 0.9.16 simulator
 ├── checkpoints/         # Saved model checkpoints
 ├── datasets/
 │   ├── ORFD/            # ORFD dataset
@@ -84,9 +86,6 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Install additional packages for pretrained models and augmentation
-pip install segmentation-models-pytorch albumentations
 ```
 
 ## Dataset Setup
@@ -97,7 +96,7 @@ Extract the datasets into the `datasets/` folder:
 # ORFD dataset
 unzip ORFD.zip -d datasets/
 
-# Rellis-3D dataset
+# RELLIS-3D dataset
 unzip RELLIS.zip -d datasets/
 ```
 
@@ -182,16 +181,24 @@ python demo.py --checkpoint path/to/model.pth --arch unet --encoder resnet34 --m
 
 ### CARLA Simulator Testing
 
-Test your model in CARLA 0.10 simulator:
+Test your model in the CARLA simulator. The script can automatically launch the simulator if it's not running.
+
+**Supported Versions:**
+
+- CARLA 0.10 (`carla/`)
+- CARLA 0.9.16 (`carla916/`)
 
 ```bash
-# 1. Start CARLA server
-cd carla
-CarlaUnreal.exe
+# Run with CARLA 0.10 (default)
+conda activate YOUR_CARLA_0.10.0_ENVIRONMENT
+python carla_inference.py --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50 --map Mine_01
 
-# 2. Run inference in CARLA
-python carla_inference.py --checkpoint checkpoints/unet_resnet34_XXXXX/best_model.pth --arch unet --encoder resnet34 --map Mine_01
+# Run with CARLA 0.9.16
+conda activate YOUR_CARLA_0.9.16_ENVIRONMENT
+python carla_inference.py --carla_version 0.9.16 --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50 --map Town10HD
 ```
+
+The script will automatically find the CARLA installation in the corresponding folder (`carla` or `carla916`) and configure the Python path. If the simulator is not running, it will be started in the background.
 
 #### CARLA Controls
 
@@ -209,15 +216,16 @@ python carla_inference.py --checkpoint checkpoints/unet_resnet34_XXXXX/best_mode
 
 #### CARLA Options
 
-| Parameter      | Type  | Default      | Description                   |
-| -------------- | ----- | ------------ | ----------------------------- |
-| `--checkpoint` | str   | **required** | Path to model checkpoint      |
-| `--arch`       | str   | `unet`       | Model architecture            |
-| `--encoder`    | str   | `resnet34`   | Encoder backbone              |
-| `--map`        | str   | None         | Map to load (e.g., `Mine_01`) |
-| `--img_size`   | int   | 512          | Model input size              |
-| `--threshold`  | float | 0.5          | Prediction threshold          |
-| `--fov`        | int   | 120          | Camera field of view          |
+| Parameter         | Type             | Default      | Description                               |
+| ----------------- | ---------------- | ------------ | ----------------------------------------- |
+| `--checkpoint`    | str              | **required** | Path to model checkpoint                  |
+| `--carla_version` | `0.10`, `0.9.16` | `0.10`       | Version of the CARLA simulator to use     |
+| `--arch`          | str              | `unet`       | Model architecture                        |
+| `--encoder`       | str              | `resnet34`   | Encoder backbone                          |
+| `--map`           | str              | None         | Map to load (e.g., `Mine_01`, `Town10HD`) |
+| `--img_size`      | int              | 512          | Model input size                          |
+| `--threshold`     | float            | 0.5          | Prediction threshold                      |
+| `--fov`           | int              | 120          | Camera field of view                      |
 
 ## Data Augmentation
 

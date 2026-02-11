@@ -23,101 +23,59 @@ import time
 import argparse
 import numpy as np
 from datetime import datetime
+import subprocess
 
 import cv2
-import torch
-from PIL import Image
-from torchvision import transforms
 
 import carla
 
-from model import UNet, UNetSmall, get_model
+from lane_detector import LaneDetector
 
 
-class LaneDetector:
-    """Lane detector for CARLA - supports pretrained encoders"""
+import glob
+import sys
+from pathlib import Path
 
-    def __init__(self, checkpoint_path, model_type='unet', encoder='resnet34', img_size=512, threshold=0.5, device=None):
-        self.device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.img_size = img_size
-        self.threshold = threshold
 
-        # Load model based on type
-        if model_type == 'unet_basic':
-            self.model = UNet(in_channels=3, out_channels=1)
-        elif model_type == 'unet_small':
-            self.model = UNetSmall(in_channels=3, out_channels=1)
-        else:
-            # Use pretrained encoder model
-            self.model = get_model(
-                arch=model_type,
-                encoder=encoder,
-                pretrained=False,  # We'll load weights from checkpoint
-                in_channels=3,
-                classes=1
-            )
+def find_carla_egg(carla_version, python_version):
+    """Find CARLA egg file and return path to CARLA root and executable"""
+    base_path = Path(__file__).parent.resolve()
 
-        checkpoint = torch.load(checkpoint_path, map_location=self.device)
-        if 'model_state_dict' in checkpoint:
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-        else:
-            self.model.load_state_dict(checkpoint)
+    # Determine CARLA directory and executable name
+    if carla_version == '0.10':
+        carla_root = base_path / 'carla'
+        executable = 'CarlaUnreal.exe'
+    elif carla_version == '0.9.16':
+        carla_root = base_path / 'carla916'
+        executable = 'CarlaUE4.exe'
+    else:
+        raise ValueError(f"Unsupported CARLA version: {carla_version}")
 
-        self.model = self.model.to(self.device)
-        self.model.eval()
+    if not carla_root.exists():
+        raise FileNotFoundError(f"CARLA {carla_version} directory not found at {carla_root}")
 
-        # Preprocessing transform
-        self.transform = transforms.Compose([
-            transforms.Resize((img_size, img_size)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                               std=[0.229, 0.224, 0.225])
-        ])
+    # Find the matching .egg file
+    py_short = f"cp{python_version.major}{python_version.minor}"
+    pattern = str(carla_root / f"PythonAPI/carla/dist/carla-*{py_short}*.whl")
+    egg_files = glob.glob(pattern)
 
-        print(f"Loaded {model_type} ({encoder}) from {checkpoint_path}")
-        print(f"Using device: {self.device}")
+    if not egg_files:
+        raise FileNotFoundError(f"No CARLA .whl file found for Python {python_version.major}.{python_version.minor} at {pattern}")
 
-    def predict(self, image):
-        """Run prediction on a numpy array (H, W, 3) BGR image"""
-        # Convert BGR to RGB
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        pil_image = Image.fromarray(image_rgb)
+    egg_file = egg_files[0]
+    sys.path.append(egg_file)
+    print(f"Found and added to path: {egg_file}")
 
-        # Preprocess
-        input_tensor = self.transform(pil_image).unsqueeze(0).to(self.device)
-
-        # Inference
-        with torch.no_grad():
-            output = self.model(input_tensor)
-            mask = torch.sigmoid(output)
-            mask = (mask > self.threshold).float()
-
-        return mask.squeeze().cpu().numpy()
-
-    def create_overlay(self, image, mask, color=(0, 255, 0), alpha=0.5):
-        """Create green overlay on detected lane area"""
-        h, w = image.shape[:2]
-        mask_resized = cv2.resize(mask.astype(np.float32), (w, h), interpolation=cv2.INTER_LINEAR)
-        mask_bool = mask_resized > 0.5
-
-        overlay = image.copy().astype(np.float32)
-
-        # Apply green overlay where mask is True
-        for c in range(3):
-            overlay[:, :, c] = np.where(
-                mask_bool,
-                (1 - alpha) * image[:, :, c] + alpha * color[c],
-                image[:, :, c]
-            )
-
-        return overlay.astype(np.uint8)
+    return carla_root, executable
 
 
 class CarlaTester:
     """CARLA simulation controller with lane detection"""
 
-    def __init__(self, args):
+    def __init__(self, args, carla_root, executable):
         self.args = args
+        self.carla_root = carla_root
+        self.executable = executable
         self.client = None
         self.world = None
         self.vehicle = None
@@ -125,6 +83,7 @@ class CarlaTester:
         self.current_frame = None
         self.detector = None
         self.available_maps = []
+        self.simulator_process = None
 
         # State flags
         self.autopilot = False
@@ -142,24 +101,55 @@ class CarlaTester:
         self.control = carla.VehicleControl()
 
     def connect(self):
-        """Connect to CARLA server"""
-        print(f"Connecting to CARLA at {self.args.host}:{self.args.port}...")
-        self.client = carla.Client(self.args.host, self.args.port)
-        self.client.set_timeout(10.0)
+        """Connect to CARLA server, starting it if necessary"""
+        for attempt in range(3):
+            try:
+                print(f"Attempting to connect to CARLA at {self.args.host}:{self.args.port}...")
+                self.client = carla.Client(self.args.host, self.args.port)
+                self.client.set_timeout(10.0)
+                self.world = self.client.get_world()
+                current_map = self.world.get_map().name
+                print(f"Connected! Current map: {current_map}")
+                
+                self.available_maps = [m.split('/')[-1] for m in self.client.get_available_maps()]
+                print(f"Available maps: {', '.join(self.available_maps)}")
 
-        self.world = self.client.get_world()
-        current_map = self.world.get_map().name
-        print(f"Connected! Current map: {current_map}")
+                settings = self.world.get_settings()
+                settings.synchronous_mode = True
+                settings.fixed_delta_seconds = 1.0 / self.args.fps
+                self.world.apply_settings(settings)
+                return True
 
-        # Get available maps
-        self.available_maps = [m.split('/')[-1] for m in self.client.get_available_maps()]
-        print(f"Available maps: {', '.join(self.available_maps)}")
+            except RuntimeError as e:
+                if "timeout" in str(e) or "failed to connect" in str(e).lower():
+                    if attempt == 0:
+                        print("Could not connect to CARLA. Starting simulator...")
+                        self.launch_simulator()
+                        time.sleep(15)  # Wait for simulator to start
+                    else:
+                        print(f"Connection attempt {attempt + 1} failed. Retrying in 10s...")
+                        time.sleep(10)
+                else:
+                    raise e
+        
+        print("Failed to connect to CARLA after multiple attempts.")
+        return False
 
-        # Set synchronous mode for consistent frame capture
-        settings = self.world.get_settings()
-        settings.synchronous_mode = True
-        settings.fixed_delta_seconds = 1.0 / self.args.fps
-        self.world.apply_settings(settings)
+    def launch_simulator(self):
+        """Launch the CARLA simulator as a background process"""
+        exec_path = self.carla_root / self.executable
+        if not exec_path.exists():
+            raise FileNotFoundError(f"CARLA executable not found at {exec_path}")
+
+        print(f"Launching {exec_path}...")
+        # Add -opengl flag for compatibility, especially for headless
+        self.simulator_process = subprocess.Popen(
+            [str(exec_path), "-opengl"],
+            cwd=str(self.carla_root),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        print(f"CARLA simulator started with PID: {self.simulator_process.pid}")
 
     def load_map(self, map_name):
         """Load a specific map"""
@@ -502,6 +492,13 @@ class CarlaTester:
             settings = self.world.get_settings()
             settings.synchronous_mode = False
             self.world.apply_settings(settings)
+        
+        # Terminate simulator if we started it
+        if self.simulator_process:
+            print("Terminating CARLA simulator...")
+            self.simulator_process.terminate()
+            self.simulator_process.wait()
+            print("Simulator terminated.")
 
         cv2.destroyAllWindows()
         print("Done!")
@@ -510,7 +507,9 @@ class CarlaTester:
 def main():
     parser = argparse.ArgumentParser(description='Test UNet lane detection on CARLA')
 
-    # CARLA connection
+    # CARLA settings
+    parser.add_argument('--carla_version', type=str, choices=['0.10', '0.9.16'], default='0.10',
+                        help='CARLA version to use')
     parser.add_argument('--host', type=str, default='localhost',
                         help='CARLA server host')
     parser.add_argument('--port', type=int, default=2000,
@@ -549,7 +548,14 @@ def main():
 
     args = parser.parse_args()
 
-    tester = CarlaTester(args)
+    # Find and add CARLA egg to path
+    try:
+        carla_root, executable = find_carla_egg(args.carla_version, sys.version_info)
+    except (ValueError, FileNotFoundError) as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
+    tester = CarlaTester(args, carla_root=carla_root, executable=executable)
     tester.run()
 
 
