@@ -185,6 +185,7 @@ class CarlaTester:
         'Mine_01': [2, 3, 5, 6, 10, 18, 19],  # Road spawn points at higher elevation
         'Town10HD': [0, 50, 100],
         'Town10HD_Opt': [0, 50, 100],
+        'OpenDriveMap': [0, 1, 2, 3],  # RoadRunner imported map (off_road_test)
     }
 
     def spawn_vehicle(self):
