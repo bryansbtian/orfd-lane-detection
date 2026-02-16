@@ -10,6 +10,7 @@ A deep learning system for detecting traversable road areas in off-road environm
 - **Real-time inference** on images, videos, webcam feeds, and simulators
 - **CARLA 0.10 integration** for testing in simulation
 - **AirSim integration** for testing in Unreal Engine environments (Africa, LandscapeMountains)
+- **BeamNG.tech integration** for testing on off-road maps (Jungle Rock Island, Utah, Johnson Valley)
 - **Training pipeline** with mixed precision, cosine annealing, and focal loss
 
 ## Project Structure
@@ -28,6 +29,7 @@ Off Road/
 ├── README.md
 ├── carla/               # CARLA 0.10 simulator
 ├── carla916/            # CARLA 0.9.16 simulator
+├── beamng_inference.py  # BeamNG.tech simulator testing
 ├── airsim_recordings/   # AirSim recorded videos
 ├── checkpoints/         # Saved model checkpoints
 ├── datasets/
@@ -321,6 +323,81 @@ Recorded videos are saved to `airsim_recordings/` as `.mp4` files.
 | `--alpha`      | float | `0.45`              | Overlay transparency                            |
 | `--output-dir` | str   | `airsim_recordings` | Directory for recorded videos                   |
 | `--viz`        | flag  | off                 | Show overlay window                             |
+
+### BeamNG.tech Simulator Testing
+
+Test your model in BeamNG.tech with real-time camera streaming and lane detection overlay.
+
+**Supported Maps:**
+
+- Jungle Rock Island (default)
+- Johnson Valley
+- Utah
+- West Coast USA
+- East Coast USA
+- Small Island
+- Italy
+
+#### BeamNG Setup
+
+1. Install [BeamNG.tech](https://www.beamng.tech/) (v0.38+).
+2. Install the Python bridge:
+
+```bash
+conda activate offroad
+pip install beamngpy
+```
+
+#### Running BeamNG Inference
+
+```bash
+conda activate offroad
+
+# Run on Jungle Rock Island (default map)
+python beamng_inference.py --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50
+
+# Run on a different map
+python beamng_inference.py --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50 --map utah
+
+# Use a different vehicle
+python beamng_inference.py --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50 --vehicle roamer
+
+# Custom BeamNG install path
+python beamng_inference.py --checkpoint path/to/model.pth --arch deeplabv3p --encoder resnet50 --beamng-home "C:\BeamNG.tech.v0.38"
+```
+
+#### BeamNG Controls
+
+| Key   | Action                              |
+| ----- | ----------------------------------- |
+| W/S   | Throttle / Brake                    |
+| A/D   | Steer left / right                  |
+| SPACE | Handbrake                           |
+| P     | Toggle AI driving (random waypoints)|
+| R     | Toggle recording                    |
+| T     | Toggle lane detection overlay       |
+| G     | Print current position              |
+| Q/ESC | Quit                                |
+
+#### BeamNG Options
+
+| Parameter       | Type  | Default                        | Description                                    |
+| --------------- | ----- | ------------------------------ | ---------------------------------------------- |
+| `--checkpoint`  | str   | **required**                   | Path to model checkpoint                       |
+| `--arch`        | str   | `deeplabv3p`                   | Model architecture                             |
+| `--encoder`     | str   | `resnet50`                     | Encoder backbone                               |
+| `--beamng-home` | str   | `E:\BeamNG.tech.v0.38.3.0`    | Path to BeamNG.tech installation               |
+| `--beamng-user` | str   | auto                           | Path for BeamNG user folder                    |
+| `--map`         | str   | `jungle_rock_island`           | Map to load                                    |
+| `--spawn-idx`   | int   | `0`                            | Spawn point index                              |
+| `--vehicle`     | str   | `pickup`                       | Vehicle model (pickup, roamer, etc.)           |
+| `--width`       | int   | `1280`                         | Camera width                                   |
+| `--height`      | int   | `720`                          | Camera height                                  |
+| `--fov`         | float | `70`                           | Camera vertical FOV                            |
+| `--img-size`    | int   | `256`                          | Model input size (lower = faster)              |
+| `--threshold`   | float | `0.5`                          | Sigmoid threshold for binary mask              |
+| `--alpha`       | float | `0.45`                         | Overlay transparency                           |
+| `--output-dir`  | str   | `beamng_recordings`            | Directory for recorded videos                  |
 
 ## Data Augmentation
 
