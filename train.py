@@ -13,7 +13,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-from preprocessing import ORFDDataset, Rellis3DDataset, get_combined_dataloaders
+from preprocessing import ORFDDataset, Rellis3DDataset, RUGDDataset, get_combined_dataloaders
 from model import (
     get_model, UNet, UNetSmall,
     CombinedLoss, CombinedFocalDiceLoss,
@@ -21,11 +21,12 @@ from model import (
 )
 
 
-def get_dataloaders(orfd_root=None, rellis_root=None, batch_size=8, img_size=256, num_workers=0):
-    """Create train, validation, and test dataloaders from one or both datasets"""
+def get_dataloaders(orfd_root=None, rellis_root=None, rugd_root=None, batch_size=8, img_size=256, num_workers=0):
+    """Create train, validation, and test dataloaders from one or more datasets"""
     return get_combined_dataloaders(
         orfd_root=orfd_root,
         rellis_root=rellis_root,
+        rugd_root=rugd_root,
         batch_size=batch_size,
         img_size=img_size,
         num_workers=num_workers
@@ -147,9 +148,11 @@ def main(args):
         args.orfd_root = None
     if args.rellis_root == '':
         args.rellis_root = None
+    if args.rugd_root == '':
+        args.rugd_root = None
 
-    if not args.orfd_root and not args.rellis_root:
-        raise ValueError("At least one dataset path must be provided (--orfd_root or --rellis_root)")
+    if not args.orfd_root and not args.rellis_root and not args.rugd_root:
+        raise ValueError("At least one dataset path must be provided (--orfd_root, --rellis_root, or --rugd_root)")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
@@ -167,6 +170,7 @@ def main(args):
     train_loader, val_loader, test_loader = get_dataloaders(
         orfd_root=args.orfd_root,
         rellis_root=args.rellis_root,
+        rugd_root=args.rugd_root,
         batch_size=args.batch_size,
         img_size=args.img_size,
         num_workers=args.num_workers
@@ -295,7 +299,7 @@ def main(args):
     with open(os.path.join(output_dir, 'results.txt'), 'w') as f:
         f.write(f"Model: {args.arch} + {args.encoder}\n")
         f.write(f"Image size: {args.img_size}\n")
-        f.write(f"Datasets: ORFD={args.orfd_root}, Rellis={args.rellis_root}\n")
+        f.write(f"Datasets: ORFD={args.orfd_root}, Rellis={args.rellis_root}, RUGD={args.rugd_root}\n")
         f.write(f"Best validation IoU: {best_val_iou:.4f}\n")
         f.write(f"Test IoU: {test_iou:.4f}\n")
         f.write(f"Test Dice: {test_dice:.4f}\n")
@@ -308,6 +312,8 @@ if __name__ == '__main__':
                         help='Path to ORFD dataset (set to empty string to disable)')
     parser.add_argument('--rellis_root', type=str, default=None,
                         help='Path to Rellis-3D dataset (optional)')
+    parser.add_argument('--rugd_root', type=str, default=None,
+                        help='Path to RUGD dataset (optional)')
     parser.add_argument('--output_dir', type=str, default='checkpoints',
                         help='Output directory for models')
 

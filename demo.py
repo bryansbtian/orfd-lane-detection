@@ -155,7 +155,81 @@ def demo_single_image(model, image_path, device, img_size=512, threshold=0.5, ou
     return overlay
 
 
-def demo_video(model, video_path, device, img_size=512, threshold=0.5, output_path=None, hood_mask=0.0, sky_mask=0.0):
+def extract_path(mask_np, roi_top_pct=0.50, sample_step=5, smooth_window=7):
+    """Extract centerline, boundaries, and metrics from a binary mask.
+
+    Returns (centers, lefts, rights, metrics) in full-image coordinates.
+    Boundaries cover the full ROI; centerline is truncated where it drifts.
+    """
+    img_h, img_w = mask_np.shape[:2]
+    binary = (mask_np > 0.5).astype(np.uint8)
+    roi_top = int(img_h * roi_top_pct)
+    roi = binary[roi_top:, :]
+    roi_h, roi_w = roi.shape
+
+    centers, lefts, rights, widths = [], [], [], []
+    for r in range(0, roi_h, sample_step):
+        trav = np.where(roi[r, :] > 0)[0]
+        if len(trav) == 0:
+            continue
+        left, right = int(trav[0]), int(trav[-1])
+        y = roi_top + r
+        centers.append(((left + right) // 2, y))
+        lefts.append((left, y))
+        rights.append((right, y))
+        widths.append(right - left)
+
+    # Smooth centerline
+    if len(centers) >= smooth_window:
+        xs = np.array([c[0] for c in centers], dtype=np.float64)
+        kernel = np.ones(smooth_window) / smooth_window
+        xs_smooth = np.convolve(xs, kernel, mode="same")
+        centers = [(int(xs_smooth[i]), centers[i][1]) for i in range(len(centers))]
+
+    # Truncate ONLY the centerline where it drifts too far.
+    # Walk from bottom (closest) upward; stop when center drifts
+    # more than 15% of image width from the bottom reference.
+    # Boundaries (lefts/rights) are NOT truncated.
+    trimmed_centers = list(centers)  # copy
+    if len(trimmed_centers) > 2:
+        bottom_x = trimmed_centers[-1][0]
+        max_drift = img_w * 0.3
+        cutoff = 0
+        for i in range(len(trimmed_centers) - 2, -1, -1):
+            drift = abs(trimmed_centers[i][0] - bottom_x)
+            if drift > max_drift:
+                cutoff = i + 1
+                break
+        if cutoff > 0:
+            trimmed_centers = trimmed_centers[cutoff:]
+
+    total_px = roi_h * roi_w
+    trav_px = int(np.sum(roi > 0))
+    metrics = {
+        "traversable_pct": trav_px / total_px if total_px > 0 else 0.0,
+        "avg_corridor_width": float(np.mean(widths)) if widths else 0.0,
+        "min_corridor_width": float(np.min(widths)) if widths else 0.0,
+    }
+    return centers, lefts, rights, metrics
+
+
+def draw_path_overlay(image_bgr, centers, lefts, rights):
+    """Draw boundaries (red, always full) and centerline (yellow, may be trimmed)."""
+    # Red boundaries — always drawn in full
+    if len(lefts) > 1:
+        pts = np.array(lefts, dtype=np.int32).reshape(-1, 1, 2)
+        cv2.polylines(image_bgr, [pts], False, (0, 0, 255), 2)
+    if len(rights) > 1:
+        pts = np.array(rights, dtype=np.int32).reshape(-1, 1, 2)
+        cv2.polylines(image_bgr, [pts], False, (0, 0, 255), 2)
+    # Yellow centerline — trimmed to stable portion
+    if len(centers) > 1:
+        pts = np.array(centers, dtype=np.int32).reshape(-1, 1, 2)
+        cv2.polylines(image_bgr, [pts], False, (0, 255, 255), 3)
+
+
+def demo_video(model, video_path, device, img_size=512, threshold=0.5,
+               output_path=None, hood_mask=0.0, sky_mask=0.0, show_path=True):
     """Run demo on a video file"""
     cap = cv2.VideoCapture(video_path)
 
@@ -171,6 +245,7 @@ def demo_video(model, video_path, device, img_size=512, threshold=0.5, output_pa
     print(f"Video: {width}x{height} @ {fps}fps, {total_frames} frames")
     if hood_mask > 0:
         print(f"Hood mask: bottom {hood_mask*100:.0f}% of image will be ignored")
+    print(f"Path overlay: {'ON' if show_path else 'OFF'} (toggle with 'O')")
 
     writer = None
     if output_path:
@@ -178,6 +253,10 @@ def demo_video(model, video_path, device, img_size=512, threshold=0.5, output_pa
         writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     frame_count = 0
+    import time
+    fps_counter = 0
+    fps_timer = time.time()
+    current_fps = 0.0
 
     while True:
         ret, frame = cap.read()
@@ -193,6 +272,40 @@ def demo_video(model, video_path, device, img_size=512, threshold=0.5, output_pa
         overlay = create_overlay(frame_rgb, mask, color=(0, 255, 0), alpha=0.5)
         overlay_bgr = cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR)
 
+        # Path overlay — resize mask to full frame resolution first
+        if show_path:
+            h_frame, w_frame = overlay_bgr.shape[:2]
+            mask_full = cv2.resize(mask.astype(np.float32), (w_frame, h_frame),
+                                   interpolation=cv2.INTER_NEAREST)
+            centers, lefts, rights, metrics = extract_path(mask_full, roi_top_pct=0.40, sample_step=2)
+            draw_path_overlay(overlay_bgr, centers, lefts, rights)
+            trav_pct = metrics["traversable_pct"] * 100
+            corr_w = metrics["avg_corridor_width"]
+        else:
+            trav_pct = 0
+            corr_w = 0
+
+        # FPS counter
+        fps_counter += 1
+        elapsed = time.time() - fps_timer
+        if elapsed >= 1.0:
+            current_fps = fps_counter / elapsed
+            fps_counter = 0
+            fps_timer = time.time()
+
+        # HUD
+        h, w = overlay_bgr.shape[:2]
+        path_str = "ON" if show_path else "OFF"
+        hud = f"FPS: {current_fps:.0f}  Path: {path_str}  Traversable: {trav_pct:.0f}%  Corridor: {corr_w:.0f}px"
+        cv2.putText(overlay_bgr, hud, (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 0), 3)
+        cv2.putText(overlay_bgr, hud, (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
+
+        progress = f"{frame_count}/{total_frames}"
+        cv2.putText(overlay_bgr, progress, (10, h - 15),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
+
         if writer:
             writer.write(overlay_bgr)
 
@@ -202,8 +315,12 @@ def demo_video(model, video_path, device, img_size=512, threshold=0.5, output_pa
         if frame_count % 30 == 0:
             print(f"Processed {frame_count}/{total_frames} frames")
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
             break
+        elif key == ord('o'):
+            show_path = not show_path
+            print(f"[INFO] Path overlay: {'ON' if show_path else 'OFF'}")
 
     cap.release()
     if writer:
@@ -327,7 +444,8 @@ def main(args):
             print("Error: --input required for video mode")
             return
         demo_video(model, args.input, device, args.img_size,
-                  args.threshold, args.output, args.hood_mask, args.sky_mask)
+                  args.threshold, args.output, args.hood_mask, args.sky_mask,
+                  show_path=args.path)
 
     elif args.mode == 'webcam':
         demo_webcam(model, device, args.img_size, args.threshold, args.hood_mask, args.sky_mask)
@@ -368,6 +486,8 @@ if __name__ == '__main__':
                         help='Mask out bottom X%% of image to hide car hood (e.g., 0.15 for 15%%)')
     parser.add_argument('--sky_mask', type=float, default=0.0,
                         help='Mask out top X%% of image to exclude sky (e.g., 0.3 for 30%%)')
+    parser.add_argument('--path', action='store_true',
+                        help='Show path overlay (centerline + boundaries) on video')
 
     args = parser.parse_args()
     main(args)
