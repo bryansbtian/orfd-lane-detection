@@ -3,3 +3,6 @@
 *.ts
 runs
 test_data
+*.mp4
+*.jpg
+*.png

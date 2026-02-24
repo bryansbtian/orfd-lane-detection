@@ -43,11 +43,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-# ── Supported file extensions ────────────────────────────────────────────────────
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
 VIDEO_EXTS  = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 
-# ── Default text prompts for traversable-road concept ───────────────────────────
 DEFAULT_PROMPTS = [
     "traversable road",
     "dirt road",
@@ -56,16 +54,10 @@ DEFAULT_PROMPTS = [
     "gravel path",
 ]
 
-# ── Visualisation constants ──────────────────────────────────────────────────────
-MASK_BGR    = (34, 139, 34)   # forest-green road overlay
-CONTOUR_BGR = (0, 255, 255)   # cyan boundary
-MASK_ALPHA  = 0.40            # overlay transparency (0 = invisible, 1 = opaque)
-HUD_ALPHA   = 0.55            # HUD background transparency
-
-
-# ══════════════════════════════════════════════════════════════════════════════════
-#   Utility helpers
-# ══════════════════════════════════════════════════════════════════════════════════
+MASK_BGR = (34, 139, 34)
+CONTOUR_BGR = (0, 255, 255)
+MASK_ALPHA = 0.40
+HUD_ALPHA = 0.55
 
 def collect_inputs(input_path: str):
     """
@@ -76,22 +68,28 @@ def collect_inputs(input_path: str):
       structured/    →  test_data/raw/orfd.png  +  test_data/labeled/orfd_labeled.png
     """
     p = Path(input_path)
+
     if p.is_file():
         ext = p.suffix.lower()
+    
         if ext in IMAGE_EXTS:
             return [p], [], None
+    
         if ext in VIDEO_EXTS:
             return [], [p], None
+    
         sys.exit(f"[ERROR] Unsupported file type: {ext}")
+    
     if p.is_dir():
-        # Prefer structured layout: raw/ + labeled/
-        raw_dir   = p / "raw"
+        raw_dir = p / "raw"
         label_dir = p / "labeled"
-        src_dir   = raw_dir if raw_dir.is_dir() else p
-        ldir      = label_dir if label_dir.is_dir() else None
+        src_dir = raw_dir if raw_dir.is_dir() else p
+        ldir = label_dir if label_dir.is_dir() else None
         imgs = sorted(f for f in src_dir.iterdir() if f.suffix.lower() in IMAGE_EXTS)
         vids = sorted(f for f in src_dir.iterdir() if f.suffix.lower() in VIDEO_EXTS)
+
         return imgs, vids, ldir
+    
     sys.exit(f"[ERROR] Path not found: {input_path}")
 
 
@@ -100,6 +98,7 @@ def find_label(img_path: Path, label_dir: Path):
     Convention: raw/orfd.png → labeled/orfd_labeled.png
     """
     candidate = label_dir / f"{img_path.stem}_labeled{img_path.suffix}"
+
     return candidate if candidate.exists() else None
 
 
@@ -118,12 +117,14 @@ def load_gt_mask(label_path: Path):
     void_mask : np.ndarray [H, W] bool   True = ignore this pixel
     """
     label = cv2.imread(str(label_path))
+    
     if label is None:
         return None, None
-    # Explicit BGR→Gray conversion avoids IMREAD_GRAYSCALE returning 3D on some builds
+    
     gray = cv2.cvtColor(label, cv2.COLOR_BGR2GRAY) if label.ndim == 3 else label
-    gt_mask   = gray > 200                       # white pixels → road
-    void_mask = (gray > 50) & (gray < 200)       # gray pixels  → void
+    gt_mask = gray > 200
+    void_mask = (gray > 50) & (gray < 200)
+
     return gt_mask, void_mask
 
 
@@ -139,32 +140,54 @@ def compute_gt_metrics(pred_mask: np.ndarray, gt_mask: np.ndarray, void_mask: np
     f1             2 * precision * recall / (precision + recall)
     pixel_accuracy (TP + TN) / all valid pixels
     """
-    # Ensure all inputs are strictly 2-D (guard against 3-D grayscale arrays)
     pred_mask = np.squeeze(pred_mask)
-    gt_mask   = np.squeeze(gt_mask)
+    gt_mask = np.squeeze(gt_mask)
     void_mask = np.squeeze(void_mask)
 
-    valid  = ~void_mask                    # boolean mask of pixels that count
+    valid = ~void_mask
     pred_v = pred_mask[valid]
-    gt_v   = gt_mask[valid]
+    gt_v = gt_mask[valid]
 
     TP = int(( pred_v &  gt_v).sum())
     TN = int((~pred_v & ~gt_v).sum())
     FP = int(( pred_v & ~gt_v).sum())
     FN = int((~pred_v &  gt_v).sum())
 
-    iou        = TP / (TP + FP + FN)          if (TP + FP + FN) > 0         else 0.0
-    precision  = TP / (TP + FP)               if (TP + FP)       > 0         else 0.0
-    recall     = TP / (TP + FN)               if (TP + FN)        > 0         else 0.0
-    f1         = 2 * precision * recall / (precision + recall) \
-                                               if (precision + recall) > 0     else 0.0
-    pixel_acc  = (TP + TN) / (TP + TN + FP + FN) if (TP + TN + FP + FN) > 0 else 0.0
+    den = TP + FP + FN
+    if den > 0:
+        iou = TP / den
+    else:
+        iou = 0.0
+
+    den = TP + FP
+    if den > 0:
+        precision = TP / den
+    else:
+        precision = 0.0
+
+    den = TP + FN
+    if den > 0:
+        recall = TP / den
+    else:
+        recall = 0.0
+
+    den = precision + recall
+    if den > 0:
+        f1 = 2 * precision * recall / den
+    else:
+        f1 = 0.0
+
+    den = TP + TN + FP + FN
+    if den > 0:
+        pixel_acc = (TP + TN) / den
+    else:
+        pixel_acc = 0.0
 
     return {
-        "iou":            round(iou,       4),
-        "precision":      round(precision, 4),
-        "recall":         round(recall,    4),
-        "f1":             round(f1,        4),
+        "iou": round(iou, 4),
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "f1": round(f1, 4),
         "pixel_accuracy": round(pixel_acc, 4),
     }
 
@@ -188,18 +211,18 @@ def extract_masks(result, h: int, w: int):
 
     for i, m in enumerate(result.masks.data):
         m_np = m.cpu().numpy().astype(np.uint8)
+
         if m_np.shape != (h, w):
             m_np = cv2.resize(m_np, (w, h), interpolation=cv2.INTER_NEAREST)
+        
         combined |= m_np.astype(bool)
-
-        # Confidence: prefer boxes.conf, then masks.conf, fallback to 1.0
         conf = 1.0
+        
         if result.boxes is not None and i < len(result.boxes.conf):
             conf = float(result.boxes.conf[i].cpu())
-        elif (hasattr(result.masks, "conf")
-              and result.masks.conf is not None
-              and i < len(result.masks.conf)):
+        elif (hasattr(result.masks, "conf") and result.masks.conf is not None and i < len(result.masks.conf)):
             conf = float(result.masks.conf[i].cpu())
+        
         confs.append(conf)
 
     return combined, confs
@@ -208,15 +231,16 @@ def extract_masks(result, h: int, w: int):
 def overlay_mask(frame: np.ndarray, mask: np.ndarray) -> np.ndarray:
     """Apply semi-transparent green overlay and cyan contour boundary."""
     out = frame.copy()
+
     if not mask.any():
         return out
+    
     color_layer = frame.copy()
     color_layer[mask] = MASK_BGR
     out = cv2.addWeighted(color_layer, MASK_ALPHA, out, 1.0 - MASK_ALPHA, 0)
-    contours, _ = cv2.findContours(
-        mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    )
+    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cv2.drawContours(out, contours, -1, CONTOUR_BGR, 2)
+
     return out
 
 
@@ -228,9 +252,10 @@ def draw_hud(frame: np.ndarray, metrics: dict, model_label: str) -> np.ndarray:
         f"Cover : {metrics['road_coverage_pct']:.1f}%   Det: {metrics['num_detections']}",
         f"Conf  : {metrics['mean_confidence']:.3f}",
     ]
+
     if "temporal_iou" in metrics:
         lines.append(f"T-IoU : {metrics['temporal_iou']:.3f}")
-    # Ground-truth metrics (images only)
+    
     if "iou" in metrics:
         lines.append(f"IoU   : {metrics['iou']:.3f}   F1: {metrics['f1']:.3f}")
         lines.append(f"Prec  : {metrics['precision']:.3f}   Rec: {metrics['recall']:.3f}")
@@ -245,10 +270,8 @@ def draw_hud(frame: np.ndarray, metrics: dict, model_label: str) -> np.ndarray:
 
     for i, ln in enumerate(lines):
         y = pad + (i + 1) * line_h - 4
-        cv2.putText(
-            frame, ln, (pad, y),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.58, (180, 255, 180), 1, cv2.LINE_AA,
-        )
+        cv2.putText(frame, ln, (pad, y), cv2.FONT_HERSHEY_SIMPLEX, 0.58, (180, 255, 180), 1, cv2.LINE_AA,)
+
     return frame
 
 
@@ -272,17 +295,20 @@ def compute_metrics(
     """
     h, w = mask.shape
     road_px = int(mask.sum())
+
     m = {
         "inference_time_ms": round(t_ms, 2),
-        "fps":               round(1000.0 / t_ms, 1) if t_ms > 0 else 0.0,
+        "fps": round(1000.0 / t_ms, 1) if t_ms > 0 else 0.0,
         "road_coverage_pct": round(100.0 * road_px / (h * w), 2),
-        "mean_confidence":   round(float(np.mean(confs)), 4) if confs else 0.0,
-        "num_detections":    len(confs),
+        "mean_confidence": round(float(np.mean(confs)), 4) if confs else 0.0,
+        "num_detections": len(confs),
     }
+
     if prev_mask is not None:
         inter = int((mask & prev_mask).sum())
         union = int((mask | prev_mask).sum())
         m["temporal_iou"] = round(inter / union, 4) if union > 0 else 1.0
+    
     return m
 
 
@@ -297,11 +323,15 @@ def print_summary(all_m: list, model_name: str, label: str):
 
     def _section(title, keys):
         vals_exist = any(k in all_m[0] for k in keys)
+
         if not vals_exist:
             return
+        
         print(f"  -- {title} --")
+        
         for k in keys:
             vals = [m[k] for m in all_m if k in m]
+        
             if vals:
                 print(f"  {k:{col_w}}  {np.mean(vals):>8.3f}  {np.min(vals):>8.3f}  {np.max(vals):>8.3f}")
 
@@ -318,11 +348,6 @@ def print_summary(all_m: list, model_name: str, label: str):
 
     print(f"{sep}\n")
 
-
-# ══════════════════════════════════════════════════════════════════════════════════
-#   Model wrappers
-# ══════════════════════════════════════════════════════════════════════════════════
-
 class YOLO26Segmentor:
     """
     YOLOE-26 open-vocabulary segmentor.
@@ -330,14 +355,13 @@ class YOLO26Segmentor:
     Uses Ultralytics YOLOE-26-seg with text prompts, so it works on arbitrary
     off-road road concepts without any fine-tuning.
     """
-
     def __init__(self, size: str = "l", conf: float = 0.25, prompts: list = None):
         from ultralytics import YOLO
 
         name = f"yoloe-26{size}-seg.pt"
         print(f"[YOLO26] Loading {name} (auto-download if not cached) ...")
-        self.model   = YOLO(name)
-        self.conf    = conf
+        self.model = YOLO(name)
+        self.conf = conf
         self.prompts = prompts or DEFAULT_PROMPTS
         self.model.set_classes(self.prompts)
         print(f"[YOLO26] Text classes : {self.prompts}")
@@ -347,6 +371,7 @@ class YOLO26Segmentor:
         t0  = time.perf_counter()
         res = self.model.predict(source, conf=self.conf, verbose=False)
         t_ms = (time.perf_counter() - t0) * 1000
+
         return res[0], t_ms
 
 
@@ -357,9 +382,9 @@ class SAM3Segmentor:
     Uses SAM3SemanticPredictor for images (text prompt) and
     SAM3VideoSemanticPredictor for videos (temporal tracking).
     """
-
     def __init__(self, weights: str = "sam3.pt", conf: float = 0.25, prompts: list = None):
         weights_path = Path(weights)
+
         if not weights_path.exists():
             sys.exit(
                 f"\n[ERROR] SAM3 weights not found: {weights}\n"
@@ -371,14 +396,11 @@ class SAM3Segmentor:
         from ultralytics.models.sam import SAM3SemanticPredictor
 
         print(f"[SAM3] Loading {weights} ...")
-        self._ov = dict(
-            conf=conf, task="segment", mode="predict",
-            model=str(weights_path), verbose=False,
-        )
+        self._ov = dict(conf=conf, task="segment", mode="predict", model=str(weights_path), verbose=False,)
         self.predictor = SAM3SemanticPredictor(overrides=self._ov)
-        self.prompts   = prompts or DEFAULT_PROMPTS
-        self.weights   = str(weights_path)
-        self.conf      = conf
+        self.prompts = prompts or DEFAULT_PROMPTS
+        self.weights = str(weights_path)
+        self.conf = conf
         print(f"[SAM3] Text prompts : {self.prompts}")
 
     def infer(self, source) -> tuple:
@@ -387,17 +409,13 @@ class SAM3Segmentor:
         self.predictor.set_image(source)
         res  = self.predictor(text=self.prompts)
         t_ms = (time.perf_counter() - t0) * 1000
+
         return (res[0] if res else None), t_ms
-
-
-
-# ══════════════════════════════════════════════════════════════════════════════════
-#   Per-file processing
-# ══════════════════════════════════════════════════════════════════════════════════
 
 def run_image(seg, img_path: Path, out_dir: Path, model_name: str, label_dir=None):
     """Segment a single image. Saves annotated output, returns metrics dict."""
     img = cv2.imread(str(img_path))
+
     if img is None:
         print(f"  [WARN] Cannot read: {img_path.name}")
         return None
@@ -409,11 +427,12 @@ def run_image(seg, img_path: Path, out_dir: Path, model_name: str, label_dir=Non
     m = compute_metrics(mask, confs, t_ms)
     m["file"] = img_path.name
 
-    # ── Ground-truth metrics (when labels are available) ─────────────────────
     if label_dir is not None:
         lp = find_label(img_path, label_dir)
+    
         if lp:
             gt_mask, void_mask = load_gt_mask(lp)
+    
             if gt_mask is not None:
                 m.update(compute_gt_metrics(mask, gt_mask, void_mask))
         else:
@@ -433,6 +452,7 @@ def run_image(seg, img_path: Path, out_dir: Path, model_name: str, label_dir=Non
         f"t={t_ms:.0f}ms"
         f"{gt_str}  → {out.name}"
     )
+
     return m
 
 
@@ -441,34 +461,31 @@ def run_video(seg, vid_path: Path, out_dir: Path, model_name: str) -> list:
     Segment a video. Saves annotated MP4 output.
     Returns a list of per-frame metrics dicts.
     """
-    # ── Open video to read properties ────────────────────────────────────────────
     probe = cv2.VideoCapture(str(vid_path))
+    
     if not probe.isOpened():
         print(f"  [WARN] Cannot open: {vid_path.name}")
         return []
+    
     src_fps  = probe.get(cv2.CAP_PROP_FPS) or 25.0
-    W        = int(probe.get(cv2.CAP_PROP_FRAME_WIDTH))
-    H        = int(probe.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    W = int(probe.get(cv2.CAP_PROP_FRAME_WIDTH))
+    H = int(probe.get(cv2.CAP_PROP_FRAME_HEIGHT))
     n_frames = int(probe.get(cv2.CAP_PROP_FRAME_COUNT))
     probe.release()
 
     out_path = out_dir / f"{vid_path.stem}_{model_name}_road.mp4"
-    writer   = cv2.VideoWriter(
-        str(out_path), cv2.VideoWriter_fourcc(*"mp4v"), src_fps, (W, H)
-    )
+    writer = cv2.VideoWriter(str(out_path), cv2.VideoWriter_fourcc(*"mp4v"), src_fps, (W, H))
     print(f"\n  [{model_name.upper()}] {vid_path.name}  ({W}×{H}  {src_fps:.1f} fps  {n_frames} frames)")
 
     all_m, prev_mask, fi = [], None, 0
-
-    # Both models use frame-by-frame inference.
-    # SAM3VideoSemanticPredictor loads all frames at once and stalls on long
-    # high-resolution videos with limited VRAM, so we use seg.infer() per frame
-    # for both backends — consistent, memory-safe, and easier to track progress.
     cap = cv2.VideoCapture(str(vid_path))
+
     while True:
         ret, frame = cap.read()
+
         if not ret:
             break
+
         result, t_ms = seg.infer(frame)
         mask, confs  = extract_masks(result, H, W)
         m = compute_metrics(mask, confs, t_ms, prev_mask)
@@ -488,16 +505,12 @@ def run_video(seg, vid_path: Path, out_dir: Path, model_name: str) -> list:
                 f"conf={m['mean_confidence']:.3f}  "
                 f"t={t_ms:.0f}ms"
             )
-    cap.release()
 
+    cap.release()
     writer.release()
     print(f"  Saved: {out_path.name}  ({fi} frames processed)")
+    
     return all_m
-
-
-# ══════════════════════════════════════════════════════════════════════════════════
-#   CLI
-# ══════════════════════════════════════════════════════════════════════════════════
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
@@ -561,40 +574,38 @@ def main():
     if total == 0:
         sys.exit("[ERROR] No supported image/video files found in the input path.")
 
-    # ── Load model ───────────────────────────────────────────────────────────────
     if args.model == "yolo26":
-        seg = YOLO26Segmentor(
-            size=args.model_size, conf=args.conf, prompts=args.prompts
-        )
+        seg = YOLO26Segmentor(size=args.model_size, conf=args.conf, prompts=args.prompts)
     else:
-        seg = SAM3Segmentor(
-            weights=args.sam3_weights, conf=args.conf, prompts=args.prompts
-        )
+        seg = SAM3Segmentor(weights=args.sam3_weights, conf=args.conf, prompts=args.prompts)
 
     report = {"model": args.model, "images": [], "videos": {}}
 
-    # ── Process images ───────────────────────────────────────────────────────────
     if images:
         print(f"\n[Images]")
         img_metrics = []
+
         for p in images:
             m = run_image(seg, p, out_dir, args.model, label_dir)
+
             if m:
                 img_metrics.append(m)
+
         report["images"] = img_metrics
+
         if img_metrics:
             print_summary(img_metrics, args.model, f"{len(img_metrics)} image(s)")
 
-    # ── Process videos ───────────────────────────────────────────────────────────
     if videos:
         print(f"\n[Videos]")
+
         for p in videos:
             vm = run_video(seg, p, out_dir, args.model)
             report["videos"][p.name] = vm
+
             if vm:
                 print_summary(vm, args.model, p.name)
 
-    # ── Save JSON report ─────────────────────────────────────────────────────────
     if args.report:
         rp = out_dir / f"metrics_{args.model}.json"
         with open(rp, "w") as f:
