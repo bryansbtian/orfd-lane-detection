@@ -1,359 +1,185 @@
-# Off-Road Lane Detection
+# Off-Road Traversable Road Segmentation
 
-A deep learning system for detecting traversable road areas in off-road environments using semantic segmentation with pretrained encoders. The model identifies drivable paths and overlays them with a green highlight for visualization.
+## Quick Comparison
 
-## Features
+|                | SAM3                                   | YOLO26 (YOLOE-26)                      |
+| -------------- | -------------------------------------- | -------------------------------------- |
+| **Approach**   | Foundation model, concept segmentation | Real-time open-vocabulary segmentation |
+| **Speed**      | ~30 ms / image (H200)                  | ~2–5 ms / image                        |
+| **Model size** | 3.4 GB                                 | 32–70 MB (l/x)                         |
+| **Zero-shot**  | Strong — 47.0 LVIS Mask AP             | Good — open-vocab via text prompts     |
+| **Video**      | Temporal tracking built-in             | Frame-by-frame                         |
+| **Weights**    | Manual download required               | Auto-downloaded                        |
 
-- **Multiple architectures**: U-Net, U-Net++, DeepLabV3+, FPN, PSPNet
-- **Pretrained encoders**: ResNet, EfficientNet, MobileNet, and more via ImageNet weights
-- **Strong data augmentation**: Rain, fog, sun flare, shadows, color jitter using albumentations
-- **Real-time inference** on images, videos, webcam feeds, and simulators
-- **CARLA 0.10 integration** for testing in simulation
-- **AirSim integration** for testing in Unreal Engine environments (Africa, LandscapeMountains)
-- **Training pipeline** with mixed precision, cosine annealing, and focal loss
+---
 
-## Project Structure
+## 1 — Environment Setup (Conda)
 
-```
-Off Road/
-├── train.py             # Training script
-├── model.py             # Model architectures and loss functions
-├── preprocessing.py     # Dataset loaders with augmentation
-├── demo.py              # Demo/inference script (image, video, webcam)
-├── lane_detector.py     # Simulator-agnostic lane detection wrapper
-├── carla_inference.py   # CARLA simulator testing
-├── airsim_inference.py  # AirSim simulator testing
-├── requirements.txt     # Python dependencies
-├── .gitignore
-├── README.md
-├── carla/               # CARLA 0.10 simulator
-├── carla916/            # CARLA 0.9.16 simulator
-├── airsim_recordings/   # AirSim recorded videos
-├── checkpoints/         # Saved model checkpoints
-├── datasets/
-│   ├── ORFD/            # ORFD dataset
-│   │   ├── training/
-│   │   │   ├── image_data/
-│   │   │   └── gt_image/
-│   │   ├── validation/
-│   │   └── testing/
-│   └── RELLIS/          # Rellis-3D dataset
-│       ├── raw/
-│       └── labeled/
-├── test_videos/         # Input test videos
-└── output_videos/       # Inference output videos
-```
-
-## Model Options
-
-### Architectures
-
-| Architecture | Description                                    |
-| ------------ | ---------------------------------------------- |
-| `unet`       | Classic U-Net with skip connections            |
-| `unetpp`     | U-Net++ with nested skip connections           |
-| `deeplabv3p` | DeepLabV3+ with ASPP and decoder (recommended) |
-| `fpn`        | Feature Pyramid Network                        |
-| `pspnet`     | Pyramid Scene Parsing Network                  |
-
-### Encoders (Backbones)
-
-| Encoder           | Parameters | Speed   | Accuracy |
-| ----------------- | ---------- | ------- | -------- |
-| `resnet34`        | 24M        | Fast    | Good     |
-| `resnet50`        | 26M        | Medium  | Better   |
-| `efficientnet-b0` | 5M         | Fast    | Good     |
-| `efficientnet-b3` | 12M        | Medium  | Better   |
-| `mobilenet_v2`    | 3.5M       | Fastest | Decent   |
-
-## Installation
-
-### Requirements
-
-- Python 3.12
-- CUDA-capable GPU (recommended)
-
-### Setup
+### 1a. Create a conda environment
 
 ```bash
-# Clone the repository
-git clone https://github.com/bryansbtian/orfd-lane-detection.git
-cd "Off Road"
+conda create -n offroad-seg python=3.11 -y
+conda activate offroad-seg
+```
 
-# Create conda environment
-conda create -n offroad python=3.12 -y
-conda activate offroad
+### 1b. Install PyTorch
 
-# Install PyTorch with CUDA support
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+**CPU only:**
 
-# Install dependencies
+```bash
+conda install pytorch torchvision cpuonly -c pytorch -y
+```
+
+**GPU (CUDA 12.1) — recommended for SAM3:**
+
+```bash
+conda install pytorch torchvision pytorch-cuda=12.1 -c pytorch -c nvidia -y
+```
+
+### 1c. Install the remaining dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-## Dataset Setup
+> **Note on the CLIP package (SAM3 only):**
+> If you already have a different `clip` package installed, replace it:
+>
+> ```bash
+> pip uninstall clip -y
+> pip install git+https://github.com/ultralytics/CLIP.git
+> ```
 
-Extract the datasets into the `datasets/` folder:
+---
 
-```bash
-# ORFD dataset
-unzip ORFD.zip -d datasets/
+## 2 — Download Model Weights
 
-# RELLIS-3D dataset
-unzip RELLIS.zip -d datasets/
-```
+### YOLO26 (YOLOE-26)
 
-This will create the following structure:
+Weights are **downloaded automatically** on first run. Nothing to do.
 
-```
-datasets/
-├── ORFD/
-│   ├── training/
-│   │   ├── image_data/     # RGB images (*.png)
-│   │   └── gt_image/       # Ground truth masks (*_fillcolor.png)
-│   ├── validation/
-│   │   └── ...
-│   └── testing/
-│       └── ...
-└── RELLIS/
-    ├── raw/                # RGB images organized by sequence
-    └── labeled/            # Label masks organized by sequence
-```
+### SAM3
 
-## Usage
+SAM3 weights require manual download:
 
-### Training
+1. Go to <https://huggingface.co/facebook/sam3> and click **"Request access"**.
+2. Once approved, go the `Files and versions` tab and download **`sam3.pt`** (~3.4 GB).
+3. Place `sam3.pt` in the project root (same folder as `segment_road.py`).
+
+---
+
+## 3 — Running the Script
+
+### Segment all test images and videos (YOLO26)
 
 ```bash
-# DeepLabV3+ with ResNet50 on ORFD and Rellis-3D datasets
-python train.py --arch deeplabv3p --encoder resnet50 --orfd_root datasets/ORFD --rellis_root datasets/RELLIS --img_size 512 --amp
-
-# U-Net with ResNet34 (best balance of speed and accuracy)
-python train.py --arch unet --encoder resnet34 --img_size 512 --amp
-
-# Lightweight model for edge deployment
-python train.py --arch unet --encoder efficientnet-b0 --img_size 512 --amp
-
-# Original U-Net without pretrained encoder (not recommended)
-python train.py --arch unet_basic --img_size 256
+python segment_road.py --model yolo26 --input test_data/
 ```
 
-#### Training Options
-
-| Parameter         | Type  | Default         | Description                                                                                            |
-| ----------------- | ----- | --------------- | ------------------------------------------------------------------------------------------------------ |
-| `--arch`          | str   | `unet`          | Architecture: `unet`, `unetpp`, `deeplabv3`, `deeplabv3p`, `fpn`, `pspnet`, `unet_basic`, `unet_small` |
-| `--encoder`       | str   | `resnet34`      | Encoder backbone (see table above)                                                                     |
-| `--no_pretrained` | flag  | False           | Don't use ImageNet pretrained weights                                                                  |
-| `--img_size`      | int   | 512             | Input image size                                                                                       |
-| `--batch_size`    | int   | 8               | Batch size                                                                                             |
-| `--epochs`        | int   | 100             | Number of epochs                                                                                       |
-| `--lr`            | float | 1e-4            | Learning rate                                                                                          |
-| `--patience`      | int   | 20              | Early stopping patience                                                                                |
-| `--loss`          | str   | `focal_dice`    | Loss function: `focal_dice` or `combined`                                                              |
-| `--scheduler`     | str   | `cosine`        | LR scheduler: `cosine` or `plateau`                                                                    |
-| `--amp`           | flag  | False           | Enable mixed precision training                                                                        |
-| `--resume`        | str   | None            | Resume from checkpoint                                                                                 |
-| `--data_root`     | str   | `datasets/ORFD` | Dataset root directory                                                                                 |
-
-Training creates a timestamped folder in `checkpoints/` containing:
-
-- `best_model.pth` - Model with best validation IoU
-- `latest_model.pth` - Most recent checkpoint
-- `training_history.png` - Loss and metrics plots
-- `results.txt` - Final metrics summary
-
-### Demo / Inference
+### Segment all test images and videos (SAM3)
 
 ```bash
-# Run on AA2 test video
-python demo.py --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50 --mode video --input test_videos/aa2.mp4 --output output_videos/aa2_overlay.mp4
-
-# Run on test dataset samples
-python demo.py --checkpoint checkpoints/unet_resnet34_XXXXX/best_model.pth --arch unet --encoder resnet34
-
-# Run on single image
-python demo.py --checkpoint path/to/model.pth --arch unet --encoder resnet34 --mode image --input photo.jpg --output result.png
-
-# Run on video
-python demo.py --checkpoint path/to/model.pth --arch unet --encoder resnet34 --mode video --input video.mp4 --output output.mp4
-
-# Run with webcam
-python demo.py --checkpoint path/to/model.pth --arch unet --encoder resnet34 --mode webcam
+python segment_road.py --model sam3 --input test_data/
 ```
 
-### CARLA Simulator Testing
-
-Test your model in the CARLA simulator. The script can automatically launch the simulator if it's not running.
-
-**Supported Versions:**
-
-- CARLA 0.10 (`carla/`)
-- CARLA 0.9.16 (`carla916/`)
+### Single image
 
 ```bash
-# Run with CARLA 0.10 (default)
-conda activate YOUR_CARLA_0.10.0_ENVIRONMENT
-python carla_inference.py --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50 --map Mine_01
-
-# Run with CARLA 0.9.16
-conda activate YOUR_CARLA_0.9.16_ENVIRONMENT
-python carla_inference.py --carla_version 0.9.16 --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50 --map Town10HD
+python segment_road.py --model yolo26 --input test_data/orfd.png
+python segment_road.py --model sam3 --input test_data/orfd.png
 ```
 
-The script will automatically find the CARLA installation in the corresponding folder (`carla` or `carla916`) and configure the Python path. If the simulator is not running, it will be started in the background.
-
-#### CARLA Controls
-
-| Key   | Action              |
-| ----- | ------------------- |
-| W/S   | Throttle / Brake    |
-| A/D   | Steer left / right  |
-| SPACE | Handbrake           |
-| P     | Toggle autopilot    |
-| R     | Toggle recording    |
-| T     | Toggle lane overlay |
-| M     | Cycle maps          |
-| N     | Next spawn point    |
-| Q/ESC | Quit                |
-
-#### CARLA Options
-
-| Parameter         | Type             | Default      | Description                               |
-| ----------------- | ---------------- | ------------ | ----------------------------------------- |
-| `--checkpoint`    | str              | **required** | Path to model checkpoint                  |
-| `--carla_version` | `0.10`, `0.9.16` | `0.10`       | Version of the CARLA simulator to use     |
-| `--arch`          | str              | `unet`       | Model architecture                        |
-| `--encoder`       | str              | `resnet34`   | Encoder backbone                          |
-| `--map`           | str              | None         | Map to load (e.g., `Mine_01`, `Town10HD`) |
-| `--img_size`      | int              | 512          | Model input size                          |
-| `--threshold`     | float            | 0.5          | Prediction threshold                      |
-| `--fov`           | int              | 120          | Camera field of view                      |
-
-### AirSim Simulator Testing
-
-Test your model in AirSim using pre-built Unreal Engine environments. The script pulls frames directly from AirSim via `simGetImages()`, runs inference, and shows a green overlay on drivable areas.
-
-**Supported Environments:**
-
-- Africa
-- LandscapeMountains
-
-#### AirSim Setup
-
-1. Download an AirSim pre-built environment (e.g., Africa, LandscapeMountains) and extract it.
-
-2. Configure AirSim settings at `Documents/AirSim/settings.json`:
-
-```json
-{
-  "SettingsVersion": 1.2,
-  "SimMode": "Car",
-  "ViewMode": "FPV",
-  "Vehicles": {
-    "Car1": {
-      "VehicleType": "PhysXCar",
-      "X": 0,
-      "Y": 0,
-      "Z": 0
-    }
-  },
-  "CameraDefaults": {
-    "CaptureSettings": [
-      {
-        "ImageType": 0,
-        "Width": 1280,
-        "Height": 720,
-        "FOV_Degrees": 90,
-        "AutoExposureSpeed": 100,
-        "MotionBlurAmount": 0
-      }
-    ]
-  },
-  "ClockSpeed": 1.0
-}
-```
-
-3. Install the required packages:
+### Single video
 
 ```bash
-conda activate offroad
-pip install airsim==1.8.1 msgpack-rpc-python backports.ssl_match_hostname
+python segment_road.py --model yolo26 --input test_data/aa.mp4
+python segment_road.py --model sam3 --input test_data/aa.mp4
 ```
 
-> **Note:** Use `airsim` 1.8.1 with `msgpack-rpc-python` (not `cosysairsim` or `rpc-msgpack`, which are incompatible with older AirSim servers).
-
-#### Running AirSim Inference
-
-1. Launch the AirSim environment (e.g., run `Africa.exe` or `LandscapeMountains.exe`).
-2. Drive the car using the arrow keys in the AirSim window.
-3. Run the inference script:
+### Save a JSON metrics report
 
 ```bash
-conda activate offroad
-python airsim_inference.py --checkpoint checkpoints/deeplabv3p_resnet50_20260204_180353/best_model.pth --arch deeplabv3p --encoder resnet50 --camera 0 --viz
+python segment_road.py --model yolo26 --input test_data/ --report
+python segment_road.py --model sam3 --input test_data/ --report
 ```
 
-#### AirSim Controls
+Reports are saved as `output/metrics_yolo26.json` and `output/metrics_sam3.json`.
 
-Drive the car using the **AirSim window** (arrow keys). The OpenCV overlay window supports:
+### CLI Options
 
-| Key   | Action                                          |
-| ----- | ----------------------------------------------- |
-| R     | Toggle recording (side-by-side raw + segmented) |
-| Q/ESC | Quit                                            |
+| Flag             | Default      | Description                                                     |
+| ---------------- | ------------ | --------------------------------------------------------------- |
+| `--model`        | _(required)_ | `sam3` or `yolo26`                                              |
+| `--input`        | `test_data/` | Image/video file or directory                                   |
+| `--output`       | `output/`    | Directory for annotated outputs                                 |
+| `--conf`         | `0.25`       | Detection confidence threshold                                  |
+| `--prompts`      | built-in set | Custom text prompts for the road concept                        |
+| `--model-size`   | `l`          | YOLOE-26 size: `n` / `s` / `m` / `l` / `x` _(ignored for SAM3)_ |
+| `--sam3-weights` | `sam3.pt`    | Path to SAM3 weights _(ignored for YOLO26)_                     |
+| `--report`       | off          | Save JSON metrics report to output directory                    |
 
-Recorded videos are saved to `airsim_recordings/` as `.mp4` files.
+### Custom text prompts example
 
-#### AirSim Options
+```bash
+python segment_road.py --model yolo26 --input test_data/ \
+    --prompts "dirt trail" "mud road" "driveable terrain" "gravel path"
+```
 
-| Parameter      | Type  | Default             | Description                                     |
-| -------------- | ----- | ------------------- | ----------------------------------------------- |
-| `--checkpoint` | str   | **required**        | Path to model checkpoint                        |
-| `--arch`       | str   | **required**        | Model architecture (e.g., `deeplabv3p`, `unet`) |
-| `--encoder`    | str   | **required**        | Encoder backbone (e.g., `resnet50`, `mit_b0`)   |
-| `--camera`     | str   | `0`                 | AirSim camera name                              |
-| `--ip`         | str   | `127.0.0.1`         | AirSim server IP address                        |
-| `--vehicle`    | str   | `Car1`              | Vehicle name in settings.json                   |
-| `--fps`        | float | `30.0`              | Target FPS (also used for recording framerate)  |
-| `--input-size` | int×2 | `512 512`           | Model input resolution (H W)                    |
-| `--threshold`  | float | `0.5`               | Sigmoid threshold for binary mask               |
-| `--alpha`      | float | `0.45`              | Overlay transparency                            |
-| `--output-dir` | str   | `airsim_recordings` | Directory for recorded videos                   |
-| `--viz`        | flag  | off                 | Show overlay window                             |
+---
 
-## Data Augmentation
+## 4 — Output
 
-The training pipeline includes strong augmentation via albumentations:
+### Annotated images
 
-- Horizontal flip
-- Shift, scale, rotate
-- Gaussian noise, blur, motion blur
-- Brightness, contrast, hue/saturation changes
-- Random rain, fog, sun flare
-- Random shadows
-- CLAHE (adaptive histogram equalization)
-- Cutout / coarse dropout
+`output/<filename>_<model>_road.<ext>`
+— Green semi-transparent mask over the traversable road
+— Cyan contour boundary
+— HUD overlay with per-frame metrics
 
-## Tips
+### Annotated videos
 
-### Memory Issues
+`output/<filename>_<model>_road.mp4`
+— Same overlay per frame + per-frame HUD
 
-- Use smaller encoder: `efficientnet-b0` or `mobilenet_v2`
-- Reduce `--batch_size` (try 4 or 2)
-- Reduce `--img_size` (try 384 or 256)
-- Enable `--amp` for mixed precision
+---
 
-### Better Results
+## 5 — Metrics
 
-- Use pretrained encoders (default) - significantly improves performance
-- Use `--img_size 512` or higher for finer details
-- Try `deeplabv3p` architecture for best segmentation quality
-- Lower `--threshold` (e.g., 0.3) for more sensitive detection
-- Collect domain-specific data and fine-tune
+Metrics are split into three groups. **Performance** and **Model output** are always reported. **Ground truth** metrics are computed automatically when label images are present (images only, videos are skipped). All groups are reported identically for both models.
 
-## Metrics
+### Performance (always reported)
 
-- **IoU (Intersection over Union)**: Measures overlap between prediction and ground truth
-- **Dice Score**: Similar to IoU, emphasizes overlap
-- **Focal + Dice Loss**: Handles class imbalance better than BCE
+| Metric              | How it is calculated                                  |
+| ------------------- | ----------------------------------------------------- |
+| `inference_time_ms` | `time.perf_counter()` around `model.predict()`, in ms |
+| `fps`               | `1000 / inference_time_ms`                            |
+
+### Model Output (always reported)
+
+| Metric              | How it is calculated                                                            |
+| ------------------- | ------------------------------------------------------------------------------- |
+| `road_coverage_pct` | `road pixels / total pixels × 100` — what fraction of the image was marked road |
+| `mean_confidence`   | Mean of the model's own confidence scores across all detected road instances    |
+| `num_detections`    | Count of distinct road instances returned by the model                          |
+
+### Video consistency (video only, no ground truth needed)
+
+| Metric         | How it is calculated                                                                                  |
+| -------------- | ----------------------------------------------------------------------------------------------------- |
+| `temporal_iou` | `(mask_t ∩ mask_{t-1}) / (mask_t ∪ mask_{t-1})` — frame-to-frame mask overlap; 1.0 = perfectly stable |
+
+### Ground truth (images only, requires `test_data/labeled/`)
+
+Computed by comparing the predicted mask against the hand-labelled image. Label pixels: **white (255) = road**, **black (0) = non-road**, **gray (128) = void** (excluded from all calculations).
+
+Let `TP`, `TN`, `FP`, `FN` be counts of true/false positives/negatives over all non-void pixels:
+
+| Metric           | Formula                            | What it tells you                                 |
+| ---------------- | ---------------------------------- | ------------------------------------------------- |
+| `iou`            | `TP / (TP + FP + FN)`              | Overlap between predicted and actual road area    |
+| `precision`      | `TP / (TP + FP)`                   | Of pixels called road, how many actually are road |
+| `recall`         | `TP / (TP + FN)`                   | Of actual road pixels, how many were found        |
+| `f1`             | `2 × precision × recall / (P + R)` | Harmonic mean of precision and recall             |
+| `pixel_accuracy` | `(TP + TN) / (TP + TN + FP + FN)`  | Overall per-pixel classification accuracy         |
+
+The console prints `mean / min / max` for each metric across all images, and a per-image line with `IoU` and `F1` for quick scanning.
