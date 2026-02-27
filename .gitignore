@@ -3,6 +3,7 @@
 *.ts
 runs
 test_data
-*.mp4
-*.jpg
-*.png
+output/*.mp4
+output/*.png
+output/*.jpg
+__pycache__

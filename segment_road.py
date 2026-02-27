@@ -355,7 +355,7 @@ class YOLO26Segmentor:
     Uses Ultralytics YOLOE-26-seg with text prompts, so it works on arbitrary
     off-road road concepts without any fine-tuning.
     """
-    def __init__(self, size: str = "l", conf: float = 0.25, prompts: list = None):
+    def __init__(self, size: str = "x", conf: float = 0.25, prompts: list = None):
         from ultralytics import YOLO
 
         name = f"yoloe-26{size}-seg.pt"
@@ -364,6 +364,8 @@ class YOLO26Segmentor:
         self.conf = conf
         self.prompts = prompts or DEFAULT_PROMPTS
         self.model.set_classes(self.prompts)
+        # YOLOE with text prompts uses a CLIP text encoder that stays in float32,
+        # so half=True causes a dtype mismatch. Keep full precision.
         print(f"[YOLO26] Text classes : {self.prompts}")
 
     def infer(self, source) -> tuple:
@@ -396,7 +398,16 @@ class SAM3Segmentor:
         from ultralytics.models.sam import SAM3SemanticPredictor
 
         print(f"[SAM3] Loading {weights} ...")
-        self._ov = dict(conf=conf, task="segment", mode="predict", model=str(weights_path), verbose=False,)
+        self._ov = dict(
+            conf=conf,
+            task="segment",
+            mode="predict",
+            model=str(weights_path),
+            verbose=False,
+            save=False,       # prevent writing result images to disk on every call
+            save_txt=False,
+            save_conf=False,
+        )
         self.predictor = SAM3SemanticPredictor(overrides=self._ov)
         self.prompts = prompts or DEFAULT_PROMPTS
         self.weights = str(weights_path)
@@ -411,6 +422,61 @@ class SAM3Segmentor:
         t_ms = (time.perf_counter() - t0) * 1000
 
         return (res[0] if res else None), t_ms
+
+
+class SAM21Segmentor:
+    """
+    SAM 2.1 Large segmentor using a fixed point prompt.
+
+    SAM 2.1 does not support text prompts, so a single foreground point is
+    placed at the bottom-centre of the frame (x=50%, y=75%) — where the road
+    consistently appears in a forward-facing camera.  The model is downloaded
+    automatically by Ultralytics on first use (~224 MB).
+    """
+
+    WEIGHTS = "sam2.1_l.pt"
+    # Relative position of the road prompt point (fraction of frame dims)
+    POINT_X = 0.50
+    POINT_Y = 0.75
+
+    def __init__(self, weights: str = WEIGHTS, conf: float = 0.25):
+        from ultralytics import SAM
+
+        print(f"[SAM21] Loading {weights} (auto-download if not cached) ...")
+        self.model = SAM(weights)
+        self.conf  = conf
+        print(f"[SAM21] Point prompt: centre-x={self.POINT_X:.0%}  y={self.POINT_Y:.0%} of frame")
+
+    def infer(self, source) -> tuple:
+        """
+        Run inference on a file path or numpy BGR frame.
+
+        Converts file paths to numpy arrays internally so image dimensions are
+        always available for computing the point prompt without a second I/O hit.
+        """
+        if isinstance(source, np.ndarray):
+            frame = source
+        else:
+            frame = cv2.imread(str(source))
+            if frame is None:
+                return None, 0.0
+
+        h, w = frame.shape[:2]
+        cx = int(w * self.POINT_X)
+        cy = int(h * self.POINT_Y)
+
+        t0  = time.perf_counter()
+        res = self.model.predict(
+            frame,
+            points=[[cx, cy]],
+            labels=[1],          # 1 = foreground
+            conf=self.conf,
+            verbose=False,
+        )
+        t_ms = (time.perf_counter() - t0) * 1000
+
+        return (res[0] if res else None), t_ms
+
 
 def run_image(seg, img_path: Path, out_dir: Path, model_name: str, label_dir=None):
     """Segment a single image. Saves annotated output, returns metrics dict."""
@@ -519,8 +585,8 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=__doc__,
     )
     p.add_argument(
-        "--model", required=True, choices=["sam3", "yolo26"],
-        help="Segmentation backend: 'sam3' or 'yolo26'",
+        "--model", required=True, choices=["sam3", "sam21", "yolo26"],
+        help="Segmentation backend: 'sam3', 'sam21', or 'yolo26'",
     )
     p.add_argument(
         "--input", default="test_data",
@@ -539,12 +605,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Custom text prompts for the road concept  [default: built-in set]",
     )
     p.add_argument(
-        "--model-size", default="l", choices=["n", "s", "m", "l", "x"],
-        help="YOLOE-26 model size variant               [default: l, ignored for sam3]",
+        "--model-size", default="x", choices=["n", "s", "m", "l", "x"],
+        help="YOLOE-26 model size variant               [default: x, ignored for sam3]",
     )
     p.add_argument(
         "--sam3-weights", default="sam3.pt",
         help="Path to sam3.pt weights file              [default: sam3.pt]",
+    )
+    p.add_argument(
+        "--sam21-weights", default="sam2.1_l.pt",
+        help="Path to SAM 2.1 weights (auto-downloaded) [default: sam2.1_l.pt]",
     )
     p.add_argument(
         "--report", action="store_true",
@@ -556,7 +626,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main():
     args = build_parser().parse_args()
 
-    out_dir = Path(args.output)
+    out_dir = Path(args.output) / args.model
     out_dir.mkdir(parents=True, exist_ok=True)
 
     images, videos, label_dir = collect_inputs(args.input)
@@ -568,7 +638,8 @@ def main():
     print(f"  Inputs  : {len(images)} image(s), {len(videos)} video(s)  [{args.input}]")
     print(f"  Labels  : {label_dir or 'none found'}")
     print(f"  Output  : {out_dir.resolve()}")
-    print(f"  Prompts : {args.prompts or DEFAULT_PROMPTS}")
+    if args.model != "sam21":
+        print(f"  Prompts : {args.prompts or DEFAULT_PROMPTS}")
     print(hdr)
 
     if total == 0:
@@ -576,6 +647,8 @@ def main():
 
     if args.model == "yolo26":
         seg = YOLO26Segmentor(size=args.model_size, conf=args.conf, prompts=args.prompts)
+    elif args.model == "sam21":
+        seg = SAM21Segmentor(weights=args.sam21_weights, conf=args.conf)
     else:
         seg = SAM3Segmentor(weights=args.sam3_weights, conf=args.conf, prompts=args.prompts)
 

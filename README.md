@@ -2,14 +2,15 @@
 
 ## Quick Comparison
 
-|                | SAM3                                   | YOLO26 (YOLOE-26)                      |
-| -------------- | -------------------------------------- | -------------------------------------- |
-| **Approach**   | Foundation model, concept segmentation | Real-time open-vocabulary segmentation |
-| **Speed**      | ~30 ms / image (H200)                  | ~2–5 ms / image                        |
-| **Model size** | 3.4 GB                                 | 32–70 MB (l/x)                         |
-| **Zero-shot**  | Strong — 47.0 LVIS Mask AP             | Good — open-vocab via text prompts     |
-| **Video**      | Temporal tracking built-in             | Frame-by-frame                         |
-| **Weights**    | Manual download required               | Auto-downloaded                        |
+|                | YOLO26x (YOLOE-26x)                    | SAM3                                   | SAM2.1-L                               |
+| -------------- | -------------------------------------- | -------------------------------------- | -------------------------------------- |
+| **Approach**   | Real-time open-vocabulary segmentation | Foundation model, concept segmentation | Point-prompted foundation segmentation |
+| **Speed**      | ~3–8 ms / image (H200)                 | ~30 ms / image (H200)                  | ~50–100 ms / image (H200)              |
+| **Model size** | ~70 MB                                 | 3.4 GB                                 | ~224 MB                                |
+| **Prompting**  | Text prompts (open-vocab)              | Text prompts (open-vocab)              | Point prompt (bottom-centre of frame)  |
+| **Zero-shot**  | Good — open-vocab via text prompts     | Strong — 47.0 LVIS Mask AP             | Strong — SAM2.1 architecture           |
+| **Video**      | Frame-by-frame                         | Temporal tracking built-in             | Frame-by-frame                         |
+| **Weights**    | Auto-downloaded                        | Manual download required               | Auto-downloaded                        |
 
 ---
 
@@ -30,7 +31,7 @@ conda activate offroad-seg
 conda install pytorch torchvision cpuonly -c pytorch -y
 ```
 
-**GPU (CUDA 12.1) — recommended for SAM3:**
+**GPU (CUDA 12.1) — recommended for SAM3 and SAM2.1-L:**
 
 ```bash
 conda install pytorch torchvision pytorch-cuda=12.1 -c pytorch -c nvidia -y
@@ -58,67 +59,71 @@ pip install -r requirements.txt
 
 Weights are **downloaded automatically** on first run. Nothing to do.
 
+### SAM2.1-L
+
+Weights are **downloaded automatically** by Ultralytics on first run (~224 MB). Nothing to do.
+
 ### SAM3
 
 SAM3 weights require manual download:
 
 1. Go to <https://huggingface.co/facebook/sam3> and click **"Request access"**.
-2. Once approved, go the `Files and versions` tab and download **`sam3.pt`** (~3.4 GB).
+2. Once approved, go to the `Files and versions` tab and download **`sam3.pt`** (~3.4 GB).
 3. Place `sam3.pt` in the project root (same folder as `segment_road.py`).
 
 ---
 
 ## 3 — Running the Script
 
-### Segment all test images and videos (YOLO26)
+### Segment all test images and videos
 
 ```bash
 python segment_road.py --model yolo26 --input test_data/
-```
-
-### Segment all test images and videos (SAM3)
-
-```bash
-python segment_road.py --model sam3 --input test_data/
+python segment_road.py --model sam21  --input test_data/
+python segment_road.py --model sam3   --input test_data/
 ```
 
 ### Single image
 
 ```bash
 python segment_road.py --model yolo26 --input test_data/orfd.png
-python segment_road.py --model sam3 --input test_data/orfd.png
+python segment_road.py --model sam21  --input test_data/orfd.png
+python segment_road.py --model sam3   --input test_data/orfd.png
 ```
 
 ### Single video
 
 ```bash
 python segment_road.py --model yolo26 --input test_data/aa.mp4
-python segment_road.py --model sam3 --input test_data/aa.mp4
+python segment_road.py --model sam21  --input test_data/aa.mp4
+python segment_road.py --model sam3   --input test_data/aa.mp4
 ```
 
 ### Save a JSON metrics report
 
 ```bash
 python segment_road.py --model yolo26 --input test_data/ --report
-python segment_road.py --model sam3 --input test_data/ --report
+python segment_road.py --model sam21  --input test_data/ --report
+python segment_road.py --model sam3   --input test_data/ --report
 ```
 
-Reports are saved as `output/metrics_yolo26.json` and `output/metrics_sam3.json`.
+Reports are saved as `output/<model>/metrics_<model>.json`.
 
 ### CLI Options
 
-| Flag             | Default      | Description                                                     |
-| ---------------- | ------------ | --------------------------------------------------------------- |
-| `--model`        | _(required)_ | `sam3` or `yolo26`                                              |
-| `--input`        | `test_data/` | Image/video file or directory                                   |
-| `--output`       | `output/`    | Directory for annotated outputs                                 |
-| `--conf`         | `0.25`       | Detection confidence threshold                                  |
-| `--prompts`      | built-in set | Custom text prompts for the road concept                        |
-| `--model-size`   | `l`          | YOLOE-26 size: `n` / `s` / `m` / `l` / `x` _(ignored for SAM3)_ |
-| `--sam3-weights` | `sam3.pt`    | Path to SAM3 weights _(ignored for YOLO26)_                     |
-| `--report`       | off          | Save JSON metrics report to output directory                    |
+| Flag              | Default       | Description                                                           |
+| ----------------- | ------------- | --------------------------------------------------------------------- |
+| `--model`         | _(required)_  | `yolo26`, `sam21`, or `sam3`                                          |
+| `--input`         | `test_data/`  | Image/video file or directory                                         |
+| `--output`        | `output/`     | Base output directory — a `<model>` subfolder is created inside       |
+| `--conf`          | `0.25`        | Detection confidence threshold                                        |
+| `--prompts`       | built-in set  | Custom text prompts _(YOLO26 and SAM3 only — ignored for SAM2.1)_     |
+| `--model-size`    | `x`           | YOLOE-26 size: `n` / `s` / `m` / `l` / `x` _(ignored for SAM models)_ |
+| `--sam3-weights`  | `sam3.pt`     | Path to SAM3 weights _(ignored for YOLO26 and SAM2.1)_                |
+| `--sam21-weights` | `sam2.1_l.pt` | Path to SAM2.1 weights — auto-downloaded if not present               |
+| `--report`        | off           | Save JSON metrics report to the model output directory                |
 
-### Custom text prompts example
+### Custom text prompts (YOLO26 / SAM3 only)
 
 ```bash
 python segment_road.py --model yolo26 --input test_data/ \
@@ -129,23 +134,32 @@ python segment_road.py --model yolo26 --input test_data/ \
 
 ## 4 — Output
 
+All outputs are written to a model-specific subfolder inside `--output`:
+
+```
+output/
+  yolo26/
+  sam21/
+  sam3/
+```
+
 ### Annotated images
 
-`output/<filename>_<model>_road.<ext>`
+`output/<model>/<filename>_<model>_road.<ext>`
 — Green semi-transparent mask over the traversable road
 — Cyan contour boundary
 — HUD overlay with per-frame metrics
 
 ### Annotated videos
 
-`output/<filename>_<model>_road.mp4`
+`output/<model>/<filename>_<model>_road.mp4`
 — Same overlay per frame + per-frame HUD
 
 ---
 
 ## 5 — Metrics
 
-Metrics are split into three groups. **Performance** and **Model output** are always reported. **Ground truth** metrics are computed automatically when label images are present (images only, videos are skipped). All groups are reported identically for both models.
+Metrics are split into three groups. **Performance** and **Model output** are always reported. **Ground truth** metrics are computed automatically when label images are present (images only, videos are skipped). All groups are reported identically for all models.
 
 ### Performance (always reported)
 

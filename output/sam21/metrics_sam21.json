@@ -1,0 +1,6608 @@
+{
+  "model": "sam21",
+  "images": [
+    {
+      "inference_time_ms": 2592.2,
+      "fps": 0.4,
+      "road_coverage_pct": 29.47,
+      "mean_confidence": 0.9484,
+      "num_detections": 1,
+      "file": "orfd.png",
+      "iou": 0.9409,
+      "precision": 0.9448,
+      "recall": 0.9957,
+      "f1": 0.9695,
+      "pixel_accuracy": 0.9787
+    },
+    {
+      "inference_time_ms": 430.14,
+      "fps": 2.3,
+      "road_coverage_pct": 18.06,
+      "mean_confidence": 0.8705,
+      "num_detections": 1,
+      "file": "orfd2.png",
+      "iou": 0.7488,
+      "precision": 0.9986,
+      "recall": 0.7496,
+      "f1": 0.8564,
+      "pixel_accuracy": 0.9378
+    },
+    {
+      "inference_time_ms": 429.59,
+      "fps": 2.3,
+      "road_coverage_pct": 19.76,
+      "mean_confidence": 0.7905,
+      "num_detections": 1,
+      "file": "orfd3.png",
+      "iou": 0.6365,
+      "precision": 0.9964,
+      "recall": 0.6379,
+      "f1": 0.7779,
+      "pixel_accuracy": 0.8795
+    },
+    {
+      "inference_time_ms": 430.44,
+      "fps": 2.3,
+      "road_coverage_pct": 31.38,
+      "mean_confidence": 0.9738,
+      "num_detections": 1,
+      "file": "orfd4.png",
+      "iou": 0.9096,
+      "precision": 0.9935,
+      "recall": 0.9151,
+      "f1": 0.9527,
+      "pixel_accuracy": 0.9589
+    },
+    {
+      "inference_time_ms": 433.05,
+      "fps": 2.3,
+      "road_coverage_pct": 31.71,
+      "mean_confidence": 0.9685,
+      "num_detections": 1,
+      "file": "orfd5.png",
+      "iou": 0.9798,
+      "precision": 0.9953,
+      "recall": 0.9843,
+      "f1": 0.9898,
+      "pixel_accuracy": 0.9916
+    }
+  ],
+  "videos": {
+    "aa.mp4": [
+      {
+        "inference_time_ms": 431.72,
+        "fps": 2.3,
+        "road_coverage_pct": 11.25,
+        "mean_confidence": 0.8737,
+        "num_detections": 1,
+        "frame": 0
+      },
+      {
+        "inference_time_ms": 428.79,
+        "fps": 2.3,
+        "road_coverage_pct": 11.55,
+        "mean_confidence": 0.8628,
+        "num_detections": 1,
+        "temporal_iou": 0.9578,
+        "frame": 1
+      },
+      {
+        "inference_time_ms": 430.46,
+        "fps": 2.3,
+        "road_coverage_pct": 11.35,
+        "mean_confidence": 0.8648,
+        "num_detections": 1,
+        "temporal_iou": 0.9707,
+        "frame": 2
+      },
+      {
+        "inference_time_ms": 431.55,
+        "fps": 2.3,
+        "road_coverage_pct": 11.05,
+        "mean_confidence": 0.8948,
+        "num_detections": 1,
+        "temporal_iou": 0.9572,
+        "frame": 3
+      },
+      {
+        "inference_time_ms": 434.99,
+        "fps": 2.3,
+        "road_coverage_pct": 11.34,
+        "mean_confidence": 0.915,
+        "num_detections": 1,
+        "temporal_iou": 0.9643,
+        "frame": 4
+      },
+      {
+        "inference_time_ms": 436.0,
+        "fps": 2.3,
+        "road_coverage_pct": 11.52,
+        "mean_confidence": 0.9123,
+        "num_detections": 1,
+        "temporal_iou": 0.9692,
+        "frame": 5
+      },
+      {
+        "inference_time_ms": 435.33,
+        "fps": 2.3,
+        "road_coverage_pct": 12.33,
+        "mean_confidence": 0.9024,
+        "num_detections": 1,
+        "temporal_iou": 0.9286,
+        "frame": 6
+      },
+      {
+        "inference_time_ms": 431.34,
+        "fps": 2.3,
+        "road_coverage_pct": 11.95,
+        "mean_confidence": 0.8929,
+        "num_detections": 1,
+        "temporal_iou": 0.9322,
+        "frame": 7
+      },
+      {
+        "inference_time_ms": 437.96,
+        "fps": 2.3,
+        "road_coverage_pct": 12.14,
+        "mean_confidence": 0.9337,
+        "num_detections": 1,
+        "temporal_iou": 0.9736,
+        "frame": 8
+      },
+      {
+        "inference_time_ms": 429.11,
+        "fps": 2.3,
+        "road_coverage_pct": 12.35,
+        "mean_confidence": 0.9255,
+        "num_detections": 1,
+        "temporal_iou": 0.9551,
+        "frame": 9
+      },
+      {
+        "inference_time_ms": 431.8,
+        "fps": 2.3,
+        "road_coverage_pct": 12.66,
+        "mean_confidence": 0.9112,
+        "num_detections": 1,
+        "temporal_iou": 0.9702,
+        "frame": 10
+      },
+      {
+        "inference_time_ms": 434.65,
+        "fps": 2.3,
+        "road_coverage_pct": 12.75,
+        "mean_confidence": 0.8801,
+        "num_detections": 1,
+        "temporal_iou": 0.9753,
+        "frame": 11
+      },
+      {
+        "inference_time_ms": 432.77,
+        "fps": 2.3,
+        "road_coverage_pct": 12.47,
+        "mean_confidence": 0.8966,
+        "num_detections": 1,
+        "temporal_iou": 0.9722,
+        "frame": 12
+      },
+      {
+        "inference_time_ms": 435.03,
+        "fps": 2.3,
+        "road_coverage_pct": 12.64,
+        "mean_confidence": 0.9069,
+        "num_detections": 1,
+        "temporal_iou": 0.9721,
+        "frame": 13
+      },
+      {
+        "inference_time_ms": 429.99,
+        "fps": 2.3,
+        "road_coverage_pct": 12.8,
+        "mean_confidence": 0.8834,
+        "num_detections": 1,
+        "temporal_iou": 0.9685,
+        "frame": 14
+      },
+      {
+        "inference_time_ms": 430.56,
+        "fps": 2.3,
+        "road_coverage_pct": 12.33,
+        "mean_confidence": 0.9188,
+        "num_detections": 1,
+        "temporal_iou": 0.9506,
+        "frame": 15
+      },
+      {
+        "inference_time_ms": 429.43,
+        "fps": 2.3,
+        "road_coverage_pct": 12.6,
+        "mean_confidence": 0.9107,
+        "num_detections": 1,
+        "temporal_iou": 0.9727,
+        "frame": 16
+      },
+      {
+        "inference_time_ms": 430.47,
+        "fps": 2.3,
+        "road_coverage_pct": 12.46,
+        "mean_confidence": 0.9132,
+        "num_detections": 1,
+        "temporal_iou": 0.9697,
+        "frame": 17
+      },
+      {
+        "inference_time_ms": 432.63,
+        "fps": 2.3,
+        "road_coverage_pct": 12.59,
+        "mean_confidence": 0.8996,
+        "num_detections": 1,
+        "temporal_iou": 0.9632,
+        "frame": 18
+      },
+      {
+        "inference_time_ms": 435.08,
+        "fps": 2.3,
+        "road_coverage_pct": 12.34,
+        "mean_confidence": 0.9005,
+        "num_detections": 1,
+        "temporal_iou": 0.9679,
+        "frame": 19
+      },
+      {
+        "inference_time_ms": 433.93,
+        "fps": 2.3,
+        "road_coverage_pct": 12.87,
+        "mean_confidence": 0.9392,
+        "num_detections": 1,
+        "temporal_iou": 0.9499,
+        "frame": 20
+      },
+      {
+        "inference_time_ms": 435.07,
+        "fps": 2.3,
+        "road_coverage_pct": 12.73,
+        "mean_confidence": 0.8915,
+        "num_detections": 1,
+        "temporal_iou": 0.9657,
+        "frame": 21
+      },
+      {
+        "inference_time_ms": 434.92,
+        "fps": 2.3,
+        "road_coverage_pct": 12.58,
+        "mean_confidence": 0.9085,
+        "num_detections": 1,
+        "temporal_iou": 0.9653,
+        "frame": 22
+      },
+      {
+        "inference_time_ms": 434.33,
+        "fps": 2.3,
+        "road_coverage_pct": 12.99,
+        "mean_confidence": 0.9122,
+        "num_detections": 1,
+        "temporal_iou": 0.9622,
+        "frame": 23
+      },
+      {
+        "inference_time_ms": 435.59,
+        "fps": 2.3,
+        "road_coverage_pct": 12.56,
+        "mean_confidence": 0.8945,
+        "num_detections": 1,
+        "temporal_iou": 0.9549,
+        "frame": 24
+      },
+      {
+        "inference_time_ms": 433.8,
+        "fps": 2.3,
+        "road_coverage_pct": 12.99,
+        "mean_confidence": 0.9105,
+        "num_detections": 1,
+        "temporal_iou": 0.944,
+        "frame": 25
+      },
+      {
+        "inference_time_ms": 435.9,
+        "fps": 2.3,
+        "road_coverage_pct": 12.92,
+        "mean_confidence": 0.9174,
+        "num_detections": 1,
+        "temporal_iou": 0.9682,
+        "frame": 26
+      },
+      {
+        "inference_time_ms": 438.96,
+        "fps": 2.3,
+        "road_coverage_pct": 12.46,
+        "mean_confidence": 0.9318,
+        "num_detections": 1,
+        "temporal_iou": 0.9616,
+        "frame": 27
+      },
+      {
+        "inference_time_ms": 434.09,
+        "fps": 2.3,
+        "road_coverage_pct": 12.38,
+        "mean_confidence": 0.9373,
+        "num_detections": 1,
+        "temporal_iou": 0.9725,
+        "frame": 28
+      },
+      {
+        "inference_time_ms": 433.49,
+        "fps": 2.3,
+        "road_coverage_pct": 12.59,
+        "mean_confidence": 0.9156,
+        "num_detections": 1,
+        "temporal_iou": 0.9628,
+        "frame": 29
+      },
+      {
+        "inference_time_ms": 435.49,
+        "fps": 2.3,
+        "road_coverage_pct": 12.94,
+        "mean_confidence": 0.9135,
+        "num_detections": 1,
+        "temporal_iou": 0.9576,
+        "frame": 30
+      },
+      {
+        "inference_time_ms": 435.4,
+        "fps": 2.3,
+        "road_coverage_pct": 12.74,
+        "mean_confidence": 0.8997,
+        "num_detections": 1,
+        "temporal_iou": 0.9748,
+        "frame": 31
+      },
+      {
+        "inference_time_ms": 436.55,
+        "fps": 2.3,
+        "road_coverage_pct": 12.87,
+        "mean_confidence": 0.8901,
+        "num_detections": 1,
+        "temporal_iou": 0.9767,
+        "frame": 32
+      },
+      {
+        "inference_time_ms": 434.91,
+        "fps": 2.3,
+        "road_coverage_pct": 12.95,
+        "mean_confidence": 0.8579,
+        "num_detections": 1,
+        "temporal_iou": 0.9807,
+        "frame": 33
+      },
+      {
+        "inference_time_ms": 436.63,
+        "fps": 2.3,
+        "road_coverage_pct": 12.75,
+        "mean_confidence": 0.9219,
+        "num_detections": 1,
+        "temporal_iou": 0.9756,
+        "frame": 34
+      },
+      {
+        "inference_time_ms": 435.55,
+        "fps": 2.3,
+        "road_coverage_pct": 13.07,
+        "mean_confidence": 0.9082,
+        "num_detections": 1,
+        "temporal_iou": 0.9672,
+        "frame": 35
+      },
+      {
+        "inference_time_ms": 435.14,
+        "fps": 2.3,
+        "road_coverage_pct": 12.96,
+        "mean_confidence": 0.8921,
+        "num_detections": 1,
+        "temporal_iou": 0.9732,
+        "frame": 36
+      },
+      {
+        "inference_time_ms": 435.95,
+        "fps": 2.3,
+        "road_coverage_pct": 12.62,
+        "mean_confidence": 0.8924,
+        "num_detections": 1,
+        "temporal_iou": 0.9334,
+        "frame": 37
+      },
+      {
+        "inference_time_ms": 439.1,
+        "fps": 2.3,
+        "road_coverage_pct": 13.16,
+        "mean_confidence": 0.8752,
+        "num_detections": 1,
+        "temporal_iou": 0.9389,
+        "frame": 38
+      },
+      {
+        "inference_time_ms": 434.88,
+        "fps": 2.3,
+        "road_coverage_pct": 12.64,
+        "mean_confidence": 0.8619,
+        "num_detections": 1,
+        "temporal_iou": 0.9489,
+        "frame": 39
+      },
+      {
+        "inference_time_ms": 434.39,
+        "fps": 2.3,
+        "road_coverage_pct": 12.33,
+        "mean_confidence": 0.9062,
+        "num_detections": 1,
+        "temporal_iou": 0.97,
+        "frame": 40
+      },
+      {
+        "inference_time_ms": 433.9,
+        "fps": 2.3,
+        "road_coverage_pct": 12.3,
+        "mean_confidence": 0.8316,
+        "num_detections": 1,
+        "temporal_iou": 0.9746,
+        "frame": 41
+      },
+      {
+        "inference_time_ms": 436.96,
+        "fps": 2.3,
+        "road_coverage_pct": 12.47,
+        "mean_confidence": 0.8922,
+        "num_detections": 1,
+        "temporal_iou": 0.9747,
+        "frame": 42
+      },
+      {
+        "inference_time_ms": 434.49,
+        "fps": 2.3,
+        "road_coverage_pct": 12.72,
+        "mean_confidence": 0.8821,
+        "num_detections": 1,
+        "temporal_iou": 0.9721,
+        "frame": 43
+      },
+      {
+        "inference_time_ms": 436.19,
+        "fps": 2.3,
+        "road_coverage_pct": 12.26,
+        "mean_confidence": 0.8756,
+        "num_detections": 1,
+        "temporal_iou": 0.9476,
+        "frame": 44
+      },
+      {
+        "inference_time_ms": 434.76,
+        "fps": 2.3,
+        "road_coverage_pct": 12.35,
+        "mean_confidence": 0.8529,
+        "num_detections": 1,
+        "temporal_iou": 0.9631,
+        "frame": 45
+      },
+      {
+        "inference_time_ms": 434.58,
+        "fps": 2.3,
+        "road_coverage_pct": 13.05,
+        "mean_confidence": 0.9069,
+        "num_detections": 1,
+        "temporal_iou": 0.9366,
+        "frame": 46
+      },
+      {
+        "inference_time_ms": 436.32,
+        "fps": 2.3,
+        "road_coverage_pct": 12.47,
+        "mean_confidence": 0.8817,
+        "num_detections": 1,
+        "temporal_iou": 0.9354,
+        "frame": 47
+      },
+      {
+        "inference_time_ms": 434.53,
+        "fps": 2.3,
+        "road_coverage_pct": 13.17,
+        "mean_confidence": 0.829,
+        "num_detections": 1,
+        "temporal_iou": 0.9289,
+        "frame": 48
+      },
+      {
+        "inference_time_ms": 435.72,
+        "fps": 2.3,
+        "road_coverage_pct": 13.13,
+        "mean_confidence": 0.8936,
+        "num_detections": 1,
+        "temporal_iou": 0.9808,
+        "frame": 49
+      },
+      {
+        "inference_time_ms": 439.24,
+        "fps": 2.3,
+        "road_coverage_pct": 12.9,
+        "mean_confidence": 0.8626,
+        "num_detections": 1,
+        "temporal_iou": 0.9696,
+        "frame": 50
+      },
+      {
+        "inference_time_ms": 434.21,
+        "fps": 2.3,
+        "road_coverage_pct": 12.88,
+        "mean_confidence": 0.8768,
+        "num_detections": 1,
+        "temporal_iou": 0.9743,
+        "frame": 51
+      },
+      {
+        "inference_time_ms": 434.98,
+        "fps": 2.3,
+        "road_coverage_pct": 12.98,
+        "mean_confidence": 0.9111,
+        "num_detections": 1,
+        "temporal_iou": 0.978,
+        "frame": 52
+      },
+      {
+        "inference_time_ms": 437.73,
+        "fps": 2.3,
+        "road_coverage_pct": 13.12,
+        "mean_confidence": 0.8575,
+        "num_detections": 1,
+        "temporal_iou": 0.9785,
+        "frame": 53
+      },
+      {
+        "inference_time_ms": 439.72,
+        "fps": 2.3,
+        "road_coverage_pct": 12.93,
+        "mean_confidence": 0.803,
+        "num_detections": 1,
+        "temporal_iou": 0.9687,
+        "frame": 54
+      },
+      {
+        "inference_time_ms": 435.22,
+        "fps": 2.3,
+        "road_coverage_pct": 13.28,
+        "mean_confidence": 0.8478,
+        "num_detections": 1,
+        "temporal_iou": 0.9614,
+        "frame": 55
+      },
+      {
+        "inference_time_ms": 435.45,
+        "fps": 2.3,
+        "road_coverage_pct": 13.2,
+        "mean_confidence": 0.8622,
+        "num_detections": 1,
+        "temporal_iou": 0.9678,
+        "frame": 56
+      },
+      {
+        "inference_time_ms": 436.84,
+        "fps": 2.3,
+        "road_coverage_pct": 13.18,
+        "mean_confidence": 0.901,
+        "num_detections": 1,
+        "temporal_iou": 0.9782,
+        "frame": 57
+      },
+      {
+        "inference_time_ms": 450.42,
+        "fps": 2.2,
+        "road_coverage_pct": 13.26,
+        "mean_confidence": 0.7354,
+        "num_detections": 1,
+        "temporal_iou": 0.9745,
+        "frame": 58
+      },
+      {
+        "inference_time_ms": 435.61,
+        "fps": 2.3,
+        "road_coverage_pct": 13.11,
+        "mean_confidence": 0.7166,
+        "num_detections": 1,
+        "temporal_iou": 0.9497,
+        "frame": 59
+      },
+      {
+        "inference_time_ms": 437.73,
+        "fps": 2.3,
+        "road_coverage_pct": 13.31,
+        "mean_confidence": 0.7891,
+        "num_detections": 1,
+        "temporal_iou": 0.9581,
+        "frame": 60
+      },
+      {
+        "inference_time_ms": 437.88,
+        "fps": 2.3,
+        "road_coverage_pct": 13.73,
+        "mean_confidence": 0.6256,
+        "num_detections": 1,
+        "temporal_iou": 0.9623,
+        "frame": 61
+      },
+      {
+        "inference_time_ms": 437.79,
+        "fps": 2.3,
+        "road_coverage_pct": 13.49,
+        "mean_confidence": 0.5934,
+        "num_detections": 1,
+        "temporal_iou": 0.9751,
+        "frame": 62
+      },
+      {
+        "inference_time_ms": 436.16,
+        "fps": 2.3,
+        "road_coverage_pct": 14.17,
+        "mean_confidence": 0.5921,
+        "num_detections": 1,
+        "temporal_iou": 0.9465,
+        "frame": 63
+      },
+      {
+        "inference_time_ms": 437.77,
+        "fps": 2.3,
+        "road_coverage_pct": 13.49,
+        "mean_confidence": 0.728,
+        "num_detections": 1,
+        "temporal_iou": 0.946,
+        "frame": 64
+      },
+      {
+        "inference_time_ms": 438.58,
+        "fps": 2.3,
+        "road_coverage_pct": 13.47,
+        "mean_confidence": 0.7363,
+        "num_detections": 1,
+        "temporal_iou": 0.9426,
+        "frame": 65
+      },
+      {
+        "inference_time_ms": 435.83,
+        "fps": 2.3,
+        "road_coverage_pct": 16.82,
+        "mean_confidence": 0.5961,
+        "num_detections": 1,
+        "temporal_iou": 0.8005,
+        "frame": 66
+      },
+      {
+        "inference_time_ms": 442.52,
+        "fps": 2.3,
+        "road_coverage_pct": 14.22,
+        "mean_confidence": 0.7383,
+        "num_detections": 1,
+        "temporal_iou": 0.8423,
+        "frame": 67
+      },
+      {
+        "inference_time_ms": 437.14,
+        "fps": 2.3,
+        "road_coverage_pct": 12.95,
+        "mean_confidence": 0.6509,
+        "num_detections": 1,
+        "temporal_iou": 0.9098,
+        "frame": 68
+      },
+      {
+        "inference_time_ms": 436.62,
+        "fps": 2.3,
+        "road_coverage_pct": 14.13,
+        "mean_confidence": 0.5702,
+        "num_detections": 1,
+        "temporal_iou": 0.9141,
+        "frame": 69
+      },
+      {
+        "inference_time_ms": 436.66,
+        "fps": 2.3,
+        "road_coverage_pct": 15.53,
+        "mean_confidence": 0.6625,
+        "num_detections": 1,
+        "temporal_iou": 0.9075,
+        "frame": 70
+      },
+      {
+        "inference_time_ms": 438.4,
+        "fps": 2.3,
+        "road_coverage_pct": 12.0,
+        "mean_confidence": 0.5252,
+        "num_detections": 1,
+        "temporal_iou": 0.7694,
+        "frame": 71
+      },
+      {
+        "inference_time_ms": 436.61,
+        "fps": 2.3,
+        "road_coverage_pct": 10.68,
+        "mean_confidence": 0.5301,
+        "num_detections": 1,
+        "temporal_iou": 0.8423,
+        "frame": 72
+      },
+      {
+        "inference_time_ms": 435.68,
+        "fps": 2.3,
+        "road_coverage_pct": 12.58,
+        "mean_confidence": 0.4907,
+        "num_detections": 1,
+        "temporal_iou": 0.8379,
+        "frame": 73
+      },
+      {
+        "inference_time_ms": 440.13,
+        "fps": 2.3,
+        "road_coverage_pct": 11.77,
+        "mean_confidence": 0.5301,
+        "num_detections": 1,
+        "temporal_iou": 0.8763,
+        "frame": 74
+      },
+      {
+        "inference_time_ms": 437.46,
+        "fps": 2.3,
+        "road_coverage_pct": 8.36,
+        "mean_confidence": 0.4839,
+        "num_detections": 1,
+        "temporal_iou": 0.6895,
+        "frame": 75
+      },
+      {
+        "inference_time_ms": 436.71,
+        "fps": 2.3,
+        "road_coverage_pct": 7.75,
+        "mean_confidence": 0.6311,
+        "num_detections": 1,
+        "temporal_iou": 0.9207,
+        "frame": 76
+      },
+      {
+        "inference_time_ms": 440.87,
+        "fps": 2.3,
+        "road_coverage_pct": 9.94,
+        "mean_confidence": 0.5956,
+        "num_detections": 1,
+        "temporal_iou": 0.776,
+        "frame": 77
+      },
+      {
+        "inference_time_ms": 439.84,
+        "fps": 2.3,
+        "road_coverage_pct": 9.35,
+        "mean_confidence": 0.5441,
+        "num_detections": 1,
+        "temporal_iou": 0.8683,
+        "frame": 78
+      },
+      {
+        "inference_time_ms": 437.76,
+        "fps": 2.3,
+        "road_coverage_pct": 12.83,
+        "mean_confidence": 0.6188,
+        "num_detections": 1,
+        "temporal_iou": 0.7252,
+        "frame": 79
+      },
+      {
+        "inference_time_ms": 440.91,
+        "fps": 2.3,
+        "road_coverage_pct": 12.7,
+        "mean_confidence": 0.3724,
+        "num_detections": 1,
+        "temporal_iou": 0.8246,
+        "frame": 80
+      },
+      {
+        "inference_time_ms": 443.52,
+        "fps": 2.3,
+        "road_coverage_pct": 14.61,
+        "mean_confidence": 0.6171,
+        "num_detections": 1,
+        "temporal_iou": 0.865,
+        "frame": 81
+      },
+      {
+        "inference_time_ms": 439.36,
+        "fps": 2.3,
+        "road_coverage_pct": 14.19,
+        "mean_confidence": 0.4684,
+        "num_detections": 1,
+        "temporal_iou": 0.9022,
+        "frame": 82
+      },
+      {
+        "inference_time_ms": 438.1,
+        "fps": 2.3,
+        "road_coverage_pct": 13.17,
+        "mean_confidence": 0.5581,
+        "num_detections": 1,
+        "temporal_iou": 0.9119,
+        "frame": 83
+      },
+      {
+        "inference_time_ms": 436.88,
+        "fps": 2.3,
+        "road_coverage_pct": 12.53,
+        "mean_confidence": 0.6904,
+        "num_detections": 1,
+        "temporal_iou": 0.8266,
+        "frame": 84
+      },
+      {
+        "inference_time_ms": 437.61,
+        "fps": 2.3,
+        "road_coverage_pct": 14.23,
+        "mean_confidence": 0.6159,
+        "num_detections": 1,
+        "temporal_iou": 0.8718,
+        "frame": 85
+      },
+      {
+        "inference_time_ms": 438.38,
+        "fps": 2.3,
+        "road_coverage_pct": 27.35,
+        "mean_confidence": 0.4837,
+        "num_detections": 1,
+        "temporal_iou": 0.5188,
+        "frame": 86
+      },
+      {
+        "inference_time_ms": 438.21,
+        "fps": 2.3,
+        "road_coverage_pct": 15.36,
+        "mean_confidence": 0.4593,
+        "num_detections": 1,
+        "temporal_iou": 0.5604,
+        "frame": 87
+      },
+      {
+        "inference_time_ms": 438.27,
+        "fps": 2.3,
+        "road_coverage_pct": 16.65,
+        "mean_confidence": 0.6972,
+        "num_detections": 1,
+        "temporal_iou": 0.9202,
+        "frame": 88
+      },
+      {
+        "inference_time_ms": 439.63,
+        "fps": 2.3,
+        "road_coverage_pct": 16.5,
+        "mean_confidence": 0.6265,
+        "num_detections": 1,
+        "temporal_iou": 0.9552,
+        "frame": 89
+      },
+      {
+        "inference_time_ms": 438.85,
+        "fps": 2.3,
+        "road_coverage_pct": 16.95,
+        "mean_confidence": 0.5551,
+        "num_detections": 1,
+        "temporal_iou": 0.9635,
+        "frame": 90
+      },
+      {
+        "inference_time_ms": 439.7,
+        "fps": 2.3,
+        "road_coverage_pct": 33.55,
+        "mean_confidence": 0.4732,
+        "num_detections": 1,
+        "temporal_iou": 0.5043,
+        "frame": 91
+      },
+      {
+        "inference_time_ms": 442.26,
+        "fps": 2.3,
+        "road_coverage_pct": 14.18,
+        "mean_confidence": 0.6437,
+        "num_detections": 1,
+        "temporal_iou": 0.4217,
+        "frame": 92
+      },
+      {
+        "inference_time_ms": 440.66,
+        "fps": 2.3,
+        "road_coverage_pct": 16.11,
+        "mean_confidence": 0.7778,
+        "num_detections": 1,
+        "temporal_iou": 0.8796,
+        "frame": 93
+      },
+      {
+        "inference_time_ms": 440.93,
+        "fps": 2.3,
+        "road_coverage_pct": 31.6,
+        "mean_confidence": 0.4775,
+        "num_detections": 1,
+        "temporal_iou": 0.5079,
+        "frame": 94
+      },
+      {
+        "inference_time_ms": 440.42,
+        "fps": 2.3,
+        "road_coverage_pct": 33.58,
+        "mean_confidence": 0.4285,
+        "num_detections": 1,
+        "temporal_iou": 0.9293,
+        "frame": 95
+      },
+      {
+        "inference_time_ms": 440.2,
+        "fps": 2.3,
+        "road_coverage_pct": 0.59,
+        "mean_confidence": 0.3442,
+        "num_detections": 1,
+        "temporal_iou": 0.0175,
+        "frame": 96
+      },
+      {
+        "inference_time_ms": 443.73,
+        "fps": 2.3,
+        "road_coverage_pct": 31.45,
+        "mean_confidence": 0.3682,
+        "num_detections": 1,
+        "temporal_iou": 0.0187,
+        "frame": 97
+      },
+      {
+        "inference_time_ms": 444.32,
+        "fps": 2.3,
+        "road_coverage_pct": 0.62,
+        "mean_confidence": 0.4693,
+        "num_detections": 1,
+        "temporal_iou": 0.0194,
+        "frame": 98
+      },
+      {
+        "inference_time_ms": 442.01,
+        "fps": 2.3,
+        "road_coverage_pct": 0.58,
+        "mean_confidence": 0.5144,
+        "num_detections": 1,
+        "temporal_iou": 0.8625,
+        "frame": 99
+      },
+      {
+        "inference_time_ms": 442.54,
+        "fps": 2.3,
+        "road_coverage_pct": 0.6,
+        "mean_confidence": 0.5168,
+        "num_detections": 1,
+        "temporal_iou": 0.8959,
+        "frame": 100
+      },
+      {
+        "inference_time_ms": 441.43,
+        "fps": 2.3,
+        "road_coverage_pct": 0.61,
+        "mean_confidence": 0.7038,
+        "num_detections": 1,
+        "temporal_iou": 0.8935,
+        "frame": 101
+      },
+      {
+        "inference_time_ms": 440.97,
+        "fps": 2.3,
+        "road_coverage_pct": 0.68,
+        "mean_confidence": 0.6916,
+        "num_detections": 1,
+        "temporal_iou": 0.8553,
+        "frame": 102
+      },
+      {
+        "inference_time_ms": 441.04,
+        "fps": 2.3,
+        "road_coverage_pct": 0.62,
+        "mean_confidence": 0.7161,
+        "num_detections": 1,
+        "temporal_iou": 0.7957,
+        "frame": 103
+      },
+      {
+        "inference_time_ms": 442.27,
+        "fps": 2.3,
+        "road_coverage_pct": 0.62,
+        "mean_confidence": 0.7516,
+        "num_detections": 1,
+        "temporal_iou": 0.9038,
+        "frame": 104
+      },
+      {
+        "inference_time_ms": 442.36,
+        "fps": 2.3,
+        "road_coverage_pct": 0.6,
+        "mean_confidence": 0.7609,
+        "num_detections": 1,
+        "temporal_iou": 0.8969,
+        "frame": 105
+      },
+      {
+        "inference_time_ms": 440.71,
+        "fps": 2.3,
+        "road_coverage_pct": 0.67,
+        "mean_confidence": 0.7006,
+        "num_detections": 1,
+        "temporal_iou": 0.8884,
+        "frame": 106
+      },
+      {
+        "inference_time_ms": 444.83,
+        "fps": 2.2,
+        "road_coverage_pct": 0.6,
+        "mean_confidence": 0.3063,
+        "num_detections": 1,
+        "temporal_iou": 0.859,
+        "frame": 107
+      },
+      {
+        "inference_time_ms": 446.73,
+        "fps": 2.2,
+        "road_coverage_pct": 0.65,
+        "mean_confidence": 0.285,
+        "num_detections": 1,
+        "temporal_iou": 0.8851,
+        "frame": 108
+      },
+      {
+        "inference_time_ms": 441.73,
+        "fps": 2.3,
+        "road_coverage_pct": 10.79,
+        "mean_confidence": 0.4057,
+        "num_detections": 1,
+        "temporal_iou": 0.0599,
+        "frame": 109
+      },
+      {
+        "inference_time_ms": 441.93,
+        "fps": 2.3,
+        "road_coverage_pct": 8.41,
+        "mean_confidence": 0.3902,
+        "num_detections": 1,
+        "temporal_iou": 0.7133,
+        "frame": 110
+      },
+      {
+        "inference_time_ms": 443.91,
+        "fps": 2.3,
+        "road_coverage_pct": 0.0,
+        "mean_confidence": 0.0,
+        "num_detections": 0,
+        "temporal_iou": 0.0,
+        "frame": 111
+      },
+      {
+        "inference_time_ms": 443.81,
+        "fps": 2.3,
+        "road_coverage_pct": 11.77,
+        "mean_confidence": 0.5941,
+        "num_detections": 1,
+        "temporal_iou": 0.0,
+        "frame": 112
+      },
+      {
+        "inference_time_ms": 448.71,
+        "fps": 2.2,
+        "road_coverage_pct": 12.89,
+        "mean_confidence": 0.6843,
+        "num_detections": 1,
+        "temporal_iou": 0.9094,
+        "frame": 113
+      },
+      {
+        "inference_time_ms": 443.4,
+        "fps": 2.3,
+        "road_coverage_pct": 13.71,
+        "mean_confidence": 0.775,
+        "num_detections": 1,
+        "temporal_iou": 0.9306,
+        "frame": 114
+      },
+      {
+        "inference_time_ms": 442.6,
+        "fps": 2.3,
+        "road_coverage_pct": 12.86,
+        "mean_confidence": 0.7174,
+        "num_detections": 1,
+        "temporal_iou": 0.936,
+        "frame": 115
+      },
+      {
+        "inference_time_ms": 441.99,
+        "fps": 2.3,
+        "road_coverage_pct": 12.56,
+        "mean_confidence": 0.6464,
+        "num_detections": 1,
+        "temporal_iou": 0.9643,
+        "frame": 116
+      },
+      {
+        "inference_time_ms": 442.41,
+        "fps": 2.3,
+        "road_coverage_pct": 12.96,
+        "mean_confidence": 0.7656,
+        "num_detections": 1,
+        "temporal_iou": 0.9355,
+        "frame": 117
+      },
+      {
+        "inference_time_ms": 444.39,
+        "fps": 2.3,
+        "road_coverage_pct": 12.69,
+        "mean_confidence": 0.7902,
+        "num_detections": 1,
+        "temporal_iou": 0.9651,
+        "frame": 118
+      },
+      {
+        "inference_time_ms": 440.99,
+        "fps": 2.3,
+        "road_coverage_pct": 12.24,
+        "mean_confidence": 0.6194,
+        "num_detections": 1,
+        "temporal_iou": 0.9438,
+        "frame": 119
+      },
+      {
+        "inference_time_ms": 444.8,
+        "fps": 2.2,
+        "road_coverage_pct": 12.64,
+        "mean_confidence": 0.523,
+        "num_detections": 1,
+        "temporal_iou": 0.9404,
+        "frame": 120
+      },
+      {
+        "inference_time_ms": 455.46,
+        "fps": 2.2,
+        "road_coverage_pct": 5.27,
+        "mean_confidence": 0.5974,
+        "num_detections": 1,
+        "temporal_iou": 0.4159,
+        "frame": 121
+      },
+      {
+        "inference_time_ms": 440.89,
+        "fps": 2.3,
+        "road_coverage_pct": 4.64,
+        "mean_confidence": 0.7009,
+        "num_detections": 1,
+        "temporal_iou": 0.8544,
+        "frame": 122
+      },
+      {
+        "inference_time_ms": 442.69,
+        "fps": 2.3,
+        "road_coverage_pct": 10.11,
+        "mean_confidence": 0.6026,
+        "num_detections": 1,
+        "temporal_iou": 0.4574,
+        "frame": 123
+      },
+      {
+        "inference_time_ms": 443.2,
+        "fps": 2.3,
+        "road_coverage_pct": 10.33,
+        "mean_confidence": 0.5497,
+        "num_detections": 1,
+        "temporal_iou": 0.9267,
+        "frame": 124
+      },
+      {
+        "inference_time_ms": 439.04,
+        "fps": 2.3,
+        "road_coverage_pct": 9.75,
+        "mean_confidence": 0.5143,
+        "num_detections": 1,
+        "temporal_iou": 0.9,
+        "frame": 125
+      },
+      {
+        "inference_time_ms": 439.84,
+        "fps": 2.3,
+        "road_coverage_pct": 10.32,
+        "mean_confidence": 0.5476,
+        "num_detections": 1,
+        "temporal_iou": 0.9342,
+        "frame": 126
+      },
+      {
+        "inference_time_ms": 444.39,
+        "fps": 2.3,
+        "road_coverage_pct": 11.46,
+        "mean_confidence": 0.59,
+        "num_detections": 1,
+        "temporal_iou": 0.8937,
+        "frame": 127
+      },
+      {
+        "inference_time_ms": 440.07,
+        "fps": 2.3,
+        "road_coverage_pct": 11.74,
+        "mean_confidence": 0.605,
+        "num_detections": 1,
+        "temporal_iou": 0.9095,
+        "frame": 128
+      },
+      {
+        "inference_time_ms": 446.9,
+        "fps": 2.2,
+        "road_coverage_pct": 11.36,
+        "mean_confidence": 0.6475,
+        "num_detections": 1,
+        "temporal_iou": 0.9077,
+        "frame": 129
+      },
+      {
+        "inference_time_ms": 444.26,
+        "fps": 2.3,
+        "road_coverage_pct": 4.7,
+        "mean_confidence": 0.5243,
+        "num_detections": 1,
+        "temporal_iou": 0.4136,
+        "frame": 130
+      },
+      {
+        "inference_time_ms": 451.82,
+        "fps": 2.2,
+        "road_coverage_pct": 10.52,
+        "mean_confidence": 0.6095,
+        "num_detections": 1,
+        "temporal_iou": 0.4465,
+        "frame": 131
+      },
+      {
+        "inference_time_ms": 454.21,
+        "fps": 2.2,
+        "road_coverage_pct": 9.0,
+        "mean_confidence": 0.4994,
+        "num_detections": 1,
+        "temporal_iou": 0.8519,
+        "frame": 132
+      },
+      {
+        "inference_time_ms": 458.24,
+        "fps": 2.2,
+        "road_coverage_pct": 4.41,
+        "mean_confidence": 0.5968,
+        "num_detections": 1,
+        "temporal_iou": 0.4845,
+        "frame": 133
+      },
+      {
+        "inference_time_ms": 453.28,
+        "fps": 2.2,
+        "road_coverage_pct": 9.78,
+        "mean_confidence": 0.5453,
+        "num_detections": 1,
+        "temporal_iou": 0.451,
+        "frame": 134
+      },
+      {
+        "inference_time_ms": 453.86,
+        "fps": 2.2,
+        "road_coverage_pct": 5.27,
+        "mean_confidence": 0.6255,
+        "num_detections": 1,
+        "temporal_iou": 0.536,
+        "frame": 135
+      },
+      {
+        "inference_time_ms": 506.57,
+        "fps": 2.0,
+        "road_coverage_pct": 10.0,
+        "mean_confidence": 0.6084,
+        "num_detections": 1,
+        "temporal_iou": 0.5269,
+        "frame": 136
+      },
+      {
+        "inference_time_ms": 452.64,
+        "fps": 2.2,
+        "road_coverage_pct": 12.26,
+        "mean_confidence": 0.7351,
+        "num_detections": 1,
+        "temporal_iou": 0.8106,
+        "frame": 137
+      },
+      {
+        "inference_time_ms": 448.01,
+        "fps": 2.2,
+        "road_coverage_pct": 11.59,
+        "mean_confidence": 0.6931,
+        "num_detections": 1,
+        "temporal_iou": 0.9277,
+        "frame": 138
+      },
+      {
+        "inference_time_ms": 457.53,
+        "fps": 2.2,
+        "road_coverage_pct": 10.15,
+        "mean_confidence": 0.7417,
+        "num_detections": 1,
+        "temporal_iou": 0.8639,
+        "frame": 139
+      },
+      {
+        "inference_time_ms": 447.55,
+        "fps": 2.2,
+        "road_coverage_pct": 8.49,
+        "mean_confidence": 0.727,
+        "num_detections": 1,
+        "temporal_iou": 0.8213,
+        "frame": 140
+      },
+      {
+        "inference_time_ms": 447.85,
+        "fps": 2.2,
+        "road_coverage_pct": 12.54,
+        "mean_confidence": 0.7629,
+        "num_detections": 1,
+        "temporal_iou": 0.6751,
+        "frame": 141
+      },
+      {
+        "inference_time_ms": 449.0,
+        "fps": 2.2,
+        "road_coverage_pct": 11.93,
+        "mean_confidence": 0.5772,
+        "num_detections": 1,
+        "temporal_iou": 0.9304,
+        "frame": 142
+      },
+      {
+        "inference_time_ms": 455.18,
+        "fps": 2.2,
+        "road_coverage_pct": 11.17,
+        "mean_confidence": 0.5974,
+        "num_detections": 1,
+        "temporal_iou": 0.8261,
+        "frame": 143
+      },
+      {
+        "inference_time_ms": 459.04,
+        "fps": 2.2,
+        "road_coverage_pct": 7.86,
+        "mean_confidence": 0.6491,
+        "num_detections": 1,
+        "temporal_iou": 0.7029,
+        "frame": 144
+      },
+      {
+        "inference_time_ms": 501.0,
+        "fps": 2.0,
+        "road_coverage_pct": 10.35,
+        "mean_confidence": 0.5949,
+        "num_detections": 1,
+        "temporal_iou": 0.7592,
+        "frame": 145
+      },
+      {
+        "inference_time_ms": 508.75,
+        "fps": 2.0,
+        "road_coverage_pct": 6.04,
+        "mean_confidence": 0.6002,
+        "num_detections": 1,
+        "temporal_iou": 0.5836,
+        "frame": 146
+      },
+      {
+        "inference_time_ms": 465.8,
+        "fps": 2.1,
+        "road_coverage_pct": 6.19,
+        "mean_confidence": 0.62,
+        "num_detections": 1,
+        "temporal_iou": 0.9402,
+        "frame": 147
+      },
+      {
+        "inference_time_ms": 462.83,
+        "fps": 2.2,
+        "road_coverage_pct": 6.03,
+        "mean_confidence": 0.6421,
+        "num_detections": 1,
+        "temporal_iou": 0.9177,
+        "frame": 148
+      },
+      {
+        "inference_time_ms": 459.04,
+        "fps": 2.2,
+        "road_coverage_pct": 13.27,
+        "mean_confidence": 0.7746,
+        "num_detections": 1,
+        "temporal_iou": 0.4543,
+        "frame": 149
+      },
+      {
+        "inference_time_ms": 464.05,
+        "fps": 2.2,
+        "road_coverage_pct": 13.78,
+        "mean_confidence": 0.7312,
+        "num_detections": 1,
+        "temporal_iou": 0.9515,
+        "frame": 150
+      },
+      {
+        "inference_time_ms": 453.27,
+        "fps": 2.2,
+        "road_coverage_pct": 12.97,
+        "mean_confidence": 0.8592,
+        "num_detections": 1,
+        "temporal_iou": 0.9399,
+        "frame": 151
+      },
+      {
+        "inference_time_ms": 453.33,
+        "fps": 2.2,
+        "road_coverage_pct": 13.26,
+        "mean_confidence": 0.8197,
+        "num_detections": 1,
+        "temporal_iou": 0.9546,
+        "frame": 152
+      },
+      {
+        "inference_time_ms": 450.97,
+        "fps": 2.2,
+        "road_coverage_pct": 13.25,
+        "mean_confidence": 0.7709,
+        "num_detections": 1,
+        "temporal_iou": 0.9709,
+        "frame": 153
+      },
+      {
+        "inference_time_ms": 456.75,
+        "fps": 2.2,
+        "road_coverage_pct": 13.64,
+        "mean_confidence": 0.7288,
+        "num_detections": 1,
+        "temporal_iou": 0.966,
+        "frame": 154
+      },
+      {
+        "inference_time_ms": 470.4,
+        "fps": 2.1,
+        "road_coverage_pct": 12.72,
+        "mean_confidence": 0.7071,
+        "num_detections": 1,
+        "temporal_iou": 0.925,
+        "frame": 155
+      },
+      {
+        "inference_time_ms": 460.02,
+        "fps": 2.2,
+        "road_coverage_pct": 13.41,
+        "mean_confidence": 0.8416,
+        "num_detections": 1,
+        "temporal_iou": 0.9375,
+        "frame": 156
+      },
+      {
+        "inference_time_ms": 461.23,
+        "fps": 2.2,
+        "road_coverage_pct": 13.07,
+        "mean_confidence": 0.676,
+        "num_detections": 1,
+        "temporal_iou": 0.9566,
+        "frame": 157
+      },
+      {
+        "inference_time_ms": 451.02,
+        "fps": 2.2,
+        "road_coverage_pct": 13.6,
+        "mean_confidence": 0.6232,
+        "num_detections": 1,
+        "temporal_iou": 0.9472,
+        "frame": 158
+      },
+      {
+        "inference_time_ms": 461.25,
+        "fps": 2.2,
+        "road_coverage_pct": 12.86,
+        "mean_confidence": 0.8015,
+        "num_detections": 1,
+        "temporal_iou": 0.938,
+        "frame": 159
+      },
+      {
+        "inference_time_ms": 457.8,
+        "fps": 2.2,
+        "road_coverage_pct": 12.86,
+        "mean_confidence": 0.6892,
+        "num_detections": 1,
+        "temporal_iou": 0.9528,
+        "frame": 160
+      },
+      {
+        "inference_time_ms": 462.45,
+        "fps": 2.2,
+        "road_coverage_pct": 4.33,
+        "mean_confidence": 0.5601,
+        "num_detections": 1,
+        "temporal_iou": 0.3369,
+        "frame": 161
+      },
+      {
+        "inference_time_ms": 466.22,
+        "fps": 2.1,
+        "road_coverage_pct": 4.44,
+        "mean_confidence": 0.8125,
+        "num_detections": 1,
+        "temporal_iou": 0.9251,
+        "frame": 162
+      },
+      {
+        "inference_time_ms": 459.15,
+        "fps": 2.2,
+        "road_coverage_pct": 13.86,
+        "mean_confidence": 0.5729,
+        "num_detections": 1,
+        "temporal_iou": 0.3203,
+        "frame": 163
+      },
+      {
+        "inference_time_ms": 472.85,
+        "fps": 2.1,
+        "road_coverage_pct": 13.77,
+        "mean_confidence": 0.5244,
+        "num_detections": 1,
+        "temporal_iou": 0.9328,
+        "frame": 164
+      },
+      {
+        "inference_time_ms": 456.56,
+        "fps": 2.2,
+        "road_coverage_pct": 12.79,
+        "mean_confidence": 0.5246,
+        "num_detections": 1,
+        "temporal_iou": 0.9242,
+        "frame": 165
+      },
+      {
+        "inference_time_ms": 499.91,
+        "fps": 2.0,
+        "road_coverage_pct": 12.17,
+        "mean_confidence": 0.6231,
+        "num_detections": 1,
+        "temporal_iou": 0.939,
+        "frame": 166
+      },
+      {
+        "inference_time_ms": 480.12,
+        "fps": 2.1,
+        "road_coverage_pct": 7.26,
+        "mean_confidence": 0.7594,
+        "num_detections": 1,
+        "temporal_iou": 0.5965,
+        "frame": 167
+      },
+      {
+        "inference_time_ms": 480.13,
+        "fps": 2.1,
+        "road_coverage_pct": 5.91,
+        "mean_confidence": 0.5535,
+        "num_detections": 1,
+        "temporal_iou": 0.8095,
+        "frame": 168
+      },
+      {
+        "inference_time_ms": 465.98,
+        "fps": 2.1,
+        "road_coverage_pct": 5.23,
+        "mean_confidence": 0.4687,
+        "num_detections": 1,
+        "temporal_iou": 0.8293,
+        "frame": 169
+      },
+      {
+        "inference_time_ms": 468.01,
+        "fps": 2.1,
+        "road_coverage_pct": 12.08,
+        "mean_confidence": 0.5734,
+        "num_detections": 1,
+        "temporal_iou": 0.4331,
+        "frame": 170
+      },
+      {
+        "inference_time_ms": 474.35,
+        "fps": 2.1,
+        "road_coverage_pct": 4.86,
+        "mean_confidence": 0.7966,
+        "num_detections": 1,
+        "temporal_iou": 0.4021,
+        "frame": 171
+      },
+      {
+        "inference_time_ms": 482.46,
+        "fps": 2.1,
+        "road_coverage_pct": 5.93,
+        "mean_confidence": 0.765,
+        "num_detections": 1,
+        "temporal_iou": 0.7615,
+        "frame": 172
+      },
+      {
+        "inference_time_ms": 482.5,
+        "fps": 2.1,
+        "road_coverage_pct": 7.57,
+        "mean_confidence": 0.8033,
+        "num_detections": 1,
+        "temporal_iou": 0.7818,
+        "frame": 173
+      },
+      {
+        "inference_time_ms": 484.68,
+        "fps": 2.1,
+        "road_coverage_pct": 6.46,
+        "mean_confidence": 0.8584,
+        "num_detections": 1,
+        "temporal_iou": 0.8257,
+        "frame": 174
+      },
+      {
+        "inference_time_ms": 468.4,
+        "fps": 2.1,
+        "road_coverage_pct": 7.26,
+        "mean_confidence": 0.8539,
+        "num_detections": 1,
+        "temporal_iou": 0.853,
+        "frame": 175
+      },
+      {
+        "inference_time_ms": 469.08,
+        "fps": 2.1,
+        "road_coverage_pct": 8.86,
+        "mean_confidence": 0.8474,
+        "num_detections": 1,
+        "temporal_iou": 0.8151,
+        "frame": 176
+      },
+      {
+        "inference_time_ms": 457.62,
+        "fps": 2.2,
+        "road_coverage_pct": 10.47,
+        "mean_confidence": 0.7835,
+        "num_detections": 1,
+        "temporal_iou": 0.8454,
+        "frame": 177
+      },
+      {
+        "inference_time_ms": 449.44,
+        "fps": 2.2,
+        "road_coverage_pct": 10.99,
+        "mean_confidence": 0.8593,
+        "num_detections": 1,
+        "temporal_iou": 0.9453,
+        "frame": 178
+      },
+      {
+        "inference_time_ms": 454.88,
+        "fps": 2.2,
+        "road_coverage_pct": 10.83,
+        "mean_confidence": 0.8897,
+        "num_detections": 1,
+        "temporal_iou": 0.9606,
+        "frame": 179
+      },
+      {
+        "inference_time_ms": 451.71,
+        "fps": 2.2,
+        "road_coverage_pct": 11.51,
+        "mean_confidence": 0.7084,
+        "num_detections": 1,
+        "temporal_iou": 0.9369,
+        "frame": 180
+      },
+      {
+        "inference_time_ms": 481.17,
+        "fps": 2.1,
+        "road_coverage_pct": 11.79,
+        "mean_confidence": 0.6272,
+        "num_detections": 1,
+        "temporal_iou": 0.9668,
+        "frame": 181
+      },
+      {
+        "inference_time_ms": 495.04,
+        "fps": 2.0,
+        "road_coverage_pct": 11.33,
+        "mean_confidence": 0.6855,
+        "num_detections": 1,
+        "temporal_iou": 0.9458,
+        "frame": 182
+      },
+      {
+        "inference_time_ms": 487.74,
+        "fps": 2.1,
+        "road_coverage_pct": 10.38,
+        "mean_confidence": 0.8229,
+        "num_detections": 1,
+        "temporal_iou": 0.9068,
+        "frame": 183
+      },
+      {
+        "inference_time_ms": 487.3,
+        "fps": 2.1,
+        "road_coverage_pct": 10.32,
+        "mean_confidence": 0.8311,
+        "num_detections": 1,
+        "temporal_iou": 0.9602,
+        "frame": 184
+      },
+      {
+        "inference_time_ms": 483.41,
+        "fps": 2.1,
+        "road_coverage_pct": 10.7,
+        "mean_confidence": 0.6361,
+        "num_detections": 1,
+        "temporal_iou": 0.9511,
+        "frame": 185
+      },
+      {
+        "inference_time_ms": 472.4,
+        "fps": 2.1,
+        "road_coverage_pct": 5.61,
+        "mean_confidence": 0.6882,
+        "num_detections": 1,
+        "temporal_iou": 0.5177,
+        "frame": 186
+      },
+      {
+        "inference_time_ms": 474.24,
+        "fps": 2.1,
+        "road_coverage_pct": 5.44,
+        "mean_confidence": 0.6188,
+        "num_detections": 1,
+        "temporal_iou": 0.95,
+        "frame": 187
+      },
+      {
+        "inference_time_ms": 476.35,
+        "fps": 2.1,
+        "road_coverage_pct": 5.48,
+        "mean_confidence": 0.8254,
+        "num_detections": 1,
+        "temporal_iou": 0.9727,
+        "frame": 188
+      },
+      {
+        "inference_time_ms": 474.05,
+        "fps": 2.1,
+        "road_coverage_pct": 5.5,
+        "mean_confidence": 0.8445,
+        "num_detections": 1,
+        "temporal_iou": 0.9792,
+        "frame": 189
+      },
+      {
+        "inference_time_ms": 494.97,
+        "fps": 2.0,
+        "road_coverage_pct": 5.64,
+        "mean_confidence": 0.8235,
+        "num_detections": 1,
+        "temporal_iou": 0.9605,
+        "frame": 190
+      },
+      {
+        "inference_time_ms": 486.03,
+        "fps": 2.1,
+        "road_coverage_pct": 5.75,
+        "mean_confidence": 0.8942,
+        "num_detections": 1,
+        "temporal_iou": 0.9638,
+        "frame": 191
+      },
+      {
+        "inference_time_ms": 481.96,
+        "fps": 2.1,
+        "road_coverage_pct": 6.65,
+        "mean_confidence": 0.8396,
+        "num_detections": 1,
+        "temporal_iou": 0.8565,
+        "frame": 192
+      },
+      {
+        "inference_time_ms": 467.77,
+        "fps": 2.1,
+        "road_coverage_pct": 5.76,
+        "mean_confidence": 0.7033,
+        "num_detections": 1,
+        "temporal_iou": 0.8451,
+        "frame": 193
+      },
+      {
+        "inference_time_ms": 491.06,
+        "fps": 2.0,
+        "road_coverage_pct": 5.84,
+        "mean_confidence": 0.6738,
+        "num_detections": 1,
+        "temporal_iou": 0.9631,
+        "frame": 194
+      },
+      {
+        "inference_time_ms": 477.28,
+        "fps": 2.1,
+        "road_coverage_pct": 5.82,
+        "mean_confidence": 0.7702,
+        "num_detections": 1,
+        "temporal_iou": 0.9658,
+        "frame": 195
+      },
+      {
+        "inference_time_ms": 479.95,
+        "fps": 2.1,
+        "road_coverage_pct": 5.83,
+        "mean_confidence": 0.8184,
+        "num_detections": 1,
+        "temporal_iou": 0.9664,
+        "frame": 196
+      },
+      {
+        "inference_time_ms": 464.48,
+        "fps": 2.2,
+        "road_coverage_pct": 5.72,
+        "mean_confidence": 0.7547,
+        "num_detections": 1,
+        "temporal_iou": 0.9685,
+        "frame": 197
+      },
+      {
+        "inference_time_ms": 469.02,
+        "fps": 2.1,
+        "road_coverage_pct": 5.96,
+        "mean_confidence": 0.8337,
+        "num_detections": 1,
+        "temporal_iou": 0.9514,
+        "frame": 198
+      },
+      {
+        "inference_time_ms": 471.17,
+        "fps": 2.1,
+        "road_coverage_pct": 6.04,
+        "mean_confidence": 0.8159,
+        "num_detections": 1,
+        "temporal_iou": 0.9694,
+        "frame": 199
+      },
+      {
+        "inference_time_ms": 484.63,
+        "fps": 2.1,
+        "road_coverage_pct": 6.15,
+        "mean_confidence": 0.649,
+        "num_detections": 1,
+        "temporal_iou": 0.9723,
+        "frame": 200
+      },
+      {
+        "inference_time_ms": 488.23,
+        "fps": 2.0,
+        "road_coverage_pct": 6.17,
+        "mean_confidence": 0.648,
+        "num_detections": 1,
+        "temporal_iou": 0.9636,
+        "frame": 201
+      },
+      {
+        "inference_time_ms": 486.47,
+        "fps": 2.1,
+        "road_coverage_pct": 6.0,
+        "mean_confidence": 0.7709,
+        "num_detections": 1,
+        "temporal_iou": 0.946,
+        "frame": 202
+      },
+      {
+        "inference_time_ms": 486.61,
+        "fps": 2.1,
+        "road_coverage_pct": 6.14,
+        "mean_confidence": 0.6119,
+        "num_detections": 1,
+        "temporal_iou": 0.9607,
+        "frame": 203
+      },
+      {
+        "inference_time_ms": 485.94,
+        "fps": 2.1,
+        "road_coverage_pct": 6.3,
+        "mean_confidence": 0.547,
+        "num_detections": 1,
+        "temporal_iou": 0.9579,
+        "frame": 204
+      },
+      {
+        "inference_time_ms": 483.2,
+        "fps": 2.1,
+        "road_coverage_pct": 6.44,
+        "mean_confidence": 0.5451,
+        "num_detections": 1,
+        "temporal_iou": 0.9571,
+        "frame": 205
+      },
+      {
+        "inference_time_ms": 498.73,
+        "fps": 2.0,
+        "road_coverage_pct": 6.5,
+        "mean_confidence": 0.6986,
+        "num_detections": 1,
+        "temporal_iou": 0.954,
+        "frame": 206
+      },
+      {
+        "inference_time_ms": 481.89,
+        "fps": 2.1,
+        "road_coverage_pct": 6.56,
+        "mean_confidence": 0.6233,
+        "num_detections": 1,
+        "temporal_iou": 0.9469,
+        "frame": 207
+      },
+      {
+        "inference_time_ms": 482.4,
+        "fps": 2.1,
+        "road_coverage_pct": 6.41,
+        "mean_confidence": 0.5823,
+        "num_detections": 1,
+        "temporal_iou": 0.9299,
+        "frame": 208
+      },
+      {
+        "inference_time_ms": 482.56,
+        "fps": 2.1,
+        "road_coverage_pct": 8.12,
+        "mean_confidence": 0.7989,
+        "num_detections": 1,
+        "temporal_iou": 0.7861,
+        "frame": 209
+      },
+      {
+        "inference_time_ms": 487.09,
+        "fps": 2.1,
+        "road_coverage_pct": 10.76,
+        "mean_confidence": 0.628,
+        "num_detections": 1,
+        "temporal_iou": 0.7459,
+        "frame": 210
+      },
+      {
+        "inference_time_ms": 484.29,
+        "fps": 2.1,
+        "road_coverage_pct": 6.57,
+        "mean_confidence": 0.6571,
+        "num_detections": 1,
+        "temporal_iou": 0.6112,
+        "frame": 211
+      },
+      {
+        "inference_time_ms": 484.17,
+        "fps": 2.1,
+        "road_coverage_pct": 13.79,
+        "mean_confidence": 0.5761,
+        "num_detections": 1,
+        "temporal_iou": 0.4769,
+        "frame": 212
+      },
+      {
+        "inference_time_ms": 485.39,
+        "fps": 2.1,
+        "road_coverage_pct": 15.51,
+        "mean_confidence": 0.5298,
+        "num_detections": 1,
+        "temporal_iou": 0.8045,
+        "frame": 213
+      },
+      {
+        "inference_time_ms": 483.1,
+        "fps": 2.1,
+        "road_coverage_pct": 6.56,
+        "mean_confidence": 0.6012,
+        "num_detections": 1,
+        "temporal_iou": 0.423,
+        "frame": 214
+      },
+      {
+        "inference_time_ms": 485.9,
+        "fps": 2.1,
+        "road_coverage_pct": 6.55,
+        "mean_confidence": 0.7612,
+        "num_detections": 1,
+        "temporal_iou": 0.9622,
+        "frame": 215
+      },
+      {
+        "inference_time_ms": 489.41,
+        "fps": 2.0,
+        "road_coverage_pct": 6.6,
+        "mean_confidence": 0.872,
+        "num_detections": 1,
+        "temporal_iou": 0.9621,
+        "frame": 216
+      },
+      {
+        "inference_time_ms": 510.73,
+        "fps": 2.0,
+        "road_coverage_pct": 6.55,
+        "mean_confidence": 0.7612,
+        "num_detections": 1,
+        "temporal_iou": 0.9668,
+        "frame": 217
+      },
+      {
+        "inference_time_ms": 492.15,
+        "fps": 2.0,
+        "road_coverage_pct": 6.58,
+        "mean_confidence": 0.6526,
+        "num_detections": 1,
+        "temporal_iou": 0.9733,
+        "frame": 218
+      },
+      {
+        "inference_time_ms": 490.08,
+        "fps": 2.0,
+        "road_coverage_pct": 13.96,
+        "mean_confidence": 0.5795,
+        "num_detections": 1,
+        "temporal_iou": 0.4713,
+        "frame": 219
+      },
+      {
+        "inference_time_ms": 490.19,
+        "fps": 2.0,
+        "road_coverage_pct": 6.4,
+        "mean_confidence": 0.5724,
+        "num_detections": 1,
+        "temporal_iou": 0.4582,
+        "frame": 220
+      },
+      {
+        "inference_time_ms": 478.83,
+        "fps": 2.1,
+        "road_coverage_pct": 14.46,
+        "mean_confidence": 0.534,
+        "num_detections": 1,
+        "temporal_iou": 0.4424,
+        "frame": 221
+      },
+      {
+        "inference_time_ms": 479.07,
+        "fps": 2.1,
+        "road_coverage_pct": 13.69,
+        "mean_confidence": 0.5634,
+        "num_detections": 1,
+        "temporal_iou": 0.9371,
+        "frame": 222
+      },
+      {
+        "inference_time_ms": 476.41,
+        "fps": 2.1,
+        "road_coverage_pct": 13.21,
+        "mean_confidence": 0.5761,
+        "num_detections": 1,
+        "temporal_iou": 0.834,
+        "frame": 223
+      },
+      {
+        "inference_time_ms": 504.63,
+        "fps": 2.0,
+        "road_coverage_pct": 8.69,
+        "mean_confidence": 0.477,
+        "num_detections": 1,
+        "temporal_iou": 0.6547,
+        "frame": 224
+      },
+      {
+        "inference_time_ms": 487.86,
+        "fps": 2.0,
+        "road_coverage_pct": 8.51,
+        "mean_confidence": 0.5021,
+        "num_detections": 1,
+        "temporal_iou": 0.9073,
+        "frame": 225
+      },
+      {
+        "inference_time_ms": 486.23,
+        "fps": 2.1,
+        "road_coverage_pct": 15.23,
+        "mean_confidence": 0.5378,
+        "num_detections": 1,
+        "temporal_iou": 0.5583,
+        "frame": 226
+      },
+      {
+        "inference_time_ms": 486.8,
+        "fps": 2.1,
+        "road_coverage_pct": 11.51,
+        "mean_confidence": 0.4981,
+        "num_detections": 1,
+        "temporal_iou": 0.7553,
+        "frame": 227
+      },
+      {
+        "inference_time_ms": 485.11,
+        "fps": 2.1,
+        "road_coverage_pct": 12.13,
+        "mean_confidence": 0.4766,
+        "num_detections": 1,
+        "temporal_iou": 0.8953,
+        "frame": 228
+      },
+      {
+        "inference_time_ms": 489.72,
+        "fps": 2.0,
+        "road_coverage_pct": 12.62,
+        "mean_confidence": 0.5578,
+        "num_detections": 1,
+        "temporal_iou": 0.901,
+        "frame": 229
+      },
+      {
+        "inference_time_ms": 479.9,
+        "fps": 2.1,
+        "road_coverage_pct": 13.38,
+        "mean_confidence": 0.5843,
+        "num_detections": 1,
+        "temporal_iou": 0.9343,
+        "frame": 230
+      },
+      {
+        "inference_time_ms": 486.84,
+        "fps": 2.1,
+        "road_coverage_pct": 13.15,
+        "mean_confidence": 0.5608,
+        "num_detections": 1,
+        "temporal_iou": 0.9505,
+        "frame": 231
+      },
+      {
+        "inference_time_ms": 484.4,
+        "fps": 2.1,
+        "road_coverage_pct": 14.78,
+        "mean_confidence": 0.572,
+        "num_detections": 1,
+        "temporal_iou": 0.8894,
+        "frame": 232
+      },
+      {
+        "inference_time_ms": 496.18,
+        "fps": 2.0,
+        "road_coverage_pct": 13.92,
+        "mean_confidence": 0.5344,
+        "num_detections": 1,
+        "temporal_iou": 0.9334,
+        "frame": 233
+      },
+      {
+        "inference_time_ms": 493.04,
+        "fps": 2.0,
+        "road_coverage_pct": 14.64,
+        "mean_confidence": 0.5788,
+        "num_detections": 1,
+        "temporal_iou": 0.9447,
+        "frame": 234
+      },
+      {
+        "inference_time_ms": 480.49,
+        "fps": 2.1,
+        "road_coverage_pct": 34.23,
+        "mean_confidence": 0.5577,
+        "num_detections": 1,
+        "temporal_iou": 0.4263,
+        "frame": 235
+      },
+      {
+        "inference_time_ms": 480.95,
+        "fps": 2.1,
+        "road_coverage_pct": 10.22,
+        "mean_confidence": 0.5055,
+        "num_detections": 1,
+        "temporal_iou": 0.2974,
+        "frame": 236
+      },
+      {
+        "inference_time_ms": 478.22,
+        "fps": 2.1,
+        "road_coverage_pct": 33.79,
+        "mean_confidence": 0.5556,
+        "num_detections": 1,
+        "temporal_iou": 0.3023,
+        "frame": 237
+      },
+      {
+        "inference_time_ms": 481.03,
+        "fps": 2.1,
+        "road_coverage_pct": 10.41,
+        "mean_confidence": 0.6903,
+        "num_detections": 1,
+        "temporal_iou": 0.308,
+        "frame": 238
+      },
+      {
+        "inference_time_ms": 471.74,
+        "fps": 2.1,
+        "road_coverage_pct": 14.04,
+        "mean_confidence": 0.5865,
+        "num_detections": 1,
+        "temporal_iou": 0.7404,
+        "frame": 239
+      },
+      {
+        "inference_time_ms": 527.55,
+        "fps": 1.9,
+        "road_coverage_pct": 33.86,
+        "mean_confidence": 0.6414,
+        "num_detections": 1,
+        "temporal_iou": 0.407,
+        "frame": 240
+      },
+      {
+        "inference_time_ms": 511.35,
+        "fps": 2.0,
+        "road_coverage_pct": 14.02,
+        "mean_confidence": 0.572,
+        "num_detections": 1,
+        "temporal_iou": 0.4085,
+        "frame": 241
+      },
+      {
+        "inference_time_ms": 491.7,
+        "fps": 2.0,
+        "road_coverage_pct": 14.34,
+        "mean_confidence": 0.6756,
+        "num_detections": 1,
+        "temporal_iou": 0.9595,
+        "frame": 242
+      },
+      {
+        "inference_time_ms": 494.28,
+        "fps": 2.0,
+        "road_coverage_pct": 14.16,
+        "mean_confidence": 0.6913,
+        "num_detections": 1,
+        "temporal_iou": 0.9618,
+        "frame": 243
+      },
+      {
+        "inference_time_ms": 493.78,
+        "fps": 2.0,
+        "road_coverage_pct": 34.21,
+        "mean_confidence": 0.6766,
+        "num_detections": 1,
+        "temporal_iou": 0.4138,
+        "frame": 244
+      },
+      {
+        "inference_time_ms": 492.95,
+        "fps": 2.0,
+        "road_coverage_pct": 15.09,
+        "mean_confidence": 0.6595,
+        "num_detections": 1,
+        "temporal_iou": 0.4402,
+        "frame": 245
+      },
+      {
+        "inference_time_ms": 493.46,
+        "fps": 2.0,
+        "road_coverage_pct": 15.93,
+        "mean_confidence": 0.6674,
+        "num_detections": 1,
+        "temporal_iou": 0.9105,
+        "frame": 246
+      },
+      {
+        "inference_time_ms": 485.86,
+        "fps": 2.1,
+        "road_coverage_pct": 34.23,
+        "mean_confidence": 0.6279,
+        "num_detections": 1,
+        "temporal_iou": 0.4652,
+        "frame": 247
+      },
+      {
+        "inference_time_ms": 494.35,
+        "fps": 2.0,
+        "road_coverage_pct": 34.69,
+        "mean_confidence": 0.7807,
+        "num_detections": 1,
+        "temporal_iou": 0.9856,
+        "frame": 248
+      },
+      {
+        "inference_time_ms": 483.6,
+        "fps": 2.1,
+        "road_coverage_pct": 15.3,
+        "mean_confidence": 0.617,
+        "num_detections": 1,
+        "temporal_iou": 0.4411,
+        "frame": 249
+      },
+      {
+        "inference_time_ms": 486.25,
+        "fps": 2.1,
+        "road_coverage_pct": 15.14,
+        "mean_confidence": 0.6423,
+        "num_detections": 1,
+        "temporal_iou": 0.8393,
+        "frame": 250
+      },
+      {
+        "inference_time_ms": 485.47,
+        "fps": 2.1,
+        "road_coverage_pct": 34.0,
+        "mean_confidence": 0.7175,
+        "num_detections": 1,
+        "temporal_iou": 0.4437,
+        "frame": 251
+      },
+      {
+        "inference_time_ms": 481.58,
+        "fps": 2.1,
+        "road_coverage_pct": 16.64,
+        "mean_confidence": 0.6582,
+        "num_detections": 1,
+        "temporal_iou": 0.4857,
+        "frame": 252
+      },
+      {
+        "inference_time_ms": 507.72,
+        "fps": 2.0,
+        "road_coverage_pct": 34.61,
+        "mean_confidence": 0.6491,
+        "num_detections": 1,
+        "temporal_iou": 0.4795,
+        "frame": 253
+      },
+      {
+        "inference_time_ms": 506.42,
+        "fps": 2.0,
+        "road_coverage_pct": 34.5,
+        "mean_confidence": 0.6519,
+        "num_detections": 1,
+        "temporal_iou": 0.9853,
+        "frame": 254
+      },
+      {
+        "inference_time_ms": 489.19,
+        "fps": 2.0,
+        "road_coverage_pct": 34.77,
+        "mean_confidence": 0.712,
+        "num_detections": 1,
+        "temporal_iou": 0.9864,
+        "frame": 255
+      },
+      {
+        "inference_time_ms": 487.15,
+        "fps": 2.1,
+        "road_coverage_pct": 17.4,
+        "mean_confidence": 0.6525,
+        "num_detections": 1,
+        "temporal_iou": 0.4983,
+        "frame": 256
+      },
+      {
+        "inference_time_ms": 487.77,
+        "fps": 2.1,
+        "road_coverage_pct": 17.47,
+        "mean_confidence": 0.6704,
+        "num_detections": 1,
+        "temporal_iou": 0.9308,
+        "frame": 257
+      },
+      {
+        "inference_time_ms": 487.73,
+        "fps": 2.1,
+        "road_coverage_pct": 34.12,
+        "mean_confidence": 0.6537,
+        "num_detections": 1,
+        "temporal_iou": 0.5099,
+        "frame": 258
+      },
+      {
+        "inference_time_ms": 453.99,
+        "fps": 2.2,
+        "road_coverage_pct": 17.82,
+        "mean_confidence": 0.6123,
+        "num_detections": 1,
+        "temporal_iou": 0.5184,
+        "frame": 259
+      },
+      {
+        "inference_time_ms": 464.3,
+        "fps": 2.2,
+        "road_coverage_pct": 15.47,
+        "mean_confidence": 0.639,
+        "num_detections": 1,
+        "temporal_iou": 0.8669,
+        "frame": 260
+      },
+      {
+        "inference_time_ms": 466.55,
+        "fps": 2.1,
+        "road_coverage_pct": 32.63,
+        "mean_confidence": 0.6288,
+        "num_detections": 1,
+        "temporal_iou": 0.4674,
+        "frame": 261
+      },
+      {
+        "inference_time_ms": 458.23,
+        "fps": 2.2,
+        "road_coverage_pct": 16.75,
+        "mean_confidence": 0.6387,
+        "num_detections": 1,
+        "temporal_iou": 0.5114,
+        "frame": 262
+      },
+      {
+        "inference_time_ms": 624.55,
+        "fps": 1.6,
+        "road_coverage_pct": 11.06,
+        "mean_confidence": 0.7067,
+        "num_detections": 1,
+        "temporal_iou": 0.6597,
+        "frame": 263
+      },
+      {
+        "inference_time_ms": 543.28,
+        "fps": 1.8,
+        "road_coverage_pct": 11.83,
+        "mean_confidence": 0.3826,
+        "num_detections": 1,
+        "temporal_iou": 0.9192,
+        "frame": 264
+      },
+      {
+        "inference_time_ms": 455.69,
+        "fps": 2.2,
+        "road_coverage_pct": 10.84,
+        "mean_confidence": 0.5663,
+        "num_detections": 1,
+        "temporal_iou": 0.9001,
+        "frame": 265
+      },
+      {
+        "inference_time_ms": 461.82,
+        "fps": 2.2,
+        "road_coverage_pct": 12.15,
+        "mean_confidence": 0.6417,
+        "num_detections": 1,
+        "temporal_iou": 0.8768,
+        "frame": 266
+      },
+      {
+        "inference_time_ms": 483.64,
+        "fps": 2.1,
+        "road_coverage_pct": 31.81,
+        "mean_confidence": 0.5995,
+        "num_detections": 1,
+        "temporal_iou": 0.3805,
+        "frame": 267
+      },
+      {
+        "inference_time_ms": 508.52,
+        "fps": 2.0,
+        "road_coverage_pct": 31.89,
+        "mean_confidence": 0.5135,
+        "num_detections": 1,
+        "temporal_iou": 0.9891,
+        "frame": 268
+      },
+      {
+        "inference_time_ms": 496.58,
+        "fps": 2.0,
+        "road_coverage_pct": 32.02,
+        "mean_confidence": 0.5774,
+        "num_detections": 1,
+        "temporal_iou": 0.9854,
+        "frame": 269
+      },
+      {
+        "inference_time_ms": 489.03,
+        "fps": 2.0,
+        "road_coverage_pct": 13.09,
+        "mean_confidence": 0.6762,
+        "num_detections": 1,
+        "temporal_iou": 0.4085,
+        "frame": 270
+      },
+      {
+        "inference_time_ms": 489.0,
+        "fps": 2.0,
+        "road_coverage_pct": 11.98,
+        "mean_confidence": 0.6029,
+        "num_detections": 1,
+        "temporal_iou": 0.9038,
+        "frame": 271
+      },
+      {
+        "inference_time_ms": 491.9,
+        "fps": 2.0,
+        "road_coverage_pct": 12.67,
+        "mean_confidence": 0.6748,
+        "num_detections": 1,
+        "temporal_iou": 0.9319,
+        "frame": 272
+      },
+      {
+        "inference_time_ms": 492.86,
+        "fps": 2.0,
+        "road_coverage_pct": 11.57,
+        "mean_confidence": 0.7373,
+        "num_detections": 1,
+        "temporal_iou": 0.8975,
+        "frame": 273
+      },
+      {
+        "inference_time_ms": 491.25,
+        "fps": 2.0,
+        "road_coverage_pct": 13.2,
+        "mean_confidence": 0.6798,
+        "num_detections": 1,
+        "temporal_iou": 0.8684,
+        "frame": 274
+      },
+      {
+        "inference_time_ms": 490.13,
+        "fps": 2.0,
+        "road_coverage_pct": 13.48,
+        "mean_confidence": 0.6175,
+        "num_detections": 1,
+        "temporal_iou": 0.9426,
+        "frame": 275
+      },
+      {
+        "inference_time_ms": 505.01,
+        "fps": 2.0,
+        "road_coverage_pct": 33.51,
+        "mean_confidence": 0.5604,
+        "num_detections": 1,
+        "temporal_iou": 0.4021,
+        "frame": 276
+      },
+      {
+        "inference_time_ms": 497.39,
+        "fps": 2.0,
+        "road_coverage_pct": 12.19,
+        "mean_confidence": 0.6421,
+        "num_detections": 1,
+        "temporal_iou": 0.3637,
+        "frame": 277
+      },
+      {
+        "inference_time_ms": 483.13,
+        "fps": 2.1,
+        "road_coverage_pct": 12.04,
+        "mean_confidence": 0.7001,
+        "num_detections": 1,
+        "temporal_iou": 0.9266,
+        "frame": 278
+      },
+      {
+        "inference_time_ms": 496.87,
+        "fps": 2.0,
+        "road_coverage_pct": 13.43,
+        "mean_confidence": 0.6175,
+        "num_detections": 1,
+        "temporal_iou": 0.8944,
+        "frame": 279
+      },
+      {
+        "inference_time_ms": 503.81,
+        "fps": 2.0,
+        "road_coverage_pct": 14.7,
+        "mean_confidence": 0.6026,
+        "num_detections": 1,
+        "temporal_iou": 0.9007,
+        "frame": 280
+      },
+      {
+        "inference_time_ms": 499.71,
+        "fps": 2.0,
+        "road_coverage_pct": 12.33,
+        "mean_confidence": 0.6658,
+        "num_detections": 1,
+        "temporal_iou": 0.8372,
+        "frame": 281
+      },
+      {
+        "inference_time_ms": 487.49,
+        "fps": 2.1,
+        "road_coverage_pct": 11.7,
+        "mean_confidence": 0.6561,
+        "num_detections": 1,
+        "temporal_iou": 0.9199,
+        "frame": 282
+      },
+      {
+        "inference_time_ms": 488.26,
+        "fps": 2.0,
+        "road_coverage_pct": 32.34,
+        "mean_confidence": 0.6072,
+        "num_detections": 1,
+        "temporal_iou": 0.3618,
+        "frame": 283
+      },
+      {
+        "inference_time_ms": 492.56,
+        "fps": 2.0,
+        "road_coverage_pct": 32.21,
+        "mean_confidence": 0.5585,
+        "num_detections": 1,
+        "temporal_iou": 0.9809,
+        "frame": 284
+      },
+      {
+        "inference_time_ms": 489.38,
+        "fps": 2.0,
+        "road_coverage_pct": 10.15,
+        "mean_confidence": 0.509,
+        "num_detections": 1,
+        "temporal_iou": 0.315,
+        "frame": 285
+      },
+      {
+        "inference_time_ms": 490.92,
+        "fps": 2.0,
+        "road_coverage_pct": 11.39,
+        "mean_confidence": 0.5378,
+        "num_detections": 1,
+        "temporal_iou": 0.8831,
+        "frame": 286
+      },
+      {
+        "inference_time_ms": 491.38,
+        "fps": 2.0,
+        "road_coverage_pct": 31.54,
+        "mean_confidence": 0.6057,
+        "num_detections": 1,
+        "temporal_iou": 0.3588,
+        "frame": 287
+      },
+      {
+        "inference_time_ms": 481.59,
+        "fps": 2.1,
+        "road_coverage_pct": 31.24,
+        "mean_confidence": 0.6184,
+        "num_detections": 1,
+        "temporal_iou": 0.9845,
+        "frame": 288
+      },
+      {
+        "inference_time_ms": 489.64,
+        "fps": 2.0,
+        "road_coverage_pct": 11.69,
+        "mean_confidence": 0.5352,
+        "num_detections": 1,
+        "temporal_iou": 0.3734,
+        "frame": 289
+      },
+      {
+        "inference_time_ms": 509.17,
+        "fps": 2.0,
+        "road_coverage_pct": 10.56,
+        "mean_confidence": 0.6541,
+        "num_detections": 1,
+        "temporal_iou": 0.8225,
+        "frame": 290
+      },
+      {
+        "inference_time_ms": 513.58,
+        "fps": 1.9,
+        "road_coverage_pct": 30.94,
+        "mean_confidence": 0.6535,
+        "num_detections": 1,
+        "temporal_iou": 0.341,
+        "frame": 291
+      },
+      {
+        "inference_time_ms": 488.27,
+        "fps": 2.0,
+        "road_coverage_pct": 10.38,
+        "mean_confidence": 0.5643,
+        "num_detections": 1,
+        "temporal_iou": 0.3355,
+        "frame": 292
+      },
+      {
+        "inference_time_ms": 491.67,
+        "fps": 2.0,
+        "road_coverage_pct": 9.55,
+        "mean_confidence": 0.6212,
+        "num_detections": 1,
+        "temporal_iou": 0.9084,
+        "frame": 293
+      },
+      {
+        "inference_time_ms": 504.13,
+        "fps": 2.0,
+        "road_coverage_pct": 30.82,
+        "mean_confidence": 0.6943,
+        "num_detections": 1,
+        "temporal_iou": 0.3098,
+        "frame": 294
+      },
+      {
+        "inference_time_ms": 502.41,
+        "fps": 2.0,
+        "road_coverage_pct": 31.0,
+        "mean_confidence": 0.5693,
+        "num_detections": 1,
+        "temporal_iou": 0.9837,
+        "frame": 295
+      },
+      {
+        "inference_time_ms": 488.59,
+        "fps": 2.0,
+        "road_coverage_pct": 31.43,
+        "mean_confidence": 0.6354,
+        "num_detections": 1,
+        "temporal_iou": 0.9816,
+        "frame": 296
+      },
+      {
+        "inference_time_ms": 510.53,
+        "fps": 2.0,
+        "road_coverage_pct": 31.12,
+        "mean_confidence": 0.5642,
+        "num_detections": 1,
+        "temporal_iou": 0.9822,
+        "frame": 297
+      },
+      {
+        "inference_time_ms": 497.08,
+        "fps": 2.0,
+        "road_coverage_pct": 31.42,
+        "mean_confidence": 0.6169,
+        "num_detections": 1,
+        "temporal_iou": 0.9783,
+        "frame": 298
+      },
+      {
+        "inference_time_ms": 495.28,
+        "fps": 2.0,
+        "road_coverage_pct": 31.71,
+        "mean_confidence": 0.5612,
+        "num_detections": 1,
+        "temporal_iou": 0.977,
+        "frame": 299
+      },
+      {
+        "inference_time_ms": 495.76,
+        "fps": 2.0,
+        "road_coverage_pct": 31.36,
+        "mean_confidence": 0.6178,
+        "num_detections": 1,
+        "temporal_iou": 0.9756,
+        "frame": 300
+      },
+      {
+        "inference_time_ms": 494.92,
+        "fps": 2.0,
+        "road_coverage_pct": 31.8,
+        "mean_confidence": 0.5476,
+        "num_detections": 1,
+        "temporal_iou": 0.9778,
+        "frame": 301
+      },
+      {
+        "inference_time_ms": 494.87,
+        "fps": 2.0,
+        "road_coverage_pct": 31.73,
+        "mean_confidence": 0.5685,
+        "num_detections": 1,
+        "temporal_iou": 0.9825,
+        "frame": 302
+      },
+      {
+        "inference_time_ms": 496.26,
+        "fps": 2.0,
+        "road_coverage_pct": 32.12,
+        "mean_confidence": 0.6496,
+        "num_detections": 1,
+        "temporal_iou": 0.9831,
+        "frame": 303
+      },
+      {
+        "inference_time_ms": 493.77,
+        "fps": 2.0,
+        "road_coverage_pct": 32.02,
+        "mean_confidence": 0.5683,
+        "num_detections": 1,
+        "temporal_iou": 0.9836,
+        "frame": 304
+      },
+      {
+        "inference_time_ms": 504.01,
+        "fps": 2.0,
+        "road_coverage_pct": 32.19,
+        "mean_confidence": 0.6719,
+        "num_detections": 1,
+        "temporal_iou": 0.9844,
+        "frame": 305
+      },
+      {
+        "inference_time_ms": 502.47,
+        "fps": 2.0,
+        "road_coverage_pct": 31.89,
+        "mean_confidence": 0.5336,
+        "num_detections": 1,
+        "temporal_iou": 0.9792,
+        "frame": 306
+      },
+      {
+        "inference_time_ms": 490.31,
+        "fps": 2.0,
+        "road_coverage_pct": 31.84,
+        "mean_confidence": 0.641,
+        "num_detections": 1,
+        "temporal_iou": 0.9798,
+        "frame": 307
+      },
+      {
+        "inference_time_ms": 491.48,
+        "fps": 2.0,
+        "road_coverage_pct": 32.21,
+        "mean_confidence": 0.7557,
+        "num_detections": 1,
+        "temporal_iou": 0.9788,
+        "frame": 308
+      },
+      {
+        "inference_time_ms": 491.3,
+        "fps": 2.0,
+        "road_coverage_pct": 32.18,
+        "mean_confidence": 0.773,
+        "num_detections": 1,
+        "temporal_iou": 0.9819,
+        "frame": 309
+      },
+      {
+        "inference_time_ms": 516.79,
+        "fps": 1.9,
+        "road_coverage_pct": 32.08,
+        "mean_confidence": 0.714,
+        "num_detections": 1,
+        "temporal_iou": 0.9826,
+        "frame": 310
+      },
+      {
+        "inference_time_ms": 516.97,
+        "fps": 1.9,
+        "road_coverage_pct": 31.93,
+        "mean_confidence": 0.8587,
+        "num_detections": 1,
+        "temporal_iou": 0.9817,
+        "frame": 311
+      },
+      {
+        "inference_time_ms": 485.95,
+        "fps": 2.1,
+        "road_coverage_pct": 32.1,
+        "mean_confidence": 0.8439,
+        "num_detections": 1,
+        "temporal_iou": 0.9762,
+        "frame": 312
+      },
+      {
+        "inference_time_ms": 489.78,
+        "fps": 2.0,
+        "road_coverage_pct": 32.1,
+        "mean_confidence": 0.8478,
+        "num_detections": 1,
+        "temporal_iou": 0.981,
+        "frame": 313
+      },
+      {
+        "inference_time_ms": 500.42,
+        "fps": 2.0,
+        "road_coverage_pct": 32.17,
+        "mean_confidence": 0.7269,
+        "num_detections": 1,
+        "temporal_iou": 0.9837,
+        "frame": 314
+      },
+      {
+        "inference_time_ms": 502.55,
+        "fps": 2.0,
+        "road_coverage_pct": 32.35,
+        "mean_confidence": 0.8601,
+        "num_detections": 1,
+        "temporal_iou": 0.982,
+        "frame": 315
+      },
+      {
+        "inference_time_ms": 503.1,
+        "fps": 2.0,
+        "road_coverage_pct": 32.53,
+        "mean_confidence": 0.7988,
+        "num_detections": 1,
+        "temporal_iou": 0.9841,
+        "frame": 316
+      },
+      {
+        "inference_time_ms": 501.31,
+        "fps": 2.0,
+        "road_coverage_pct": 32.53,
+        "mean_confidence": 0.8059,
+        "num_detections": 1,
+        "temporal_iou": 0.9863,
+        "frame": 317
+      },
+      {
+        "inference_time_ms": 503.16,
+        "fps": 2.0,
+        "road_coverage_pct": 32.59,
+        "mean_confidence": 0.8399,
+        "num_detections": 1,
+        "temporal_iou": 0.9901,
+        "frame": 318
+      },
+      {
+        "inference_time_ms": 488.55,
+        "fps": 2.0,
+        "road_coverage_pct": 32.73,
+        "mean_confidence": 0.6618,
+        "num_detections": 1,
+        "temporal_iou": 0.9878,
+        "frame": 319
+      },
+      {
+        "inference_time_ms": 492.77,
+        "fps": 2.0,
+        "road_coverage_pct": 32.9,
+        "mean_confidence": 0.7326,
+        "num_detections": 1,
+        "temporal_iou": 0.9918,
+        "frame": 320
+      },
+      {
+        "inference_time_ms": 506.88,
+        "fps": 2.0,
+        "road_coverage_pct": 33.27,
+        "mean_confidence": 0.858,
+        "num_detections": 1,
+        "temporal_iou": 0.9856,
+        "frame": 321
+      },
+      {
+        "inference_time_ms": 506.56,
+        "fps": 2.0,
+        "road_coverage_pct": 33.12,
+        "mean_confidence": 0.8228,
+        "num_detections": 1,
+        "temporal_iou": 0.9874,
+        "frame": 322
+      },
+      {
+        "inference_time_ms": 507.29,
+        "fps": 2.0,
+        "road_coverage_pct": 33.16,
+        "mean_confidence": 0.7717,
+        "num_detections": 1,
+        "temporal_iou": 0.9911,
+        "frame": 323
+      },
+      {
+        "inference_time_ms": 508.78,
+        "fps": 2.0,
+        "road_coverage_pct": 33.11,
+        "mean_confidence": 0.8023,
+        "num_detections": 1,
+        "temporal_iou": 0.9938,
+        "frame": 324
+      },
+      {
+        "inference_time_ms": 490.42,
+        "fps": 2.0,
+        "road_coverage_pct": 33.04,
+        "mean_confidence": 0.7833,
+        "num_detections": 1,
+        "temporal_iou": 0.9904,
+        "frame": 325
+      },
+      {
+        "inference_time_ms": 490.66,
+        "fps": 2.0,
+        "road_coverage_pct": 32.76,
+        "mean_confidence": 0.4476,
+        "num_detections": 1,
+        "temporal_iou": 0.9883,
+        "frame": 326
+      },
+      {
+        "inference_time_ms": 490.21,
+        "fps": 2.0,
+        "road_coverage_pct": 32.88,
+        "mean_confidence": 0.5923,
+        "num_detections": 1,
+        "temporal_iou": 0.9908,
+        "frame": 327
+      },
+      {
+        "inference_time_ms": 500.43,
+        "fps": 2.0,
+        "road_coverage_pct": 32.66,
+        "mean_confidence": 0.7452,
+        "num_detections": 1,
+        "temporal_iou": 0.9904,
+        "frame": 328
+      },
+      {
+        "inference_time_ms": 496.53,
+        "fps": 2.0,
+        "road_coverage_pct": 32.39,
+        "mean_confidence": 0.5561,
+        "num_detections": 1,
+        "temporal_iou": 0.989,
+        "frame": 329
+      },
+      {
+        "inference_time_ms": 483.22,
+        "fps": 2.1,
+        "road_coverage_pct": 32.33,
+        "mean_confidence": 0.5095,
+        "num_detections": 1,
+        "temporal_iou": 0.9898,
+        "frame": 330
+      },
+      {
+        "inference_time_ms": 481.3,
+        "fps": 2.1,
+        "road_coverage_pct": 32.3,
+        "mean_confidence": 0.5286,
+        "num_detections": 1,
+        "temporal_iou": 0.9911,
+        "frame": 331
+      },
+      {
+        "inference_time_ms": 536.41,
+        "fps": 1.9,
+        "road_coverage_pct": 4.2,
+        "mean_confidence": 0.5271,
+        "num_detections": 1,
+        "temporal_iou": 0.13,
+        "frame": 332
+      },
+      {
+        "inference_time_ms": 490.09,
+        "fps": 2.0,
+        "road_coverage_pct": 6.35,
+        "mean_confidence": 0.5321,
+        "num_detections": 1,
+        "temporal_iou": 0.6168,
+        "frame": 333
+      },
+      {
+        "inference_time_ms": 491.17,
+        "fps": 2.0,
+        "road_coverage_pct": 31.57,
+        "mean_confidence": 0.3081,
+        "num_detections": 1,
+        "temporal_iou": 0.2011,
+        "frame": 334
+      },
+      {
+        "inference_time_ms": 495.34,
+        "fps": 2.0,
+        "road_coverage_pct": 0.0,
+        "mean_confidence": 0.0,
+        "num_detections": 0,
+        "temporal_iou": 0.0,
+        "frame": 335
+      },
+      {
+        "inference_time_ms": 494.65,
+        "fps": 2.0,
+        "road_coverage_pct": 0.31,
+        "mean_confidence": 0.7785,
+        "num_detections": 1,
+        "temporal_iou": 0.0,
+        "frame": 336
+      },
+      {
+        "inference_time_ms": 497.43,
+        "fps": 2.0,
+        "road_coverage_pct": 0.26,
+        "mean_confidence": 0.7363,
+        "num_detections": 1,
+        "temporal_iou": 0.7523,
+        "frame": 337
+      },
+      {
+        "inference_time_ms": 495.86,
+        "fps": 2.0,
+        "road_coverage_pct": 0.08,
+        "mean_confidence": 0.2797,
+        "num_detections": 1,
+        "temporal_iou": 0.3055,
+        "frame": 338
+      },
+      {
+        "inference_time_ms": 496.79,
+        "fps": 2.0,
+        "road_coverage_pct": 0.07,
+        "mean_confidence": 0.7073,
+        "num_detections": 1,
+        "temporal_iou": 0.6539,
+        "frame": 339
+      },
+      {
+        "inference_time_ms": 489.35,
+        "fps": 2.0,
+        "road_coverage_pct": 0.0,
+        "mean_confidence": 0.0,
+        "num_detections": 0,
+        "temporal_iou": 0.0,
+        "frame": 340
+      },
+      {
+        "inference_time_ms": 491.46,
+        "fps": 2.0,
+        "road_coverage_pct": 3.17,
+        "mean_confidence": 0.5818,
+        "num_detections": 1,
+        "temporal_iou": 0.0,
+        "frame": 341
+      },
+      {
+        "inference_time_ms": 500.06,
+        "fps": 2.0,
+        "road_coverage_pct": 8.12,
+        "mean_confidence": 0.4489,
+        "num_detections": 1,
+        "temporal_iou": 0.3896,
+        "frame": 342
+      },
+      {
+        "inference_time_ms": 499.34,
+        "fps": 2.0,
+        "road_coverage_pct": 31.82,
+        "mean_confidence": 0.4527,
+        "num_detections": 1,
+        "temporal_iou": 0.2553,
+        "frame": 343
+      },
+      {
+        "inference_time_ms": 488.76,
+        "fps": 2.0,
+        "road_coverage_pct": 9.19,
+        "mean_confidence": 0.5903,
+        "num_detections": 1,
+        "temporal_iou": 0.2885,
+        "frame": 344
+      },
+      {
+        "inference_time_ms": 484.64,
+        "fps": 2.1,
+        "road_coverage_pct": 8.46,
+        "mean_confidence": 0.5835,
+        "num_detections": 1,
+        "temporal_iou": 0.9147,
+        "frame": 345
+      },
+      {
+        "inference_time_ms": 538.18,
+        "fps": 1.9,
+        "road_coverage_pct": 3.51,
+        "mean_confidence": 0.5103,
+        "num_detections": 1,
+        "temporal_iou": 0.4152,
+        "frame": 346
+      },
+      {
+        "inference_time_ms": 516.75,
+        "fps": 1.9,
+        "road_coverage_pct": 3.09,
+        "mean_confidence": 0.7462,
+        "num_detections": 1,
+        "temporal_iou": 0.843,
+        "frame": 347
+      },
+      {
+        "inference_time_ms": 497.73,
+        "fps": 2.0,
+        "road_coverage_pct": 9.57,
+        "mean_confidence": 0.44,
+        "num_detections": 1,
+        "temporal_iou": 0.3227,
+        "frame": 348
+      },
+      {
+        "inference_time_ms": 494.85,
+        "fps": 2.0,
+        "road_coverage_pct": 11.58,
+        "mean_confidence": 0.4458,
+        "num_detections": 1,
+        "temporal_iou": 0.8251,
+        "frame": 349
+      },
+      {
+        "inference_time_ms": 496.8,
+        "fps": 2.0,
+        "road_coverage_pct": 4.09,
+        "mean_confidence": 0.6284,
+        "num_detections": 1,
+        "temporal_iou": 0.3531,
+        "frame": 350
+      },
+      {
+        "inference_time_ms": 497.51,
+        "fps": 2.0,
+        "road_coverage_pct": 4.76,
+        "mean_confidence": 0.4955,
+        "num_detections": 1,
+        "temporal_iou": 0.8489,
+        "frame": 351
+      },
+      {
+        "inference_time_ms": 494.49,
+        "fps": 2.0,
+        "road_coverage_pct": 11.79,
+        "mean_confidence": 0.4306,
+        "num_detections": 1,
+        "temporal_iou": 0.4036,
+        "frame": 352
+      },
+      {
+        "inference_time_ms": 508.62,
+        "fps": 2.0,
+        "road_coverage_pct": 33.21,
+        "mean_confidence": 0.8324,
+        "num_detections": 1,
+        "temporal_iou": 0.3549,
+        "frame": 353
+      },
+      {
+        "inference_time_ms": 509.57,
+        "fps": 2.0,
+        "road_coverage_pct": 33.34,
+        "mean_confidence": 0.812,
+        "num_detections": 1,
+        "temporal_iou": 0.983,
+        "frame": 354
+      },
+      {
+        "inference_time_ms": 506.98,
+        "fps": 2.0,
+        "road_coverage_pct": 33.42,
+        "mean_confidence": 0.8998,
+        "num_detections": 1,
+        "temporal_iou": 0.9913,
+        "frame": 355
+      },
+      {
+        "inference_time_ms": 490.89,
+        "fps": 2.0,
+        "road_coverage_pct": 33.25,
+        "mean_confidence": 0.7889,
+        "num_detections": 1,
+        "temporal_iou": 0.9885,
+        "frame": 356
+      },
+      {
+        "inference_time_ms": 489.55,
+        "fps": 2.0,
+        "road_coverage_pct": 33.22,
+        "mean_confidence": 0.6282,
+        "num_detections": 1,
+        "temporal_iou": 0.9929,
+        "frame": 357
+      },
+      {
+        "inference_time_ms": 488.35,
+        "fps": 2.0,
+        "road_coverage_pct": 33.2,
+        "mean_confidence": 0.4291,
+        "num_detections": 1,
+        "temporal_iou": 0.9909,
+        "frame": 358
+      },
+      {
+        "inference_time_ms": 488.44,
+        "fps": 2.0,
+        "road_coverage_pct": 33.39,
+        "mean_confidence": 0.8925,
+        "num_detections": 1,
+        "temporal_iou": 0.9888,
+        "frame": 359
+      },
+      {
+        "inference_time_ms": 495.42,
+        "fps": 2.0,
+        "road_coverage_pct": 33.32,
+        "mean_confidence": 0.785,
+        "num_detections": 1,
+        "temporal_iou": 0.9888,
+        "frame": 360
+      },
+      {
+        "inference_time_ms": 492.84,
+        "fps": 2.0,
+        "road_coverage_pct": 33.79,
+        "mean_confidence": 0.738,
+        "num_detections": 1,
+        "temporal_iou": 0.9811,
+        "frame": 361
+      },
+      {
+        "inference_time_ms": 499.71,
+        "fps": 2.0,
+        "road_coverage_pct": 33.5,
+        "mean_confidence": 0.6251,
+        "num_detections": 1,
+        "temporal_iou": 0.9856,
+        "frame": 362
+      },
+      {
+        "inference_time_ms": 505.16,
+        "fps": 2.0,
+        "road_coverage_pct": 33.12,
+        "mean_confidence": 0.3632,
+        "num_detections": 1,
+        "temporal_iou": 0.9817,
+        "frame": 363
+      },
+      {
+        "inference_time_ms": 512.52,
+        "fps": 2.0,
+        "road_coverage_pct": 33.06,
+        "mean_confidence": 0.477,
+        "num_detections": 1,
+        "temporal_iou": 0.9871,
+        "frame": 364
+      },
+      {
+        "inference_time_ms": 517.63,
+        "fps": 1.9,
+        "road_coverage_pct": 32.86,
+        "mean_confidence": 0.4477,
+        "num_detections": 1,
+        "temporal_iou": 0.9873,
+        "frame": 365
+      },
+      {
+        "inference_time_ms": 518.11,
+        "fps": 1.9,
+        "road_coverage_pct": 33.21,
+        "mean_confidence": 0.5496,
+        "num_detections": 1,
+        "temporal_iou": 0.9835,
+        "frame": 366
+      },
+      {
+        "inference_time_ms": 517.54,
+        "fps": 1.9,
+        "road_coverage_pct": 6.86,
+        "mean_confidence": 0.4551,
+        "num_detections": 1,
+        "temporal_iou": 0.2066,
+        "frame": 367
+      },
+      {
+        "inference_time_ms": 499.44,
+        "fps": 2.0,
+        "road_coverage_pct": 32.93,
+        "mean_confidence": 0.5473,
+        "num_detections": 1,
+        "temporal_iou": 0.2083,
+        "frame": 368
+      },
+      {
+        "inference_time_ms": 502.71,
+        "fps": 2.0,
+        "road_coverage_pct": 32.54,
+        "mean_confidence": 0.4852,
+        "num_detections": 1,
+        "temporal_iou": 0.9828,
+        "frame": 369
+      },
+      {
+        "inference_time_ms": 498.68,
+        "fps": 2.0,
+        "road_coverage_pct": 32.46,
+        "mean_confidence": 0.4599,
+        "num_detections": 1,
+        "temporal_iou": 0.9854,
+        "frame": 370
+      },
+      {
+        "inference_time_ms": 519.33,
+        "fps": 1.9,
+        "road_coverage_pct": 32.35,
+        "mean_confidence": 0.3666,
+        "num_detections": 1,
+        "temporal_iou": 0.9842,
+        "frame": 371
+      },
+      {
+        "inference_time_ms": 525.48,
+        "fps": 1.9,
+        "road_coverage_pct": 32.31,
+        "mean_confidence": 0.6469,
+        "num_detections": 1,
+        "temporal_iou": 0.9833,
+        "frame": 372
+      },
+      {
+        "inference_time_ms": 520.4,
+        "fps": 1.9,
+        "road_coverage_pct": 32.6,
+        "mean_confidence": 0.4987,
+        "num_detections": 1,
+        "temporal_iou": 0.9747,
+        "frame": 373
+      },
+      {
+        "inference_time_ms": 523.5,
+        "fps": 1.9,
+        "road_coverage_pct": 32.63,
+        "mean_confidence": 0.5361,
+        "num_detections": 1,
+        "temporal_iou": 0.9791,
+        "frame": 374
+      },
+      {
+        "inference_time_ms": 501.27,
+        "fps": 2.0,
+        "road_coverage_pct": 33.22,
+        "mean_confidence": 0.3747,
+        "num_detections": 1,
+        "temporal_iou": 0.9733,
+        "frame": 375
+      },
+      {
+        "inference_time_ms": 499.2,
+        "fps": 2.0,
+        "road_coverage_pct": 33.48,
+        "mean_confidence": 0.5365,
+        "num_detections": 1,
+        "temporal_iou": 0.9787,
+        "frame": 376
+      },
+      {
+        "inference_time_ms": 500.53,
+        "fps": 2.0,
+        "road_coverage_pct": 33.41,
+        "mean_confidence": 0.7878,
+        "num_detections": 1,
+        "temporal_iou": 0.9771,
+        "frame": 377
+      },
+      {
+        "inference_time_ms": 496.07,
+        "fps": 2.0,
+        "road_coverage_pct": 33.85,
+        "mean_confidence": 0.6922,
+        "num_detections": 1,
+        "temporal_iou": 0.974,
+        "frame": 378
+      },
+      {
+        "inference_time_ms": 504.77,
+        "fps": 2.0,
+        "road_coverage_pct": 33.68,
+        "mean_confidence": 0.8588,
+        "num_detections": 1,
+        "temporal_iou": 0.9711,
+        "frame": 379
+      },
+      {
+        "inference_time_ms": 505.28,
+        "fps": 2.0,
+        "road_coverage_pct": 33.95,
+        "mean_confidence": 0.9039,
+        "num_detections": 1,
+        "temporal_iou": 0.9748,
+        "frame": 380
+      },
+      {
+        "inference_time_ms": 498.48,
+        "fps": 2.0,
+        "road_coverage_pct": 33.74,
+        "mean_confidence": 0.7768,
+        "num_detections": 1,
+        "temporal_iou": 0.9792,
+        "frame": 381
+      },
+      {
+        "inference_time_ms": 504.49,
+        "fps": 2.0,
+        "road_coverage_pct": 34.06,
+        "mean_confidence": 0.8153,
+        "num_detections": 1,
+        "temporal_iou": 0.975,
+        "frame": 382
+      },
+      {
+        "inference_time_ms": 503.93,
+        "fps": 2.0,
+        "road_coverage_pct": 33.88,
+        "mean_confidence": 0.6997,
+        "num_detections": 1,
+        "temporal_iou": 0.9835,
+        "frame": 383
+      },
+      {
+        "inference_time_ms": 503.76,
+        "fps": 2.0,
+        "road_coverage_pct": 33.68,
+        "mean_confidence": 0.683,
+        "num_detections": 1,
+        "temporal_iou": 0.9826,
+        "frame": 384
+      },
+      {
+        "inference_time_ms": 503.89,
+        "fps": 2.0,
+        "road_coverage_pct": 33.81,
+        "mean_confidence": 0.8548,
+        "num_detections": 1,
+        "temporal_iou": 0.9848,
+        "frame": 385
+      },
+      {
+        "inference_time_ms": 503.99,
+        "fps": 2.0,
+        "road_coverage_pct": 33.41,
+        "mean_confidence": 0.8654,
+        "num_detections": 1,
+        "temporal_iou": 0.9853,
+        "frame": 386
+      },
+      {
+        "inference_time_ms": 503.61,
+        "fps": 2.0,
+        "road_coverage_pct": 33.15,
+        "mean_confidence": 0.8759,
+        "num_detections": 1,
+        "temporal_iou": 0.9895,
+        "frame": 387
+      },
+      {
+        "inference_time_ms": 496.47,
+        "fps": 2.0,
+        "road_coverage_pct": 32.85,
+        "mean_confidence": 0.9066,
+        "num_detections": 1,
+        "temporal_iou": 0.9858,
+        "frame": 388
+      },
+      {
+        "inference_time_ms": 506.95,
+        "fps": 2.0,
+        "road_coverage_pct": 32.97,
+        "mean_confidence": 0.8061,
+        "num_detections": 1,
+        "temporal_iou": 0.9839,
+        "frame": 389
+      },
+      {
+        "inference_time_ms": 507.28,
+        "fps": 2.0,
+        "road_coverage_pct": 32.81,
+        "mean_confidence": 0.771,
+        "num_detections": 1,
+        "temporal_iou": 0.9902,
+        "frame": 390
+      },
+      {
+        "inference_time_ms": 489.47,
+        "fps": 2.0,
+        "road_coverage_pct": 32.92,
+        "mean_confidence": 0.6242,
+        "num_detections": 1,
+        "temporal_iou": 0.9887,
+        "frame": 391
+      },
+      {
+        "inference_time_ms": 495.6,
+        "fps": 2.0,
+        "road_coverage_pct": 15.53,
+        "mean_confidence": 0.4907,
+        "num_detections": 1,
+        "temporal_iou": 0.4714,
+        "frame": 392
+      },
+      {
+        "inference_time_ms": 506.45,
+        "fps": 2.0,
+        "road_coverage_pct": 5.39,
+        "mean_confidence": 0.6196,
+        "num_detections": 1,
+        "temporal_iou": 0.347,
+        "frame": 393
+      },
+      {
+        "inference_time_ms": 508.52,
+        "fps": 2.0,
+        "road_coverage_pct": 15.81,
+        "mean_confidence": 0.4845,
+        "num_detections": 1,
+        "temporal_iou": 0.3409,
+        "frame": 394
+      },
+      {
+        "inference_time_ms": 509.17,
+        "fps": 2.0,
+        "road_coverage_pct": 33.42,
+        "mean_confidence": 0.6352,
+        "num_detections": 1,
+        "temporal_iou": 0.4719,
+        "frame": 395
+      },
+      {
+        "inference_time_ms": 508.85,
+        "fps": 2.0,
+        "road_coverage_pct": 33.42,
+        "mean_confidence": 0.6102,
+        "num_detections": 1,
+        "temporal_iou": 0.9887,
+        "frame": 396
+      },
+      {
+        "inference_time_ms": 499.31,
+        "fps": 2.0,
+        "road_coverage_pct": 33.24,
+        "mean_confidence": 0.754,
+        "num_detections": 1,
+        "temporal_iou": 0.9869,
+        "frame": 397
+      },
+      {
+        "inference_time_ms": 510.19,
+        "fps": 2.0,
+        "road_coverage_pct": 33.49,
+        "mean_confidence": 0.788,
+        "num_detections": 1,
+        "temporal_iou": 0.9886,
+        "frame": 398
+      },
+      {
+        "inference_time_ms": 507.94,
+        "fps": 2.0,
+        "road_coverage_pct": 33.21,
+        "mean_confidence": 0.7726,
+        "num_detections": 1,
+        "temporal_iou": 0.9885,
+        "frame": 399
+      },
+      {
+        "inference_time_ms": 490.49,
+        "fps": 2.0,
+        "road_coverage_pct": 32.72,
+        "mean_confidence": 0.5714,
+        "num_detections": 1,
+        "temporal_iou": 0.9776,
+        "frame": 400
+      },
+      {
+        "inference_time_ms": 516.54,
+        "fps": 1.9,
+        "road_coverage_pct": 33.38,
+        "mean_confidence": 0.7479,
+        "num_detections": 1,
+        "temporal_iou": 0.97,
+        "frame": 401
+      },
+      {
+        "inference_time_ms": 517.55,
+        "fps": 1.9,
+        "road_coverage_pct": 33.37,
+        "mean_confidence": 0.736,
+        "num_detections": 1,
+        "temporal_iou": 0.9814,
+        "frame": 402
+      },
+      {
+        "inference_time_ms": 495.47,
+        "fps": 2.0,
+        "road_coverage_pct": 33.39,
+        "mean_confidence": 0.6568,
+        "num_detections": 1,
+        "temporal_iou": 0.9839,
+        "frame": 403
+      },
+      {
+        "inference_time_ms": 498.7,
+        "fps": 2.0,
+        "road_coverage_pct": 33.45,
+        "mean_confidence": 0.7462,
+        "num_detections": 1,
+        "temporal_iou": 0.9808,
+        "frame": 404
+      },
+      {
+        "inference_time_ms": 496.35,
+        "fps": 2.0,
+        "road_coverage_pct": 33.08,
+        "mean_confidence": 0.5816,
+        "num_detections": 1,
+        "temporal_iou": 0.9814,
+        "frame": 405
+      },
+      {
+        "inference_time_ms": 499.5,
+        "fps": 2.0,
+        "road_coverage_pct": 32.76,
+        "mean_confidence": 0.5342,
+        "num_detections": 1,
+        "temporal_iou": 0.9781,
+        "frame": 406
+      },
+      {
+        "inference_time_ms": 511.06,
+        "fps": 2.0,
+        "road_coverage_pct": 32.64,
+        "mean_confidence": 0.5687,
+        "num_detections": 1,
+        "temporal_iou": 0.9787,
+        "frame": 407
+      },
+      {
+        "inference_time_ms": 526.4,
+        "fps": 1.9,
+        "road_coverage_pct": 7.41,
+        "mean_confidence": 0.4207,
+        "num_detections": 1,
+        "temporal_iou": 0.2269,
+        "frame": 408
+      },
+      {
+        "inference_time_ms": 493.88,
+        "fps": 2.0,
+        "road_coverage_pct": 7.56,
+        "mean_confidence": 0.475,
+        "num_detections": 1,
+        "temporal_iou": 0.9156,
+        "frame": 409
+      },
+      {
+        "inference_time_ms": 492.46,
+        "fps": 2.0,
+        "road_coverage_pct": 4.83,
+        "mean_confidence": 0.4425,
+        "num_detections": 1,
+        "temporal_iou": 0.6385,
+        "frame": 410
+      },
+      {
+        "inference_time_ms": 488.25,
+        "fps": 2.0,
+        "road_coverage_pct": 6.92,
+        "mean_confidence": 0.4543,
+        "num_detections": 1,
+        "temporal_iou": 0.6968,
+        "frame": 411
+      },
+      {
+        "inference_time_ms": 495.5,
+        "fps": 2.0,
+        "road_coverage_pct": 6.22,
+        "mean_confidence": 0.3541,
+        "num_detections": 1,
+        "temporal_iou": 0.8915,
+        "frame": 412
+      },
+      {
+        "inference_time_ms": 518.96,
+        "fps": 1.9,
+        "road_coverage_pct": 7.41,
+        "mean_confidence": 0.5422,
+        "num_detections": 1,
+        "temporal_iou": 0.8385,
+        "frame": 413
+      },
+      {
+        "inference_time_ms": 497.67,
+        "fps": 2.0,
+        "road_coverage_pct": 7.31,
+        "mean_confidence": 0.4156,
+        "num_detections": 1,
+        "temporal_iou": 0.9416,
+        "frame": 414
+      },
+      {
+        "inference_time_ms": 504.34,
+        "fps": 2.0,
+        "road_coverage_pct": 0.0,
+        "mean_confidence": 0.0,
+        "num_detections": 0,
+        "temporal_iou": 0.0,
+        "frame": 415
+      },
+      {
+        "inference_time_ms": 509.17,
+        "fps": 2.0,
+        "road_coverage_pct": 33.24,
+        "mean_confidence": 0.3941,
+        "num_detections": 1,
+        "temporal_iou": 0.0,
+        "frame": 416
+      },
+      {
+        "inference_time_ms": 513.08,
+        "fps": 1.9,
+        "road_coverage_pct": 0.0,
+        "mean_confidence": 0.0,
+        "num_detections": 0,
+        "temporal_iou": 0.0,
+        "frame": 417
+      },
+      {
+        "inference_time_ms": 513.24,
+        "fps": 1.9,
+        "road_coverage_pct": 0.0,
+        "mean_confidence": 0.0,
+        "num_detections": 0,
+        "temporal_iou": 1.0,
+        "frame": 418
+      },
+      {
+        "inference_time_ms": 511.77,
+        "fps": 2.0,
+        "road_coverage_pct": 0.0,
+        "mean_confidence": 0.0,
+        "num_detections": 0,
+        "temporal_iou": 1.0,
+        "frame": 419
+      },
+      {
+        "inference_time_ms": 501.14,
+        "fps": 2.0,
+        "road_coverage_pct": 0.06,
+        "mean_confidence": 0.7546,
+        "num_detections": 1,
+        "temporal_iou": 0.0,
+        "frame": 420
+      },
+      {
+        "inference_time_ms": 510.32,
+        "fps": 2.0,
+        "road_coverage_pct": 0.0,
+        "mean_confidence": 0.0,
+        "num_detections": 0,
+        "temporal_iou": 0.0,
+        "frame": 421
+      },
+      {
+        "inference_time_ms": 514.32,
+        "fps": 1.9,
+        "road_coverage_pct": 0.08,
+        "mean_confidence": 0.742,
+        "num_detections": 1,
+        "temporal_iou": 0.0,
+        "frame": 422
+      },
+      {
+        "inference_time_ms": 499.38,
+        "fps": 2.0,
+        "road_coverage_pct": 0.09,
+        "mean_confidence": 0.7772,
+        "num_detections": 1,
+        "temporal_iou": 0.7593,
+        "frame": 423
+      },
+      {
+        "inference_time_ms": 504.63,
+        "fps": 2.0,
+        "road_coverage_pct": 0.1,
+        "mean_confidence": 0.4224,
+        "num_detections": 1,
+        "temporal_iou": 0.7912,
+        "frame": 424
+      },
+      {
+        "inference_time_ms": 508.48,
+        "fps": 2.0,
+        "road_coverage_pct": 35.42,
+        "mean_confidence": 0.6829,
+        "num_detections": 1,
+        "temporal_iou": 0.0029,
+        "frame": 425
+      },
+      {
+        "inference_time_ms": 510.57,
+        "fps": 2.0,
+        "road_coverage_pct": 35.15,
+        "mean_confidence": 0.8141,
+        "num_detections": 1,
+        "temporal_iou": 0.9773,
+        "frame": 426
+      },
+      {
+        "inference_time_ms": 510.72,
+        "fps": 2.0,
+        "road_coverage_pct": 35.33,
+        "mean_confidence": 0.9245,
+        "num_detections": 1,
+        "temporal_iou": 0.9772,
+        "frame": 427
+      },
+      {
+        "inference_time_ms": 510.49,
+        "fps": 2.0,
+        "road_coverage_pct": 34.86,
+        "mean_confidence": 0.7748,
+        "num_detections": 1,
+        "temporal_iou": 0.9771,
+        "frame": 428
+      },
+      {
+        "inference_time_ms": 512.67,
+        "fps": 2.0,
+        "road_coverage_pct": 34.48,
+        "mean_confidence": 0.8342,
+        "num_detections": 1,
+        "temporal_iou": 0.9767,
+        "frame": 429
+      },
+      {
+        "inference_time_ms": 509.41,
+        "fps": 2.0,
+        "road_coverage_pct": 34.08,
+        "mean_confidence": 0.7811,
+        "num_detections": 1,
+        "temporal_iou": 0.9802,
+        "frame": 430
+      },
+      {
+        "inference_time_ms": 514.19,
+        "fps": 1.9,
+        "road_coverage_pct": 34.31,
+        "mean_confidence": 0.6462,
+        "num_detections": 1,
+        "temporal_iou": 0.9841,
+        "frame": 431
+      },
+      {
+        "inference_time_ms": 495.66,
+        "fps": 2.0,
+        "road_coverage_pct": 14.33,
+        "mean_confidence": 0.5855,
+        "num_detections": 1,
+        "temporal_iou": 0.4173,
+        "frame": 432
+      },
+      {
+        "inference_time_ms": 476.46,
+        "fps": 2.1,
+        "road_coverage_pct": 33.73,
+        "mean_confidence": 0.6777,
+        "num_detections": 1,
+        "temporal_iou": 0.4249,
+        "frame": 433
+      },
+      {
+        "inference_time_ms": 475.12,
+        "fps": 2.1,
+        "road_coverage_pct": 34.34,
+        "mean_confidence": 0.794,
+        "num_detections": 1,
+        "temporal_iou": 0.9784,
+        "frame": 434
+      },
+      {
+        "inference_time_ms": 506.8,
+        "fps": 2.0,
+        "road_coverage_pct": 34.21,
+        "mean_confidence": 0.7724,
+        "num_detections": 1,
+        "temporal_iou": 0.985,
+        "frame": 435
+      },
+      {
+        "inference_time_ms": 563.86,
+        "fps": 1.8,
+        "road_coverage_pct": 34.25,
+        "mean_confidence": 0.6536,
+        "num_detections": 1,
+        "temporal_iou": 0.986,
+        "frame": 436
+      },
+      {
+        "inference_time_ms": 519.31,
+        "fps": 1.9,
+        "road_coverage_pct": 34.24,
+        "mean_confidence": 0.8213,
+        "num_detections": 1,
+        "temporal_iou": 0.9884,
+        "frame": 437
+      },
+      {
+        "inference_time_ms": 519.99,
+        "fps": 1.9,
+        "road_coverage_pct": 13.84,
+        "mean_confidence": 0.5431,
+        "num_detections": 1,
+        "temporal_iou": 0.4037,
+        "frame": 438
+      },
+      {
+        "inference_time_ms": 497.28,
+        "fps": 2.0,
+        "road_coverage_pct": 34.9,
+        "mean_confidence": 0.6985,
+        "num_detections": 1,
+        "temporal_iou": 0.3966,
+        "frame": 439
+      },
+      {
+        "inference_time_ms": 515.54,
+        "fps": 1.9,
+        "road_coverage_pct": 34.72,
+        "mean_confidence": 0.6275,
+        "num_detections": 1,
+        "temporal_iou": 0.9833,
+        "frame": 440
+      },
+      {
+        "inference_time_ms": 509.43,
+        "fps": 2.0,
+        "road_coverage_pct": 34.57,
+        "mean_confidence": 0.6975,
+        "num_detections": 1,
+        "temporal_iou": 0.9879,
+        "frame": 441
+      }
+    ],
+    "forza.mp4": [
+      {
+        "inference_time_ms": 490.98,
+        "fps": 2.0,
+        "road_coverage_pct": 39.98,
+        "mean_confidence": 0.9333,
+        "num_detections": 1,
+        "frame": 0
+      },
+      {
+        "inference_time_ms": 496.34,
+        "fps": 2.0,
+        "road_coverage_pct": 39.59,
+        "mean_confidence": 0.9398,
+        "num_detections": 1,
+        "temporal_iou": 0.9761,
+        "frame": 1
+      },
+      {
+        "inference_time_ms": 515.19,
+        "fps": 1.9,
+        "road_coverage_pct": 38.09,
+        "mean_confidence": 0.9384,
+        "num_detections": 1,
+        "temporal_iou": 0.9531,
+        "frame": 2
+      },
+      {
+        "inference_time_ms": 508.91,
+        "fps": 2.0,
+        "road_coverage_pct": 38.07,
+        "mean_confidence": 0.9212,
+        "num_detections": 1,
+        "temporal_iou": 0.9708,
+        "frame": 3
+      },
+      {
+        "inference_time_ms": 524.19,
+        "fps": 1.9,
+        "road_coverage_pct": 36.85,
+        "mean_confidence": 0.8595,
+        "num_detections": 1,
+        "temporal_iou": 0.9636,
+        "frame": 4
+      },
+      {
+        "inference_time_ms": 503.06,
+        "fps": 2.0,
+        "road_coverage_pct": 36.92,
+        "mean_confidence": 0.7638,
+        "num_detections": 1,
+        "temporal_iou": 0.9784,
+        "frame": 5
+      },
+      {
+        "inference_time_ms": 502.32,
+        "fps": 2.0,
+        "road_coverage_pct": 36.27,
+        "mean_confidence": 0.8186,
+        "num_detections": 1,
+        "temporal_iou": 0.9774,
+        "frame": 6
+      },
+      {
+        "inference_time_ms": 497.06,
+        "fps": 2.0,
+        "road_coverage_pct": 38.87,
+        "mean_confidence": 0.8315,
+        "num_detections": 1,
+        "temporal_iou": 0.9237,
+        "frame": 7
+      },
+      {
+        "inference_time_ms": 503.86,
+        "fps": 2.0,
+        "road_coverage_pct": 35.74,
+        "mean_confidence": 0.871,
+        "num_detections": 1,
+        "temporal_iou": 0.9159,
+        "frame": 8
+      },
+      {
+        "inference_time_ms": 502.33,
+        "fps": 2.0,
+        "road_coverage_pct": 38.81,
+        "mean_confidence": 0.9099,
+        "num_detections": 1,
+        "temporal_iou": 0.9174,
+        "frame": 9
+      },
+      {
+        "inference_time_ms": 504.61,
+        "fps": 2.0,
+        "road_coverage_pct": 34.95,
+        "mean_confidence": 0.8485,
+        "num_detections": 1,
+        "temporal_iou": 0.8968,
+        "frame": 10
+      },
+      {
+        "inference_time_ms": 510.85,
+        "fps": 2.0,
+        "road_coverage_pct": 41.32,
+        "mean_confidence": 0.8998,
+        "num_detections": 1,
+        "temporal_iou": 0.841,
+        "frame": 11
+      },
+      {
+        "inference_time_ms": 511.92,
+        "fps": 2.0,
+        "road_coverage_pct": 41.71,
+        "mean_confidence": 0.8544,
+        "num_detections": 1,
+        "temporal_iou": 0.981,
+        "frame": 12
+      },
+      {
+        "inference_time_ms": 511.66,
+        "fps": 2.0,
+        "road_coverage_pct": 41.72,
+        "mean_confidence": 0.9173,
+        "num_detections": 1,
+        "temporal_iou": 0.9868,
+        "frame": 13
+      },
+      {
+        "inference_time_ms": 516.17,
+        "fps": 1.9,
+        "road_coverage_pct": 42.0,
+        "mean_confidence": 0.8791,
+        "num_detections": 1,
+        "temporal_iou": 0.9883,
+        "frame": 14
+      },
+      {
+        "inference_time_ms": 513.72,
+        "fps": 1.9,
+        "road_coverage_pct": 42.9,
+        "mean_confidence": 0.8343,
+        "num_detections": 1,
+        "temporal_iou": 0.977,
+        "frame": 15
+      },
+      {
+        "inference_time_ms": 514.8,
+        "fps": 1.9,
+        "road_coverage_pct": 42.53,
+        "mean_confidence": 0.9095,
+        "num_detections": 1,
+        "temporal_iou": 0.9856,
+        "frame": 16
+      },
+      {
+        "inference_time_ms": 514.78,
+        "fps": 1.9,
+        "road_coverage_pct": 43.04,
+        "mean_confidence": 0.933,
+        "num_detections": 1,
+        "temporal_iou": 0.9846,
+        "frame": 17
+      },
+      {
+        "inference_time_ms": 496.28,
+        "fps": 2.0,
+        "road_coverage_pct": 42.78,
+        "mean_confidence": 0.8873,
+        "num_detections": 1,
+        "temporal_iou": 0.9875,
+        "frame": 18
+      },
+      {
+        "inference_time_ms": 493.37,
+        "fps": 2.0,
+        "road_coverage_pct": 42.54,
+        "mean_confidence": 0.8991,
+        "num_detections": 1,
+        "temporal_iou": 0.9835,
+        "frame": 19
+      },
+      {
+        "inference_time_ms": 495.99,
+        "fps": 2.0,
+        "road_coverage_pct": 40.44,
+        "mean_confidence": 0.9271,
+        "num_detections": 1,
+        "temporal_iou": 0.9482,
+        "frame": 20
+      },
+      {
+        "inference_time_ms": 507.5,
+        "fps": 2.0,
+        "road_coverage_pct": 40.37,
+        "mean_confidence": 0.9314,
+        "num_detections": 1,
+        "temporal_iou": 0.9743,
+        "frame": 21
+      },
+      {
+        "inference_time_ms": 505.11,
+        "fps": 2.0,
+        "road_coverage_pct": 40.68,
+        "mean_confidence": 0.9403,
+        "num_detections": 1,
+        "temporal_iou": 0.9712,
+        "frame": 22
+      },
+      {
+        "inference_time_ms": 503.97,
+        "fps": 2.0,
+        "road_coverage_pct": 38.97,
+        "mean_confidence": 0.929,
+        "num_detections": 1,
+        "temporal_iou": 0.9511,
+        "frame": 23
+      },
+      {
+        "inference_time_ms": 496.82,
+        "fps": 2.0,
+        "road_coverage_pct": 37.47,
+        "mean_confidence": 0.9372,
+        "num_detections": 1,
+        "temporal_iou": 0.9489,
+        "frame": 24
+      },
+      {
+        "inference_time_ms": 507.27,
+        "fps": 2.0,
+        "road_coverage_pct": 40.27,
+        "mean_confidence": 0.8908,
+        "num_detections": 1,
+        "temporal_iou": 0.9142,
+        "frame": 25
+      },
+      {
+        "inference_time_ms": 503.06,
+        "fps": 2.0,
+        "road_coverage_pct": 38.09,
+        "mean_confidence": 0.9308,
+        "num_detections": 1,
+        "temporal_iou": 0.9432,
+        "frame": 26
+      },
+      {
+        "inference_time_ms": 499.37,
+        "fps": 2.0,
+        "road_coverage_pct": 39.52,
+        "mean_confidence": 0.93,
+        "num_detections": 1,
+        "temporal_iou": 0.9485,
+        "frame": 27
+      },
+      {
+        "inference_time_ms": 505.75,
+        "fps": 2.0,
+        "road_coverage_pct": 38.84,
+        "mean_confidence": 0.9278,
+        "num_detections": 1,
+        "temporal_iou": 0.9681,
+        "frame": 28
+      },
+      {
+        "inference_time_ms": 506.5,
+        "fps": 2.0,
+        "road_coverage_pct": 34.25,
+        "mean_confidence": 0.9017,
+        "num_detections": 1,
+        "temporal_iou": 0.8811,
+        "frame": 29
+      },
+      {
+        "inference_time_ms": 507.46,
+        "fps": 2.0,
+        "road_coverage_pct": 34.85,
+        "mean_confidence": 0.9219,
+        "num_detections": 1,
+        "temporal_iou": 0.9585,
+        "frame": 30
+      },
+      {
+        "inference_time_ms": 505.79,
+        "fps": 2.0,
+        "road_coverage_pct": 36.64,
+        "mean_confidence": 0.924,
+        "num_detections": 1,
+        "temporal_iou": 0.9409,
+        "frame": 31
+      },
+      {
+        "inference_time_ms": 505.65,
+        "fps": 2.0,
+        "road_coverage_pct": 36.74,
+        "mean_confidence": 0.9141,
+        "num_detections": 1,
+        "temporal_iou": 0.9833,
+        "frame": 32
+      },
+      {
+        "inference_time_ms": 505.47,
+        "fps": 2.0,
+        "road_coverage_pct": 40.71,
+        "mean_confidence": 0.9613,
+        "num_detections": 1,
+        "temporal_iou": 0.9023,
+        "frame": 33
+      },
+      {
+        "inference_time_ms": 505.39,
+        "fps": 2.0,
+        "road_coverage_pct": 41.11,
+        "mean_confidence": 0.9493,
+        "num_detections": 1,
+        "temporal_iou": 0.9765,
+        "frame": 34
+      },
+      {
+        "inference_time_ms": 509.6,
+        "fps": 2.0,
+        "road_coverage_pct": 40.54,
+        "mean_confidence": 0.9609,
+        "num_detections": 1,
+        "temporal_iou": 0.9697,
+        "frame": 35
+      },
+      {
+        "inference_time_ms": 500.42,
+        "fps": 2.0,
+        "road_coverage_pct": 41.0,
+        "mean_confidence": 0.9582,
+        "num_detections": 1,
+        "temporal_iou": 0.9751,
+        "frame": 36
+      },
+      {
+        "inference_time_ms": 485.56,
+        "fps": 2.1,
+        "road_coverage_pct": 40.56,
+        "mean_confidence": 0.9183,
+        "num_detections": 1,
+        "temporal_iou": 0.9753,
+        "frame": 37
+      },
+      {
+        "inference_time_ms": 531.34,
+        "fps": 1.9,
+        "road_coverage_pct": 42.29,
+        "mean_confidence": 0.9241,
+        "num_detections": 1,
+        "temporal_iou": 0.9534,
+        "frame": 38
+      },
+      {
+        "inference_time_ms": 535.1,
+        "fps": 1.9,
+        "road_coverage_pct": 40.91,
+        "mean_confidence": 0.9209,
+        "num_detections": 1,
+        "temporal_iou": 0.966,
+        "frame": 39
+      },
+      {
+        "inference_time_ms": 515.43,
+        "fps": 1.9,
+        "road_coverage_pct": 42.31,
+        "mean_confidence": 0.9159,
+        "num_detections": 1,
+        "temporal_iou": 0.9621,
+        "frame": 40
+      },
+      {
+        "inference_time_ms": 494.61,
+        "fps": 2.0,
+        "road_coverage_pct": 40.83,
+        "mean_confidence": 0.9144,
+        "num_detections": 1,
+        "temporal_iou": 0.9591,
+        "frame": 41
+      },
+      {
+        "inference_time_ms": 506.46,
+        "fps": 2.0,
+        "road_coverage_pct": 41.88,
+        "mean_confidence": 0.9213,
+        "num_detections": 1,
+        "temporal_iou": 0.9719,
+        "frame": 42
+      },
+      {
+        "inference_time_ms": 518.71,
+        "fps": 1.9,
+        "road_coverage_pct": 43.26,
+        "mean_confidence": 0.9309,
+        "num_detections": 1,
+        "temporal_iou": 0.9663,
+        "frame": 43
+      },
+      {
+        "inference_time_ms": 520.48,
+        "fps": 1.9,
+        "road_coverage_pct": 43.63,
+        "mean_confidence": 0.9425,
+        "num_detections": 1,
+        "temporal_iou": 0.9816,
+        "frame": 44
+      },
+      {
+        "inference_time_ms": 499.77,
+        "fps": 2.0,
+        "road_coverage_pct": 43.9,
+        "mean_confidence": 0.9185,
+        "num_detections": 1,
+        "temporal_iou": 0.9844,
+        "frame": 45
+      },
+      {
+        "inference_time_ms": 501.52,
+        "fps": 2.0,
+        "road_coverage_pct": 42.54,
+        "mean_confidence": 0.9376,
+        "num_detections": 1,
+        "temporal_iou": 0.9633,
+        "frame": 46
+      },
+      {
+        "inference_time_ms": 499.3,
+        "fps": 2.0,
+        "road_coverage_pct": 43.68,
+        "mean_confidence": 0.955,
+        "num_detections": 1,
+        "temporal_iou": 0.9695,
+        "frame": 47
+      },
+      {
+        "inference_time_ms": 484.76,
+        "fps": 2.1,
+        "road_coverage_pct": 42.23,
+        "mean_confidence": 0.9293,
+        "num_detections": 1,
+        "temporal_iou": 0.9649,
+        "frame": 48
+      },
+      {
+        "inference_time_ms": 485.84,
+        "fps": 2.1,
+        "road_coverage_pct": 42.63,
+        "mean_confidence": 0.8183,
+        "num_detections": 1,
+        "temporal_iou": 0.9711,
+        "frame": 49
+      },
+      {
+        "inference_time_ms": 517.17,
+        "fps": 1.9,
+        "road_coverage_pct": 42.21,
+        "mean_confidence": 0.9515,
+        "num_detections": 1,
+        "temporal_iou": 0.9821,
+        "frame": 50
+      },
+      {
+        "inference_time_ms": 519.27,
+        "fps": 1.9,
+        "road_coverage_pct": 42.33,
+        "mean_confidence": 0.941,
+        "num_detections": 1,
+        "temporal_iou": 0.985,
+        "frame": 51
+      },
+      {
+        "inference_time_ms": 488.3,
+        "fps": 2.0,
+        "road_coverage_pct": 41.78,
+        "mean_confidence": 0.9457,
+        "num_detections": 1,
+        "temporal_iou": 0.973,
+        "frame": 52
+      },
+      {
+        "inference_time_ms": 504.39,
+        "fps": 2.0,
+        "road_coverage_pct": 41.97,
+        "mean_confidence": 0.7802,
+        "num_detections": 1,
+        "temporal_iou": 0.9782,
+        "frame": 53
+      },
+      {
+        "inference_time_ms": 502.34,
+        "fps": 2.0,
+        "road_coverage_pct": 41.73,
+        "mean_confidence": 0.954,
+        "num_detections": 1,
+        "temporal_iou": 0.9831,
+        "frame": 54
+      },
+      {
+        "inference_time_ms": 499.89,
+        "fps": 2.0,
+        "road_coverage_pct": 42.22,
+        "mean_confidence": 0.9513,
+        "num_detections": 1,
+        "temporal_iou": 0.9775,
+        "frame": 55
+      },
+      {
+        "inference_time_ms": 511.93,
+        "fps": 2.0,
+        "road_coverage_pct": 41.74,
+        "mean_confidence": 0.9627,
+        "num_detections": 1,
+        "temporal_iou": 0.9754,
+        "frame": 56
+      },
+      {
+        "inference_time_ms": 509.93,
+        "fps": 2.0,
+        "road_coverage_pct": 41.57,
+        "mean_confidence": 0.9643,
+        "num_detections": 1,
+        "temporal_iou": 0.9789,
+        "frame": 57
+      },
+      {
+        "inference_time_ms": 508.73,
+        "fps": 2.0,
+        "road_coverage_pct": 41.51,
+        "mean_confidence": 0.9578,
+        "num_detections": 1,
+        "temporal_iou": 0.9714,
+        "frame": 58
+      },
+      {
+        "inference_time_ms": 510.84,
+        "fps": 2.0,
+        "road_coverage_pct": 40.25,
+        "mean_confidence": 0.9591,
+        "num_detections": 1,
+        "temporal_iou": 0.9586,
+        "frame": 59
+      },
+      {
+        "inference_time_ms": 510.33,
+        "fps": 2.0,
+        "road_coverage_pct": 40.99,
+        "mean_confidence": 0.9407,
+        "num_detections": 1,
+        "temporal_iou": 0.9618,
+        "frame": 60
+      },
+      {
+        "inference_time_ms": 508.78,
+        "fps": 2.0,
+        "road_coverage_pct": 38.0,
+        "mean_confidence": 0.9365,
+        "num_detections": 1,
+        "temporal_iou": 0.9267,
+        "frame": 61
+      },
+      {
+        "inference_time_ms": 491.61,
+        "fps": 2.0,
+        "road_coverage_pct": 38.58,
+        "mean_confidence": 0.9485,
+        "num_detections": 1,
+        "temporal_iou": 0.9776,
+        "frame": 62
+      },
+      {
+        "inference_time_ms": 491.55,
+        "fps": 2.0,
+        "road_coverage_pct": 38.38,
+        "mean_confidence": 0.9542,
+        "num_detections": 1,
+        "temporal_iou": 0.9806,
+        "frame": 63
+      },
+      {
+        "inference_time_ms": 497.69,
+        "fps": 2.0,
+        "road_coverage_pct": 38.07,
+        "mean_confidence": 0.9211,
+        "num_detections": 1,
+        "temporal_iou": 0.9718,
+        "frame": 64
+      },
+      {
+        "inference_time_ms": 495.66,
+        "fps": 2.0,
+        "road_coverage_pct": 38.81,
+        "mean_confidence": 0.9534,
+        "num_detections": 1,
+        "temporal_iou": 0.9715,
+        "frame": 65
+      },
+      {
+        "inference_time_ms": 497.09,
+        "fps": 2.0,
+        "road_coverage_pct": 39.41,
+        "mean_confidence": 0.9734,
+        "num_detections": 1,
+        "temporal_iou": 0.9752,
+        "frame": 66
+      },
+      {
+        "inference_time_ms": 496.34,
+        "fps": 2.0,
+        "road_coverage_pct": 39.67,
+        "mean_confidence": 0.9684,
+        "num_detections": 1,
+        "temporal_iou": 0.9787,
+        "frame": 67
+      },
+      {
+        "inference_time_ms": 512.72,
+        "fps": 2.0,
+        "road_coverage_pct": 38.94,
+        "mean_confidence": 0.9587,
+        "num_detections": 1,
+        "temporal_iou": 0.9759,
+        "frame": 68
+      },
+      {
+        "inference_time_ms": 523.36,
+        "fps": 1.9,
+        "road_coverage_pct": 38.49,
+        "mean_confidence": 0.9701,
+        "num_detections": 1,
+        "temporal_iou": 0.9822,
+        "frame": 69
+      },
+      {
+        "inference_time_ms": 518.39,
+        "fps": 1.9,
+        "road_coverage_pct": 38.64,
+        "mean_confidence": 0.9666,
+        "num_detections": 1,
+        "temporal_iou": 0.983,
+        "frame": 70
+      },
+      {
+        "inference_time_ms": 505.93,
+        "fps": 2.0,
+        "road_coverage_pct": 38.39,
+        "mean_confidence": 0.9711,
+        "num_detections": 1,
+        "temporal_iou": 0.9803,
+        "frame": 71
+      },
+      {
+        "inference_time_ms": 490.88,
+        "fps": 2.0,
+        "road_coverage_pct": 37.62,
+        "mean_confidence": 0.9538,
+        "num_detections": 1,
+        "temporal_iou": 0.9738,
+        "frame": 72
+      },
+      {
+        "inference_time_ms": 488.6,
+        "fps": 2.0,
+        "road_coverage_pct": 37.37,
+        "mean_confidence": 0.915,
+        "num_detections": 1,
+        "temporal_iou": 0.9821,
+        "frame": 73
+      },
+      {
+        "inference_time_ms": 452.17,
+        "fps": 2.2,
+        "road_coverage_pct": 37.5,
+        "mean_confidence": 0.9535,
+        "num_detections": 1,
+        "temporal_iou": 0.9807,
+        "frame": 74
+      },
+      {
+        "inference_time_ms": 508.91,
+        "fps": 2.0,
+        "road_coverage_pct": 36.59,
+        "mean_confidence": 0.9076,
+        "num_detections": 1,
+        "temporal_iou": 0.9649,
+        "frame": 75
+      },
+      {
+        "inference_time_ms": 542.47,
+        "fps": 1.8,
+        "road_coverage_pct": 37.43,
+        "mean_confidence": 0.9465,
+        "num_detections": 1,
+        "temporal_iou": 0.9667,
+        "frame": 76
+      },
+      {
+        "inference_time_ms": 513.35,
+        "fps": 1.9,
+        "road_coverage_pct": 37.19,
+        "mean_confidence": 0.9338,
+        "num_detections": 1,
+        "temporal_iou": 0.9742,
+        "frame": 77
+      },
+      {
+        "inference_time_ms": 496.55,
+        "fps": 2.0,
+        "road_coverage_pct": 37.47,
+        "mean_confidence": 0.9306,
+        "num_detections": 1,
+        "temporal_iou": 0.9799,
+        "frame": 78
+      },
+      {
+        "inference_time_ms": 497.47,
+        "fps": 2.0,
+        "road_coverage_pct": 37.39,
+        "mean_confidence": 0.9232,
+        "num_detections": 1,
+        "temporal_iou": 0.9838,
+        "frame": 79
+      },
+      {
+        "inference_time_ms": 508.58,
+        "fps": 2.0,
+        "road_coverage_pct": 37.75,
+        "mean_confidence": 0.9182,
+        "num_detections": 1,
+        "temporal_iou": 0.9821,
+        "frame": 80
+      },
+      {
+        "inference_time_ms": 519.32,
+        "fps": 1.9,
+        "road_coverage_pct": 38.3,
+        "mean_confidence": 0.9422,
+        "num_detections": 1,
+        "temporal_iou": 0.9682,
+        "frame": 81
+      },
+      {
+        "inference_time_ms": 497.51,
+        "fps": 2.0,
+        "road_coverage_pct": 39.62,
+        "mean_confidence": 0.9327,
+        "num_detections": 1,
+        "temporal_iou": 0.9463,
+        "frame": 82
+      },
+      {
+        "inference_time_ms": 495.38,
+        "fps": 2.0,
+        "road_coverage_pct": 38.84,
+        "mean_confidence": 0.9392,
+        "num_detections": 1,
+        "temporal_iou": 0.9339,
+        "frame": 83
+      },
+      {
+        "inference_time_ms": 502.48,
+        "fps": 2.0,
+        "road_coverage_pct": 38.95,
+        "mean_confidence": 0.9436,
+        "num_detections": 1,
+        "temporal_iou": 0.9691,
+        "frame": 84
+      },
+      {
+        "inference_time_ms": 499.28,
+        "fps": 2.0,
+        "road_coverage_pct": 38.36,
+        "mean_confidence": 0.933,
+        "num_detections": 1,
+        "temporal_iou": 0.9657,
+        "frame": 85
+      },
+      {
+        "inference_time_ms": 510.35,
+        "fps": 2.0,
+        "road_coverage_pct": 38.38,
+        "mean_confidence": 0.9461,
+        "num_detections": 1,
+        "temporal_iou": 0.9814,
+        "frame": 86
+      },
+      {
+        "inference_time_ms": 509.19,
+        "fps": 2.0,
+        "road_coverage_pct": 39.43,
+        "mean_confidence": 0.9641,
+        "num_detections": 1,
+        "temporal_iou": 0.968,
+        "frame": 87
+      },
+      {
+        "inference_time_ms": 504.0,
+        "fps": 2.0,
+        "road_coverage_pct": 39.46,
+        "mean_confidence": 0.9612,
+        "num_detections": 1,
+        "temporal_iou": 0.9832,
+        "frame": 88
+      },
+      {
+        "inference_time_ms": 522.63,
+        "fps": 1.9,
+        "road_coverage_pct": 39.59,
+        "mean_confidence": 0.9544,
+        "num_detections": 1,
+        "temporal_iou": 0.9826,
+        "frame": 89
+      },
+      {
+        "inference_time_ms": 521.26,
+        "fps": 1.9,
+        "road_coverage_pct": 40.8,
+        "mean_confidence": 0.9748,
+        "num_detections": 1,
+        "temporal_iou": 0.9589,
+        "frame": 90
+      },
+      {
+        "inference_time_ms": 519.37,
+        "fps": 1.9,
+        "road_coverage_pct": 40.78,
+        "mean_confidence": 0.9604,
+        "num_detections": 1,
+        "temporal_iou": 0.9747,
+        "frame": 91
+      },
+      {
+        "inference_time_ms": 497.85,
+        "fps": 2.0,
+        "road_coverage_pct": 40.79,
+        "mean_confidence": 0.9816,
+        "num_detections": 1,
+        "temporal_iou": 0.9721,
+        "frame": 92
+      },
+      {
+        "inference_time_ms": 526.92,
+        "fps": 1.9,
+        "road_coverage_pct": 40.97,
+        "mean_confidence": 0.9835,
+        "num_detections": 1,
+        "temporal_iou": 0.9731,
+        "frame": 93
+      },
+      {
+        "inference_time_ms": 538.38,
+        "fps": 1.9,
+        "road_coverage_pct": 42.66,
+        "mean_confidence": 0.987,
+        "num_detections": 1,
+        "temporal_iou": 0.9498,
+        "frame": 94
+      },
+      {
+        "inference_time_ms": 501.01,
+        "fps": 2.0,
+        "road_coverage_pct": 43.02,
+        "mean_confidence": 0.9863,
+        "num_detections": 1,
+        "temporal_iou": 0.9875,
+        "frame": 95
+      },
+      {
+        "inference_time_ms": 625.3,
+        "fps": 1.6,
+        "road_coverage_pct": 43.13,
+        "mean_confidence": 0.9866,
+        "num_detections": 1,
+        "temporal_iou": 0.9867,
+        "frame": 96
+      },
+      {
+        "inference_time_ms": 602.45,
+        "fps": 1.7,
+        "road_coverage_pct": 41.8,
+        "mean_confidence": 0.985,
+        "num_detections": 1,
+        "temporal_iou": 0.956,
+        "frame": 97
+      },
+      {
+        "inference_time_ms": 514.81,
+        "fps": 1.9,
+        "road_coverage_pct": 43.59,
+        "mean_confidence": 0.9864,
+        "num_detections": 1,
+        "temporal_iou": 0.9542,
+        "frame": 98
+      },
+      {
+        "inference_time_ms": 501.49,
+        "fps": 2.0,
+        "road_coverage_pct": 43.91,
+        "mean_confidence": 0.985,
+        "num_detections": 1,
+        "temporal_iou": 0.9884,
+        "frame": 99
+      },
+      {
+        "inference_time_ms": 501.66,
+        "fps": 2.0,
+        "road_coverage_pct": 44.15,
+        "mean_confidence": 0.9865,
+        "num_detections": 1,
+        "temporal_iou": 0.991,
+        "frame": 100
+      },
+      {
+        "inference_time_ms": 501.99,
+        "fps": 2.0,
+        "road_coverage_pct": 44.32,
+        "mean_confidence": 0.9811,
+        "num_detections": 1,
+        "temporal_iou": 0.992,
+        "frame": 101
+      },
+      {
+        "inference_time_ms": 503.7,
+        "fps": 2.0,
+        "road_coverage_pct": 44.54,
+        "mean_confidence": 0.9824,
+        "num_detections": 1,
+        "temporal_iou": 0.9911,
+        "frame": 102
+      },
+      {
+        "inference_time_ms": 506.03,
+        "fps": 2.0,
+        "road_coverage_pct": 44.95,
+        "mean_confidence": 0.9866,
+        "num_detections": 1,
+        "temporal_iou": 0.9869,
+        "frame": 103
+      },
+      {
+        "inference_time_ms": 499.96,
+        "fps": 2.0,
+        "road_coverage_pct": 45.17,
+        "mean_confidence": 0.9848,
+        "num_detections": 1,
+        "temporal_iou": 0.9869,
+        "frame": 104
+      },
+      {
+        "inference_time_ms": 512.97,
+        "fps": 1.9,
+        "road_coverage_pct": 43.21,
+        "mean_confidence": 0.9799,
+        "num_detections": 1,
+        "temporal_iou": 0.9468,
+        "frame": 105
+      },
+      {
+        "inference_time_ms": 509.98,
+        "fps": 2.0,
+        "road_coverage_pct": 45.87,
+        "mean_confidence": 0.9698,
+        "num_detections": 1,
+        "temporal_iou": 0.9385,
+        "frame": 106
+      },
+      {
+        "inference_time_ms": 502.46,
+        "fps": 2.0,
+        "road_coverage_pct": 46.24,
+        "mean_confidence": 0.9759,
+        "num_detections": 1,
+        "temporal_iou": 0.9858,
+        "frame": 107
+      },
+      {
+        "inference_time_ms": 504.04,
+        "fps": 2.0,
+        "road_coverage_pct": 46.68,
+        "mean_confidence": 0.9761,
+        "num_detections": 1,
+        "temporal_iou": 0.9896,
+        "frame": 108
+      },
+      {
+        "inference_time_ms": 517.38,
+        "fps": 1.9,
+        "road_coverage_pct": 47.01,
+        "mean_confidence": 0.9728,
+        "num_detections": 1,
+        "temporal_iou": 0.9924,
+        "frame": 109
+      },
+      {
+        "inference_time_ms": 514.78,
+        "fps": 1.9,
+        "road_coverage_pct": 47.23,
+        "mean_confidence": 0.9735,
+        "num_detections": 1,
+        "temporal_iou": 0.9915,
+        "frame": 110
+      },
+      {
+        "inference_time_ms": 492.55,
+        "fps": 2.0,
+        "road_coverage_pct": 47.46,
+        "mean_confidence": 0.9831,
+        "num_detections": 1,
+        "temporal_iou": 0.9905,
+        "frame": 111
+      },
+      {
+        "inference_time_ms": 475.94,
+        "fps": 2.1,
+        "road_coverage_pct": 47.76,
+        "mean_confidence": 0.9734,
+        "num_detections": 1,
+        "temporal_iou": 0.9913,
+        "frame": 112
+      },
+      {
+        "inference_time_ms": 467.4,
+        "fps": 2.1,
+        "road_coverage_pct": 47.86,
+        "mean_confidence": 0.9712,
+        "num_detections": 1,
+        "temporal_iou": 0.9879,
+        "frame": 113
+      },
+      {
+        "inference_time_ms": 526.48,
+        "fps": 1.9,
+        "road_coverage_pct": 47.7,
+        "mean_confidence": 0.9736,
+        "num_detections": 1,
+        "temporal_iou": 0.9867,
+        "frame": 114
+      },
+      {
+        "inference_time_ms": 609.07,
+        "fps": 1.6,
+        "road_coverage_pct": 47.71,
+        "mean_confidence": 0.9712,
+        "num_detections": 1,
+        "temporal_iou": 0.9834,
+        "frame": 115
+      },
+      {
+        "inference_time_ms": 519.5,
+        "fps": 1.9,
+        "road_coverage_pct": 47.93,
+        "mean_confidence": 0.9681,
+        "num_detections": 1,
+        "temporal_iou": 0.9842,
+        "frame": 116
+      },
+      {
+        "inference_time_ms": 508.32,
+        "fps": 2.0,
+        "road_coverage_pct": 47.95,
+        "mean_confidence": 0.9777,
+        "num_detections": 1,
+        "temporal_iou": 0.9774,
+        "frame": 117
+      },
+      {
+        "inference_time_ms": 509.17,
+        "fps": 2.0,
+        "road_coverage_pct": 48.6,
+        "mean_confidence": 0.9795,
+        "num_detections": 1,
+        "temporal_iou": 0.977,
+        "frame": 118
+      },
+      {
+        "inference_time_ms": 508.58,
+        "fps": 2.0,
+        "road_coverage_pct": 49.58,
+        "mean_confidence": 0.978,
+        "num_detections": 1,
+        "temporal_iou": 0.9792,
+        "frame": 119
+      },
+      {
+        "inference_time_ms": 501.09,
+        "fps": 2.0,
+        "road_coverage_pct": 50.22,
+        "mean_confidence": 0.9809,
+        "num_detections": 1,
+        "temporal_iou": 0.9843,
+        "frame": 120
+      },
+      {
+        "inference_time_ms": 512.23,
+        "fps": 2.0,
+        "road_coverage_pct": 50.52,
+        "mean_confidence": 0.9777,
+        "num_detections": 1,
+        "temporal_iou": 0.9879,
+        "frame": 121
+      },
+      {
+        "inference_time_ms": 513.16,
+        "fps": 1.9,
+        "road_coverage_pct": 51.26,
+        "mean_confidence": 0.9818,
+        "num_detections": 1,
+        "temporal_iou": 0.9849,
+        "frame": 122
+      },
+      {
+        "inference_time_ms": 510.86,
+        "fps": 2.0,
+        "road_coverage_pct": 51.27,
+        "mean_confidence": 0.9773,
+        "num_detections": 1,
+        "temporal_iou": 0.9899,
+        "frame": 123
+      },
+      {
+        "inference_time_ms": 512.12,
+        "fps": 2.0,
+        "road_coverage_pct": 51.14,
+        "mean_confidence": 0.9823,
+        "num_detections": 1,
+        "temporal_iou": 0.9886,
+        "frame": 124
+      },
+      {
+        "inference_time_ms": 513.75,
+        "fps": 1.9,
+        "road_coverage_pct": 51.56,
+        "mean_confidence": 0.9817,
+        "num_detections": 1,
+        "temporal_iou": 0.984,
+        "frame": 125
+      },
+      {
+        "inference_time_ms": 511.97,
+        "fps": 2.0,
+        "road_coverage_pct": 50.25,
+        "mean_confidence": 0.9816,
+        "num_detections": 1,
+        "temporal_iou": 0.9684,
+        "frame": 126
+      },
+      {
+        "inference_time_ms": 509.7,
+        "fps": 2.0,
+        "road_coverage_pct": 51.27,
+        "mean_confidence": 0.9799,
+        "num_detections": 1,
+        "temporal_iou": 0.9681,
+        "frame": 127
+      },
+      {
+        "inference_time_ms": 506.28,
+        "fps": 2.0,
+        "road_coverage_pct": 50.8,
+        "mean_confidence": 0.986,
+        "num_detections": 1,
+        "temporal_iou": 0.9894,
+        "frame": 128
+      },
+      {
+        "inference_time_ms": 511.95,
+        "fps": 2.0,
+        "road_coverage_pct": 50.46,
+        "mean_confidence": 0.9894,
+        "num_detections": 1,
+        "temporal_iou": 0.9928,
+        "frame": 129
+      },
+      {
+        "inference_time_ms": 514.86,
+        "fps": 1.9,
+        "road_coverage_pct": 49.99,
+        "mean_confidence": 0.9874,
+        "num_detections": 1,
+        "temporal_iou": 0.9896,
+        "frame": 130
+      },
+      {
+        "inference_time_ms": 505.32,
+        "fps": 2.0,
+        "road_coverage_pct": 50.31,
+        "mean_confidence": 0.9857,
+        "num_detections": 1,
+        "temporal_iou": 0.9914,
+        "frame": 131
+      },
+      {
+        "inference_time_ms": 497.45,
+        "fps": 2.0,
+        "road_coverage_pct": 48.57,
+        "mean_confidence": 0.9857,
+        "num_detections": 1,
+        "temporal_iou": 0.96,
+        "frame": 132
+      },
+      {
+        "inference_time_ms": 509.22,
+        "fps": 2.0,
+        "road_coverage_pct": 49.9,
+        "mean_confidence": 0.9857,
+        "num_detections": 1,
+        "temporal_iou": 0.9653,
+        "frame": 133
+      },
+      {
+        "inference_time_ms": 511.61,
+        "fps": 2.0,
+        "road_coverage_pct": 49.83,
+        "mean_confidence": 0.9825,
+        "num_detections": 1,
+        "temporal_iou": 0.9846,
+        "frame": 134
+      },
+      {
+        "inference_time_ms": 511.74,
+        "fps": 2.0,
+        "road_coverage_pct": 50.25,
+        "mean_confidence": 0.9831,
+        "num_detections": 1,
+        "temporal_iou": 0.985,
+        "frame": 135
+      },
+      {
+        "inference_time_ms": 494.11,
+        "fps": 2.0,
+        "road_coverage_pct": 48.9,
+        "mean_confidence": 0.9815,
+        "num_detections": 1,
+        "temporal_iou": 0.9713,
+        "frame": 136
+      },
+      {
+        "inference_time_ms": 495.64,
+        "fps": 2.0,
+        "road_coverage_pct": 50.32,
+        "mean_confidence": 0.9854,
+        "num_detections": 1,
+        "temporal_iou": 0.9681,
+        "frame": 137
+      },
+      {
+        "inference_time_ms": 494.16,
+        "fps": 2.0,
+        "road_coverage_pct": 49.22,
+        "mean_confidence": 0.9821,
+        "num_detections": 1,
+        "temporal_iou": 0.9718,
+        "frame": 138
+      },
+      {
+        "inference_time_ms": 507.1,
+        "fps": 2.0,
+        "road_coverage_pct": 47.61,
+        "mean_confidence": 0.9677,
+        "num_detections": 1,
+        "temporal_iou": 0.9625,
+        "frame": 139
+      },
+      {
+        "inference_time_ms": 518.43,
+        "fps": 1.9,
+        "road_coverage_pct": 47.86,
+        "mean_confidence": 0.9779,
+        "num_detections": 1,
+        "temporal_iou": 0.9896,
+        "frame": 140
+      },
+      {
+        "inference_time_ms": 518.44,
+        "fps": 1.9,
+        "road_coverage_pct": 48.26,
+        "mean_confidence": 0.9795,
+        "num_detections": 1,
+        "temporal_iou": 0.9797,
+        "frame": 141
+      },
+      {
+        "inference_time_ms": 517.25,
+        "fps": 1.9,
+        "road_coverage_pct": 50.5,
+        "mean_confidence": 0.9863,
+        "num_detections": 1,
+        "temporal_iou": 0.9551,
+        "frame": 142
+      },
+      {
+        "inference_time_ms": 495.49,
+        "fps": 2.0,
+        "road_coverage_pct": 48.52,
+        "mean_confidence": 0.9843,
+        "num_detections": 1,
+        "temporal_iou": 0.9565,
+        "frame": 143
+      },
+      {
+        "inference_time_ms": 509.87,
+        "fps": 2.0,
+        "road_coverage_pct": 49.78,
+        "mean_confidence": 0.9847,
+        "num_detections": 1,
+        "temporal_iou": 0.9687,
+        "frame": 144
+      },
+      {
+        "inference_time_ms": 505.04,
+        "fps": 2.0,
+        "road_coverage_pct": 49.99,
+        "mean_confidence": 0.9815,
+        "num_detections": 1,
+        "temporal_iou": 0.985,
+        "frame": 145
+      },
+      {
+        "inference_time_ms": 506.55,
+        "fps": 2.0,
+        "road_coverage_pct": 49.41,
+        "mean_confidence": 0.9744,
+        "num_detections": 1,
+        "temporal_iou": 0.9817,
+        "frame": 146
+      },
+      {
+        "inference_time_ms": 517.56,
+        "fps": 1.9,
+        "road_coverage_pct": 49.21,
+        "mean_confidence": 0.9855,
+        "num_detections": 1,
+        "temporal_iou": 0.9838,
+        "frame": 147
+      },
+      {
+        "inference_time_ms": 517.07,
+        "fps": 1.9,
+        "road_coverage_pct": 46.46,
+        "mean_confidence": 0.9696,
+        "num_detections": 1,
+        "temporal_iou": 0.9435,
+        "frame": 148
+      },
+      {
+        "inference_time_ms": 518.61,
+        "fps": 1.9,
+        "road_coverage_pct": 49.25,
+        "mean_confidence": 0.9799,
+        "num_detections": 1,
+        "temporal_iou": 0.9401,
+        "frame": 149
+      },
+      {
+        "inference_time_ms": 513.35,
+        "fps": 1.9,
+        "road_coverage_pct": 46.64,
+        "mean_confidence": 0.9751,
+        "num_detections": 1,
+        "temporal_iou": 0.9468,
+        "frame": 150
+      },
+      {
+        "inference_time_ms": 497.2,
+        "fps": 2.0,
+        "road_coverage_pct": 42.19,
+        "mean_confidence": 0.9562,
+        "num_detections": 1,
+        "temporal_iou": 0.9034,
+        "frame": 151
+      },
+      {
+        "inference_time_ms": 512.69,
+        "fps": 2.0,
+        "road_coverage_pct": 44.04,
+        "mean_confidence": 0.9657,
+        "num_detections": 1,
+        "temporal_iou": 0.955,
+        "frame": 152
+      },
+      {
+        "inference_time_ms": 511.88,
+        "fps": 2.0,
+        "road_coverage_pct": 43.87,
+        "mean_confidence": 0.9666,
+        "num_detections": 1,
+        "temporal_iou": 0.9687,
+        "frame": 153
+      },
+      {
+        "inference_time_ms": 504.05,
+        "fps": 2.0,
+        "road_coverage_pct": 44.37,
+        "mean_confidence": 0.9693,
+        "num_detections": 1,
+        "temporal_iou": 0.9351,
+        "frame": 154
+      },
+      {
+        "inference_time_ms": 511.9,
+        "fps": 2.0,
+        "road_coverage_pct": 47.96,
+        "mean_confidence": 0.9664,
+        "num_detections": 1,
+        "temporal_iou": 0.9234,
+        "frame": 155
+      },
+      {
+        "inference_time_ms": 508.49,
+        "fps": 2.0,
+        "road_coverage_pct": 45.99,
+        "mean_confidence": 0.9749,
+        "num_detections": 1,
+        "temporal_iou": 0.9513,
+        "frame": 156
+      },
+      {
+        "inference_time_ms": 508.57,
+        "fps": 2.0,
+        "road_coverage_pct": 45.64,
+        "mean_confidence": 0.9765,
+        "num_detections": 1,
+        "temporal_iou": 0.9663,
+        "frame": 157
+      },
+      {
+        "inference_time_ms": 507.57,
+        "fps": 2.0,
+        "road_coverage_pct": 46.54,
+        "mean_confidence": 0.9629,
+        "num_detections": 1,
+        "temporal_iou": 0.9626,
+        "frame": 158
+      },
+      {
+        "inference_time_ms": 517.74,
+        "fps": 1.9,
+        "road_coverage_pct": 45.8,
+        "mean_confidence": 0.9704,
+        "num_detections": 1,
+        "temporal_iou": 0.973,
+        "frame": 159
+      },
+      {
+        "inference_time_ms": 500.27,
+        "fps": 2.0,
+        "road_coverage_pct": 44.54,
+        "mean_confidence": 0.9569,
+        "num_detections": 1,
+        "temporal_iou": 0.9591,
+        "frame": 160
+      },
+      {
+        "inference_time_ms": 499.15,
+        "fps": 2.0,
+        "road_coverage_pct": 44.02,
+        "mean_confidence": 0.9494,
+        "num_detections": 1,
+        "temporal_iou": 0.9549,
+        "frame": 161
+      },
+      {
+        "inference_time_ms": 500.05,
+        "fps": 2.0,
+        "road_coverage_pct": 44.45,
+        "mean_confidence": 0.9605,
+        "num_detections": 1,
+        "temporal_iou": 0.968,
+        "frame": 162
+      },
+      {
+        "inference_time_ms": 518.69,
+        "fps": 1.9,
+        "road_coverage_pct": 45.93,
+        "mean_confidence": 0.9679,
+        "num_detections": 1,
+        "temporal_iou": 0.9617,
+        "frame": 163
+      },
+      {
+        "inference_time_ms": 506.63,
+        "fps": 2.0,
+        "road_coverage_pct": 46.58,
+        "mean_confidence": 0.9805,
+        "num_detections": 1,
+        "temporal_iou": 0.9811,
+        "frame": 164
+      },
+      {
+        "inference_time_ms": 502.31,
+        "fps": 2.0,
+        "road_coverage_pct": 44.22,
+        "mean_confidence": 0.9784,
+        "num_detections": 1,
+        "temporal_iou": 0.9491,
+        "frame": 165
+      },
+      {
+        "inference_time_ms": 503.89,
+        "fps": 2.0,
+        "road_coverage_pct": 45.02,
+        "mean_confidence": 0.9767,
+        "num_detections": 1,
+        "temporal_iou": 0.9725,
+        "frame": 166
+      },
+      {
+        "inference_time_ms": 503.89,
+        "fps": 2.0,
+        "road_coverage_pct": 42.68,
+        "mean_confidence": 0.9519,
+        "num_detections": 1,
+        "temporal_iou": 0.9457,
+        "frame": 167
+      },
+      {
+        "inference_time_ms": 506.19,
+        "fps": 2.0,
+        "road_coverage_pct": 42.39,
+        "mean_confidence": 0.9585,
+        "num_detections": 1,
+        "temporal_iou": 0.982,
+        "frame": 168
+      },
+      {
+        "inference_time_ms": 505.51,
+        "fps": 2.0,
+        "road_coverage_pct": 44.2,
+        "mean_confidence": 0.9539,
+        "num_detections": 1,
+        "temporal_iou": 0.9332,
+        "frame": 169
+      },
+      {
+        "inference_time_ms": 518.35,
+        "fps": 1.9,
+        "road_coverage_pct": 41.4,
+        "mean_confidence": 0.968,
+        "num_detections": 1,
+        "temporal_iou": 0.9362,
+        "frame": 170
+      },
+      {
+        "inference_time_ms": 521.14,
+        "fps": 1.9,
+        "road_coverage_pct": 41.71,
+        "mean_confidence": 0.9665,
+        "num_detections": 1,
+        "temporal_iou": 0.9813,
+        "frame": 171
+      },
+      {
+        "inference_time_ms": 516.51,
+        "fps": 1.9,
+        "road_coverage_pct": 41.01,
+        "mean_confidence": 0.9651,
+        "num_detections": 1,
+        "temporal_iou": 0.9689,
+        "frame": 172
+      },
+      {
+        "inference_time_ms": 493.0,
+        "fps": 2.0,
+        "road_coverage_pct": 40.89,
+        "mean_confidence": 0.9434,
+        "num_detections": 1,
+        "temporal_iou": 0.9696,
+        "frame": 173
+      },
+      {
+        "inference_time_ms": 496.47,
+        "fps": 2.0,
+        "road_coverage_pct": 43.71,
+        "mean_confidence": 0.962,
+        "num_detections": 1,
+        "temporal_iou": 0.9325,
+        "frame": 174
+      },
+      {
+        "inference_time_ms": 513.65,
+        "fps": 1.9,
+        "road_coverage_pct": 42.9,
+        "mean_confidence": 0.9609,
+        "num_detections": 1,
+        "temporal_iou": 0.9748,
+        "frame": 175
+      },
+      {
+        "inference_time_ms": 538.8,
+        "fps": 1.9,
+        "road_coverage_pct": 40.94,
+        "mean_confidence": 0.9571,
+        "num_detections": 1,
+        "temporal_iou": 0.9494,
+        "frame": 176
+      },
+      {
+        "inference_time_ms": 502.76,
+        "fps": 2.0,
+        "road_coverage_pct": 40.41,
+        "mean_confidence": 0.9576,
+        "num_detections": 1,
+        "temporal_iou": 0.9843,
+        "frame": 177
+      },
+      {
+        "inference_time_ms": 514.42,
+        "fps": 1.9,
+        "road_coverage_pct": 42.07,
+        "mean_confidence": 0.9655,
+        "num_detections": 1,
+        "temporal_iou": 0.9507,
+        "frame": 178
+      },
+      {
+        "inference_time_ms": 514.71,
+        "fps": 1.9,
+        "road_coverage_pct": 40.38,
+        "mean_confidence": 0.9625,
+        "num_detections": 1,
+        "temporal_iou": 0.9579,
+        "frame": 179
+      },
+      {
+        "inference_time_ms": 511.44,
+        "fps": 2.0,
+        "road_coverage_pct": 41.0,
+        "mean_confidence": 0.9517,
+        "num_detections": 1,
+        "temporal_iou": 0.9722,
+        "frame": 180
+      },
+      {
+        "inference_time_ms": 494.17,
+        "fps": 2.0,
+        "road_coverage_pct": 40.96,
+        "mean_confidence": 0.9607,
+        "num_detections": 1,
+        "temporal_iou": 0.9844,
+        "frame": 181
+      },
+      {
+        "inference_time_ms": 509.11,
+        "fps": 2.0,
+        "road_coverage_pct": 40.93,
+        "mean_confidence": 0.9646,
+        "num_detections": 1,
+        "temporal_iou": 0.9785,
+        "frame": 182
+      },
+      {
+        "inference_time_ms": 516.57,
+        "fps": 1.9,
+        "road_coverage_pct": 41.03,
+        "mean_confidence": 0.9594,
+        "num_detections": 1,
+        "temporal_iou": 0.977,
+        "frame": 183
+      },
+      {
+        "inference_time_ms": 502.65,
+        "fps": 2.0,
+        "road_coverage_pct": 41.05,
+        "mean_confidence": 0.9754,
+        "num_detections": 1,
+        "temporal_iou": 0.9769,
+        "frame": 184
+      },
+      {
+        "inference_time_ms": 476.67,
+        "fps": 2.1,
+        "road_coverage_pct": 40.73,
+        "mean_confidence": 0.9729,
+        "num_detections": 1,
+        "temporal_iou": 0.9804,
+        "frame": 185
+      },
+      {
+        "inference_time_ms": 468.42,
+        "fps": 2.1,
+        "road_coverage_pct": 40.18,
+        "mean_confidence": 0.9717,
+        "num_detections": 1,
+        "temporal_iou": 0.9544,
+        "frame": 186
+      },
+      {
+        "inference_time_ms": 514.57,
+        "fps": 1.9,
+        "road_coverage_pct": 40.96,
+        "mean_confidence": 0.9806,
+        "num_detections": 1,
+        "temporal_iou": 0.9681,
+        "frame": 187
+      },
+      {
+        "inference_time_ms": 522.45,
+        "fps": 1.9,
+        "road_coverage_pct": 39.35,
+        "mean_confidence": 0.9685,
+        "num_detections": 1,
+        "temporal_iou": 0.9541,
+        "frame": 188
+      },
+      {
+        "inference_time_ms": 506.92,
+        "fps": 2.0,
+        "road_coverage_pct": 41.05,
+        "mean_confidence": 0.9782,
+        "num_detections": 1,
+        "temporal_iou": 0.9463,
+        "frame": 189
+      },
+      {
+        "inference_time_ms": 517.85,
+        "fps": 1.9,
+        "road_coverage_pct": 41.1,
+        "mean_confidence": 0.9627,
+        "num_detections": 1,
+        "temporal_iou": 0.9813,
+        "frame": 190
+      },
+      {
+        "inference_time_ms": 498.03,
+        "fps": 2.0,
+        "road_coverage_pct": 39.84,
+        "mean_confidence": 0.9635,
+        "num_detections": 1,
+        "temporal_iou": 0.9615,
+        "frame": 191
+      },
+      {
+        "inference_time_ms": 500.36,
+        "fps": 2.0,
+        "road_coverage_pct": 41.29,
+        "mean_confidence": 0.966,
+        "num_detections": 1,
+        "temporal_iou": 0.9545,
+        "frame": 192
+      },
+      {
+        "inference_time_ms": 564.96,
+        "fps": 1.8,
+        "road_coverage_pct": 41.45,
+        "mean_confidence": 0.9538,
+        "num_detections": 1,
+        "temporal_iou": 0.9876,
+        "frame": 193
+      },
+      {
+        "inference_time_ms": 513.09,
+        "fps": 1.9,
+        "road_coverage_pct": 41.23,
+        "mean_confidence": 0.9507,
+        "num_detections": 1,
+        "temporal_iou": 0.9873,
+        "frame": 194
+      },
+      {
+        "inference_time_ms": 493.76,
+        "fps": 2.0,
+        "road_coverage_pct": 38.76,
+        "mean_confidence": 0.9552,
+        "num_detections": 1,
+        "temporal_iou": 0.9303,
+        "frame": 195
+      },
+      {
+        "inference_time_ms": 490.94,
+        "fps": 2.0,
+        "road_coverage_pct": 40.74,
+        "mean_confidence": 0.9534,
+        "num_detections": 1,
+        "temporal_iou": 0.94,
+        "frame": 196
+      },
+      {
+        "inference_time_ms": 486.74,
+        "fps": 2.1,
+        "road_coverage_pct": 39.5,
+        "mean_confidence": 0.9501,
+        "num_detections": 1,
+        "temporal_iou": 0.9516,
+        "frame": 197
+      },
+      {
+        "inference_time_ms": 487.79,
+        "fps": 2.1,
+        "road_coverage_pct": 39.11,
+        "mean_confidence": 0.9517,
+        "num_detections": 1,
+        "temporal_iou": 0.9582,
+        "frame": 198
+      },
+      {
+        "inference_time_ms": 518.33,
+        "fps": 1.9,
+        "road_coverage_pct": 39.97,
+        "mean_confidence": 0.96,
+        "num_detections": 1,
+        "temporal_iou": 0.9646,
+        "frame": 199
+      },
+      {
+        "inference_time_ms": 517.38,
+        "fps": 1.9,
+        "road_coverage_pct": 38.54,
+        "mean_confidence": 0.9582,
+        "num_detections": 1,
+        "temporal_iou": 0.9478,
+        "frame": 200
+      },
+      {
+        "inference_time_ms": 514.91,
+        "fps": 1.9,
+        "road_coverage_pct": 38.64,
+        "mean_confidence": 0.9516,
+        "num_detections": 1,
+        "temporal_iou": 0.9721,
+        "frame": 201
+      },
+      {
+        "inference_time_ms": 519.21,
+        "fps": 1.9,
+        "road_coverage_pct": 39.93,
+        "mean_confidence": 0.9643,
+        "num_detections": 1,
+        "temporal_iou": 0.9609,
+        "frame": 202
+      },
+      {
+        "inference_time_ms": 508.31,
+        "fps": 2.0,
+        "road_coverage_pct": 42.15,
+        "mean_confidence": 0.9682,
+        "num_detections": 1,
+        "temporal_iou": 0.9307,
+        "frame": 203
+      },
+      {
+        "inference_time_ms": 498.31,
+        "fps": 2.0,
+        "road_coverage_pct": 42.51,
+        "mean_confidence": 0.9751,
+        "num_detections": 1,
+        "temporal_iou": 0.9811,
+        "frame": 204
+      },
+      {
+        "inference_time_ms": 509.64,
+        "fps": 2.0,
+        "road_coverage_pct": 42.76,
+        "mean_confidence": 0.9713,
+        "num_detections": 1,
+        "temporal_iou": 0.9772,
+        "frame": 205
+      },
+      {
+        "inference_time_ms": 519.01,
+        "fps": 1.9,
+        "road_coverage_pct": 43.32,
+        "mean_confidence": 0.9791,
+        "num_detections": 1,
+        "temporal_iou": 0.9818,
+        "frame": 206
+      },
+      {
+        "inference_time_ms": 517.6,
+        "fps": 1.9,
+        "road_coverage_pct": 43.41,
+        "mean_confidence": 0.9798,
+        "num_detections": 1,
+        "temporal_iou": 0.9882,
+        "frame": 207
+      },
+      {
+        "inference_time_ms": 518.01,
+        "fps": 1.9,
+        "road_coverage_pct": 43.08,
+        "mean_confidence": 0.9718,
+        "num_detections": 1,
+        "temporal_iou": 0.9872,
+        "frame": 208
+      },
+      {
+        "inference_time_ms": 513.28,
+        "fps": 1.9,
+        "road_coverage_pct": 41.95,
+        "mean_confidence": 0.9745,
+        "num_detections": 1,
+        "temporal_iou": 0.9667,
+        "frame": 209
+      },
+      {
+        "inference_time_ms": 486.68,
+        "fps": 2.1,
+        "road_coverage_pct": 42.36,
+        "mean_confidence": 0.971,
+        "num_detections": 1,
+        "temporal_iou": 0.9714,
+        "frame": 210
+      },
+      {
+        "inference_time_ms": 485.82,
+        "fps": 2.1,
+        "road_coverage_pct": 42.23,
+        "mean_confidence": 0.9724,
+        "num_detections": 1,
+        "temporal_iou": 0.9835,
+        "frame": 211
+      },
+      {
+        "inference_time_ms": 630.5,
+        "fps": 1.6,
+        "road_coverage_pct": 41.89,
+        "mean_confidence": 0.9761,
+        "num_detections": 1,
+        "temporal_iou": 0.9855,
+        "frame": 212
+      },
+      {
+        "inference_time_ms": 613.64,
+        "fps": 1.6,
+        "road_coverage_pct": 41.26,
+        "mean_confidence": 0.9741,
+        "num_detections": 1,
+        "temporal_iou": 0.9836,
+        "frame": 213
+      },
+      {
+        "inference_time_ms": 529.28,
+        "fps": 1.9,
+        "road_coverage_pct": 41.17,
+        "mean_confidence": 0.976,
+        "num_detections": 1,
+        "temporal_iou": 0.9849,
+        "frame": 214
+      },
+      {
+        "inference_time_ms": 509.76,
+        "fps": 2.0,
+        "road_coverage_pct": 40.11,
+        "mean_confidence": 0.9649,
+        "num_detections": 1,
+        "temporal_iou": 0.9652,
+        "frame": 215
+      },
+      {
+        "inference_time_ms": 497.06,
+        "fps": 2.0,
+        "road_coverage_pct": 40.88,
+        "mean_confidence": 0.974,
+        "num_detections": 1,
+        "temporal_iou": 0.9731,
+        "frame": 216
+      },
+      {
+        "inference_time_ms": 495.33,
+        "fps": 2.0,
+        "road_coverage_pct": 41.22,
+        "mean_confidence": 0.9659,
+        "num_detections": 1,
+        "temporal_iou": 0.9806,
+        "frame": 217
+      },
+      {
+        "inference_time_ms": 506.16,
+        "fps": 2.0,
+        "road_coverage_pct": 41.19,
+        "mean_confidence": 0.967,
+        "num_detections": 1,
+        "temporal_iou": 0.9912,
+        "frame": 218
+      },
+      {
+        "inference_time_ms": 506.63,
+        "fps": 2.0,
+        "road_coverage_pct": 41.0,
+        "mean_confidence": 0.975,
+        "num_detections": 1,
+        "temporal_iou": 0.9906,
+        "frame": 219
+      },
+      {
+        "inference_time_ms": 503.83,
+        "fps": 2.0,
+        "road_coverage_pct": 41.35,
+        "mean_confidence": 0.9641,
+        "num_detections": 1,
+        "temporal_iou": 0.9835,
+        "frame": 220
+      },
+      {
+        "inference_time_ms": 511.77,
+        "fps": 2.0,
+        "road_coverage_pct": 40.77,
+        "mean_confidence": 0.9665,
+        "num_detections": 1,
+        "temporal_iou": 0.9751,
+        "frame": 221
+      },
+      {
+        "inference_time_ms": 515.76,
+        "fps": 1.9,
+        "road_coverage_pct": 41.08,
+        "mean_confidence": 0.9607,
+        "num_detections": 1,
+        "temporal_iou": 0.9801,
+        "frame": 222
+      },
+      {
+        "inference_time_ms": 512.52,
+        "fps": 2.0,
+        "road_coverage_pct": 41.59,
+        "mean_confidence": 0.9418,
+        "num_detections": 1,
+        "temporal_iou": 0.9752,
+        "frame": 223
+      },
+      {
+        "inference_time_ms": 493.72,
+        "fps": 2.0,
+        "road_coverage_pct": 42.21,
+        "mean_confidence": 0.9349,
+        "num_detections": 1,
+        "temporal_iou": 0.9801,
+        "frame": 224
+      },
+      {
+        "inference_time_ms": 493.4,
+        "fps": 2.0,
+        "road_coverage_pct": 42.07,
+        "mean_confidence": 0.9457,
+        "num_detections": 1,
+        "temporal_iou": 0.9903,
+        "frame": 225
+      },
+      {
+        "inference_time_ms": 500.05,
+        "fps": 2.0,
+        "road_coverage_pct": 41.73,
+        "mean_confidence": 0.9359,
+        "num_detections": 1,
+        "temporal_iou": 0.9885,
+        "frame": 226
+      },
+      {
+        "inference_time_ms": 498.15,
+        "fps": 2.0,
+        "road_coverage_pct": 41.09,
+        "mean_confidence": 0.9542,
+        "num_detections": 1,
+        "temporal_iou": 0.9756,
+        "frame": 227
+      },
+      {
+        "inference_time_ms": 506.12,
+        "fps": 2.0,
+        "road_coverage_pct": 41.46,
+        "mean_confidence": 0.9454,
+        "num_detections": 1,
+        "temporal_iou": 0.9739,
+        "frame": 228
+      },
+      {
+        "inference_time_ms": 508.56,
+        "fps": 2.0,
+        "road_coverage_pct": 41.18,
+        "mean_confidence": 0.9565,
+        "num_detections": 1,
+        "temporal_iou": 0.9853,
+        "frame": 229
+      },
+      {
+        "inference_time_ms": 507.76,
+        "fps": 2.0,
+        "road_coverage_pct": 40.25,
+        "mean_confidence": 0.9422,
+        "num_detections": 1,
+        "temporal_iou": 0.9757,
+        "frame": 230
+      },
+      {
+        "inference_time_ms": 504.15,
+        "fps": 2.0,
+        "road_coverage_pct": 39.95,
+        "mean_confidence": 0.9497,
+        "num_detections": 1,
+        "temporal_iou": 0.9807,
+        "frame": 231
+      },
+      {
+        "inference_time_ms": 507.06,
+        "fps": 2.0,
+        "road_coverage_pct": 39.9,
+        "mean_confidence": 0.9376,
+        "num_detections": 1,
+        "temporal_iou": 0.9793,
+        "frame": 232
+      },
+      {
+        "inference_time_ms": 510.22,
+        "fps": 2.0,
+        "road_coverage_pct": 40.01,
+        "mean_confidence": 0.9508,
+        "num_detections": 1,
+        "temporal_iou": 0.9814,
+        "frame": 233
+      },
+      {
+        "inference_time_ms": 511.43,
+        "fps": 2.0,
+        "road_coverage_pct": 39.22,
+        "mean_confidence": 0.9453,
+        "num_detections": 1,
+        "temporal_iou": 0.9741,
+        "frame": 234
+      },
+      {
+        "inference_time_ms": 504.77,
+        "fps": 2.0,
+        "road_coverage_pct": 39.34,
+        "mean_confidence": 0.9386,
+        "num_detections": 1,
+        "temporal_iou": 0.9704,
+        "frame": 235
+      },
+      {
+        "inference_time_ms": 515.24,
+        "fps": 1.9,
+        "road_coverage_pct": 39.98,
+        "mean_confidence": 0.9596,
+        "num_detections": 1,
+        "temporal_iou": 0.9799,
+        "frame": 236
+      },
+      {
+        "inference_time_ms": 515.35,
+        "fps": 1.9,
+        "road_coverage_pct": 38.53,
+        "mean_confidence": 0.94,
+        "num_detections": 1,
+        "temporal_iou": 0.9582,
+        "frame": 237
+      },
+      {
+        "inference_time_ms": 510.81,
+        "fps": 2.0,
+        "road_coverage_pct": 38.51,
+        "mean_confidence": 0.9366,
+        "num_detections": 1,
+        "temporal_iou": 0.9715,
+        "frame": 238
+      },
+      {
+        "inference_time_ms": 488.28,
+        "fps": 2.0,
+        "road_coverage_pct": 38.46,
+        "mean_confidence": 0.9642,
+        "num_detections": 1,
+        "temporal_iou": 0.888,
+        "frame": 239
+      },
+      {
+        "inference_time_ms": 489.93,
+        "fps": 2.0,
+        "road_coverage_pct": 36.92,
+        "mean_confidence": 0.9387,
+        "num_detections": 1,
+        "temporal_iou": 0.9517,
+        "frame": 240
+      },
+      {
+        "inference_time_ms": 627.4,
+        "fps": 1.6,
+        "road_coverage_pct": 40.52,
+        "mean_confidence": 0.9424,
+        "num_detections": 1,
+        "temporal_iou": 0.893,
+        "frame": 241
+      },
+      {
+        "inference_time_ms": 612.94,
+        "fps": 1.6,
+        "road_coverage_pct": 41.08,
+        "mean_confidence": 0.9462,
+        "num_detections": 1,
+        "temporal_iou": 0.9807,
+        "frame": 242
+      },
+      {
+        "inference_time_ms": 525.5,
+        "fps": 1.9,
+        "road_coverage_pct": 41.38,
+        "mean_confidence": 0.969,
+        "num_detections": 1,
+        "temporal_iou": 0.9887,
+        "frame": 243
+      },
+      {
+        "inference_time_ms": 492.15,
+        "fps": 2.0,
+        "road_coverage_pct": 40.27,
+        "mean_confidence": 0.9313,
+        "num_detections": 1,
+        "temporal_iou": 0.9666,
+        "frame": 244
+      },
+      {
+        "inference_time_ms": 491.76,
+        "fps": 2.0,
+        "road_coverage_pct": 41.21,
+        "mean_confidence": 0.9504,
+        "num_detections": 1,
+        "temporal_iou": 0.9647,
+        "frame": 245
+      },
+      {
+        "inference_time_ms": 498.96,
+        "fps": 2.0,
+        "road_coverage_pct": 40.5,
+        "mean_confidence": 0.9397,
+        "num_detections": 1,
+        "temporal_iou": 0.9779,
+        "frame": 246
+      },
+      {
+        "inference_time_ms": 583.98,
+        "fps": 1.7,
+        "road_coverage_pct": 39.56,
+        "mean_confidence": 0.9383,
+        "num_detections": 1,
+        "temporal_iou": 0.9713,
+        "frame": 247
+      },
+      {
+        "inference_time_ms": 500.82,
+        "fps": 2.0,
+        "road_coverage_pct": 39.09,
+        "mean_confidence": 0.9366,
+        "num_detections": 1,
+        "temporal_iou": 0.9796,
+        "frame": 248
+      },
+      {
+        "inference_time_ms": 493.58,
+        "fps": 2.0,
+        "road_coverage_pct": 39.04,
+        "mean_confidence": 0.9299,
+        "num_detections": 1,
+        "temporal_iou": 0.9819,
+        "frame": 249
+      },
+      {
+        "inference_time_ms": 490.3,
+        "fps": 2.0,
+        "road_coverage_pct": 38.05,
+        "mean_confidence": 0.93,
+        "num_detections": 1,
+        "temporal_iou": 0.9516,
+        "frame": 250
+      },
+      {
+        "inference_time_ms": 506.38,
+        "fps": 2.0,
+        "road_coverage_pct": 37.71,
+        "mean_confidence": 0.9307,
+        "num_detections": 1,
+        "temporal_iou": 0.9555,
+        "frame": 251
+      },
+      {
+        "inference_time_ms": 504.07,
+        "fps": 2.0,
+        "road_coverage_pct": 35.79,
+        "mean_confidence": 0.9421,
+        "num_detections": 1,
+        "temporal_iou": 0.9365,
+        "frame": 252
+      },
+      {
+        "inference_time_ms": 508.28,
+        "fps": 2.0,
+        "road_coverage_pct": 39.72,
+        "mean_confidence": 0.9556,
+        "num_detections": 1,
+        "temporal_iou": 0.8992,
+        "frame": 253
+      },
+      {
+        "inference_time_ms": 519.83,
+        "fps": 1.9,
+        "road_coverage_pct": 39.43,
+        "mean_confidence": 0.9533,
+        "num_detections": 1,
+        "temporal_iou": 0.9851,
+        "frame": 254
+      },
+      {
+        "inference_time_ms": 522.21,
+        "fps": 1.9,
+        "road_coverage_pct": 39.66,
+        "mean_confidence": 0.9562,
+        "num_detections": 1,
+        "temporal_iou": 0.9831,
+        "frame": 255
+      },
+      {
+        "inference_time_ms": 516.45,
+        "fps": 1.9,
+        "road_coverage_pct": 39.61,
+        "mean_confidence": 0.9563,
+        "num_detections": 1,
+        "temporal_iou": 0.9836,
+        "frame": 256
+      },
+      {
+        "inference_time_ms": 513.79,
+        "fps": 1.9,
+        "road_coverage_pct": 39.98,
+        "mean_confidence": 0.9683,
+        "num_detections": 1,
+        "temporal_iou": 0.9811,
+        "frame": 257
+      },
+      {
+        "inference_time_ms": 494.15,
+        "fps": 2.0,
+        "road_coverage_pct": 39.95,
+        "mean_confidence": 0.9721,
+        "num_detections": 1,
+        "temporal_iou": 0.9885,
+        "frame": 258
+      },
+      {
+        "inference_time_ms": 500.33,
+        "fps": 2.0,
+        "road_coverage_pct": 40.02,
+        "mean_confidence": 0.973,
+        "num_detections": 1,
+        "temporal_iou": 0.9898,
+        "frame": 259
+      },
+      {
+        "inference_time_ms": 500.1,
+        "fps": 2.0,
+        "road_coverage_pct": 39.93,
+        "mean_confidence": 0.9653,
+        "num_detections": 1,
+        "temporal_iou": 0.9887,
+        "frame": 260
+      },
+      {
+        "inference_time_ms": 493.84,
+        "fps": 2.0,
+        "road_coverage_pct": 39.73,
+        "mean_confidence": 0.9711,
+        "num_detections": 1,
+        "temporal_iou": 0.9896,
+        "frame": 261
+      },
+      {
+        "inference_time_ms": 507.12,
+        "fps": 2.0,
+        "road_coverage_pct": 39.33,
+        "mean_confidence": 0.9644,
+        "num_detections": 1,
+        "temporal_iou": 0.9848,
+        "frame": 262
+      },
+      {
+        "inference_time_ms": 508.79,
+        "fps": 2.0,
+        "road_coverage_pct": 37.42,
+        "mean_confidence": 0.9545,
+        "num_detections": 1,
+        "temporal_iou": 0.9447,
+        "frame": 263
+      },
+      {
+        "inference_time_ms": 503.09,
+        "fps": 2.0,
+        "road_coverage_pct": 38.99,
+        "mean_confidence": 0.9589,
+        "num_detections": 1,
+        "temporal_iou": 0.9371,
+        "frame": 264
+      },
+      {
+        "inference_time_ms": 508.96,
+        "fps": 2.0,
+        "road_coverage_pct": 37.16,
+        "mean_confidence": 0.953,
+        "num_detections": 1,
+        "temporal_iou": 0.9447,
+        "frame": 265
+      },
+      {
+        "inference_time_ms": 512.47,
+        "fps": 2.0,
+        "road_coverage_pct": 35.18,
+        "mean_confidence": 0.945,
+        "num_detections": 1,
+        "temporal_iou": 0.9432,
+        "frame": 266
+      },
+      {
+        "inference_time_ms": 506.66,
+        "fps": 2.0,
+        "road_coverage_pct": 35.59,
+        "mean_confidence": 0.9447,
+        "num_detections": 1,
+        "temporal_iou": 0.9799,
+        "frame": 267
+      },
+      {
+        "inference_time_ms": 499.68,
+        "fps": 2.0,
+        "road_coverage_pct": 39.29,
+        "mean_confidence": 0.9781,
+        "num_detections": 1,
+        "temporal_iou": 0.9021,
+        "frame": 268
+      },
+      {
+        "inference_time_ms": 504.61,
+        "fps": 2.0,
+        "road_coverage_pct": 39.3,
+        "mean_confidence": 0.9783,
+        "num_detections": 1,
+        "temporal_iou": 0.9821,
+        "frame": 269
+      },
+      {
+        "inference_time_ms": 505.89,
+        "fps": 2.0,
+        "road_coverage_pct": 37.31,
+        "mean_confidence": 0.9772,
+        "num_detections": 1,
+        "temporal_iou": 0.9371,
+        "frame": 270
+      },
+      {
+        "inference_time_ms": 502.6,
+        "fps": 2.0,
+        "road_coverage_pct": 38.8,
+        "mean_confidence": 0.9751,
+        "num_detections": 1,
+        "temporal_iou": 0.9246,
+        "frame": 271
+      },
+      {
+        "inference_time_ms": 510.03,
+        "fps": 2.0,
+        "road_coverage_pct": 39.88,
+        "mean_confidence": 0.9757,
+        "num_detections": 1,
+        "temporal_iou": 0.971,
+        "frame": 272
+      },
+      {
+        "inference_time_ms": 509.99,
+        "fps": 2.0,
+        "road_coverage_pct": 38.85,
+        "mean_confidence": 0.9729,
+        "num_detections": 1,
+        "temporal_iou": 0.9738,
+        "frame": 273
+      },
+      {
+        "inference_time_ms": 508.26,
+        "fps": 2.0,
+        "road_coverage_pct": 37.85,
+        "mean_confidence": 0.9729,
+        "num_detections": 1,
+        "temporal_iou": 0.9596,
+        "frame": 274
+      },
+      {
+        "inference_time_ms": 492.36,
+        "fps": 2.0,
+        "road_coverage_pct": 38.16,
+        "mean_confidence": 0.9757,
+        "num_detections": 1,
+        "temporal_iou": 0.9586,
+        "frame": 275
+      },
+      {
+        "inference_time_ms": 509.59,
+        "fps": 2.0,
+        "road_coverage_pct": 36.64,
+        "mean_confidence": 0.9794,
+        "num_detections": 1,
+        "temporal_iou": 0.9329,
+        "frame": 276
+      },
+      {
+        "inference_time_ms": 511.11,
+        "fps": 2.0,
+        "road_coverage_pct": 35.18,
+        "mean_confidence": 0.9743,
+        "num_detections": 1,
+        "temporal_iou": 0.9155,
+        "frame": 277
+      },
+      {
+        "inference_time_ms": 504.71,
+        "fps": 2.0,
+        "road_coverage_pct": 37.35,
+        "mean_confidence": 0.9769,
+        "num_detections": 1,
+        "temporal_iou": 0.9209,
+        "frame": 278
+      },
+      {
+        "inference_time_ms": 511.67,
+        "fps": 2.0,
+        "road_coverage_pct": 36.43,
+        "mean_confidence": 0.9789,
+        "num_detections": 1,
+        "temporal_iou": 0.967,
+        "frame": 279
+      },
+      {
+        "inference_time_ms": 510.09,
+        "fps": 2.0,
+        "road_coverage_pct": 34.31,
+        "mean_confidence": 0.9763,
+        "num_detections": 1,
+        "temporal_iou": 0.9263,
+        "frame": 280
+      },
+      {
+        "inference_time_ms": 510.68,
+        "fps": 2.0,
+        "road_coverage_pct": 36.34,
+        "mean_confidence": 0.9767,
+        "num_detections": 1,
+        "temporal_iou": 0.9232,
+        "frame": 281
+      },
+      {
+        "inference_time_ms": 504.16,
+        "fps": 2.0,
+        "road_coverage_pct": 36.23,
+        "mean_confidence": 0.9764,
+        "num_detections": 1,
+        "temporal_iou": 0.9708,
+        "frame": 282
+      },
+      {
+        "inference_time_ms": 511.68,
+        "fps": 2.0,
+        "road_coverage_pct": 36.08,
+        "mean_confidence": 0.9695,
+        "num_detections": 1,
+        "temporal_iou": 0.98,
+        "frame": 283
+      }
+    ]
+  }
+}
