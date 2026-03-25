@@ -15,7 +15,12 @@ from offroad_autonomy.planning.centerline_planner import CenterlinePlanner
 from offroad_autonomy.postprocessing.temporal_stabilizer import TemporalStabilizer
 from offroad_autonomy.preprocessing.image_preprocessor import ImagePreprocessor
 from offroad_autonomy.perception.road_segmenter import RoadSegmenter
-from offroad_autonomy.types import ControlCommand, PipelineConfig, VehicleState
+from offroad_autonomy.types import (
+    ControlCommand,
+    PipelineConfig,
+    PipelineStepResult,
+    VehicleState,
+)
 
 import numpy as np
 
@@ -52,6 +57,14 @@ class AutonomyPipeline:
         ControlCommand
             Steering, throttle, and brake values to send to the simulator.
         """
+        return self.step_result(raw_frame, vehicle_state).command
+
+    def step_result(
+        self,
+        raw_frame: np.ndarray,
+        vehicle_state: VehicleState,
+    ) -> PipelineStepResult:
+        """Run one full cycle of the autonomy stack and retain stage outputs."""
         frame = self.preprocessor.process(raw_frame)
         perception = self.segmenter.predict(frame)
         stabilized = self.stabilizer.stabilize(perception)
@@ -66,7 +79,13 @@ class AutonomyPipeline:
             command.steering,
         )
 
-        return command
+        return PipelineStepResult(
+            frame=frame,
+            perception=perception,
+            stabilized=stabilized,
+            plan=plan,
+            command=command,
+        )
 
     def reset(self) -> None:
         """Clear all temporal state (e.g. on map reload)."""

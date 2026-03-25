@@ -6,7 +6,30 @@ from pathlib import Path
 
 import yaml
 
-from offroad_autonomy.types import DEFAULT_PERCEPTION_PROMPTS, PipelineConfig
+from offroad_autonomy.types import (
+    DEFAULT_DASHBOARD_COLORS,
+    DEFAULT_PERCEPTION_PROMPTS,
+    PipelineConfig,
+)
+
+
+def _parse_color(raw: object, default: tuple[int, int, int]) -> tuple[int, int, int]:
+    if not isinstance(raw, (list, tuple)) or len(raw) != 3:
+        return default
+    try:
+        return tuple(int(value) for value in raw)
+    except (TypeError, ValueError):
+        return default
+
+
+def _load_dashboard_colors(raw: object) -> dict[str, tuple[int, int, int]]:
+    colors = DEFAULT_DASHBOARD_COLORS.copy()
+    if not isinstance(raw, dict):
+        return colors
+
+    for key, default in DEFAULT_DASHBOARD_COLORS.items():
+        colors[key] = _parse_color(raw.get(key), default)
+    return colors
 
 
 def load_config(path: str | Path) -> PipelineConfig:
@@ -21,6 +44,8 @@ def load_config(path: str | Path) -> PipelineConfig:
     post = raw.get("postprocessing", {})
     plan = raw.get("planning", {})
     ctrl = raw.get("control", {})
+    viz = raw.get("visualization", {})
+    dashboard = viz.get("dashboard", {})
 
     return PipelineConfig(
         beamng_home=bng.get("home", ""),
@@ -58,4 +83,5 @@ def load_config(path: str | Path) -> PipelineConfig:
         max_throttle=ctrl.get("max_throttle", 0.6),
         max_brake=ctrl.get("max_brake", 0.8),
         speed_kp=ctrl.get("speed_kp", 0.3),
+        dashboard_colors=_load_dashboard_colors(dashboard.get("colors")),
     )

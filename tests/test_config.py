@@ -13,6 +13,10 @@ def test_load_config_reads_perception_prompts(tmp_path):
                 "  prompts:",
                 '    - "trail"',
                 '    - "road"',
+                "visualization:",
+                "  dashboard:",
+                "    colors:",
+                "      BG: [1, 2, 3]",
             ]
         ),
         encoding="utf-8",
@@ -22,3 +26,4 @@ def test_load_config_reads_perception_prompts(tmp_path):
 
     assert config.model_weights == "dummy.pt"
     assert config.perception_prompts == ["trail", "road"]
+    assert config.dashboard_colors["BG"] == (1, 2, 3)

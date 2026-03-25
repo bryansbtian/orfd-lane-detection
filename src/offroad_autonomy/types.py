@@ -18,6 +18,24 @@ DEFAULT_PERCEPTION_PROMPTS = [
     "gravel path",
 ]
 
+DEFAULT_DASHBOARD_COLORS = {
+    "BG": (18, 22, 26),
+    "PANEL_BG": (28, 33, 38),
+    "CARD_BG": (34, 40, 46),
+    "CARD_BORDER": (54, 62, 70),
+    "TEXT_PRIMARY": (238, 240, 242),
+    "TEXT_SECONDARY": (155, 163, 172),
+    "MUTED_LINE": (72, 80, 88),
+    "MASK_FILL": (100, 172, 116),
+    "MASK_EDGE": (182, 224, 193),
+    "PATH_GLOW": (92, 184, 255),
+    "PATH_CORE": (72, 174, 255),
+    "PATH_HIGHLIGHT": (246, 249, 252),
+    "GOOD": (102, 187, 106),
+    "WARN": (82, 181, 233),
+    "BAD": (90, 92, 225),
+}
+
 
 @dataclass
 class FramePacket:
@@ -81,6 +99,17 @@ class ControlCommand:
 
 
 @dataclass
+class PipelineStepResult:
+    """Outputs from one full pipeline iteration."""
+
+    frame: FramePacket
+    perception: PerceptionResult
+    stabilized: StabilizedResult
+    plan: PathPlan
+    command: ControlCommand
+
+
+@dataclass
 class PipelineConfig:
     """Structured representation of the full configuration."""
 
@@ -126,3 +155,6 @@ class PipelineConfig:
     max_throttle: float = 0.6
     max_brake: float = 0.8
     speed_kp: float = 0.3
+    dashboard_colors: dict[str, tuple[int, int, int]] = field(
+        default_factory=lambda: DEFAULT_DASHBOARD_COLORS.copy()
+    )
