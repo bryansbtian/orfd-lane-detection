@@ -1,10 +1,41 @@
-.claude
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+deprecated/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Environment
+.env
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# Model weights
 *.pt
 *.ts
-runs
-test_data
+models/
+
+# Datasets (too large for git)
+datasets/
+
+# Generated outputs
+output/
+runs/
+benchmark/
+
+# Media files (test data, results)
+test_videos/
 *.mp4
+*.avi
 *.png
 *.jpg
-__pycache__
-datasets
+*.jpeg
