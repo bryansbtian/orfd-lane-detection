@@ -28,6 +28,7 @@ logger = logging.getLogger("offroad_autonomy.main")
 
 _shutdown = False
 _WINDOW_TITLE = "Off-Road Autonomy Dashboard"
+_MPH_PER_MPS = 2.2369362920544
 
 
 def _signal_handler(signum, frame) -> None:
@@ -72,7 +73,7 @@ def _build_dashboard_telemetry(
     latency_ms: float,
 ) -> DashboardTelemetry:
     return DashboardTelemetry(
-        speed_mps=speed_mps,
+        speed_mph=speed_mps * _MPH_PER_MPS,
         steering=steering,
         throttle=throttle,
         brake=brake,

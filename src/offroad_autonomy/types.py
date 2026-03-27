@@ -144,17 +144,35 @@ class PipelineConfig:
     morphology_kernel_size: int = 5
 
     centerline_samples: int = 20
+    planner_backend: str = "heuristic"
+    planner_horizon_fraction: float = 0.82
+    planner_smoothing_window: int = 7
+    planner_clearance_weight: float = 0.65
+    planner_prior_std_fraction: float = 0.10
+    planner_min_confidence: float = 0.18
+    planner_temporal_blend: float = 0.58
+    planner_max_lateral_step_px: float = 32.0
     kalman_process_noise: float = 1e-3
     kalman_measurement_noise: float = 1e-1
     fallback_after_n_misses: int = 3
     min_road_pixels: int = 500
 
-    stanley_gain_k: float = 2.5
-    stanley_softening: float = 1.0
-    target_speed_mps: float = 5.0
-    max_throttle: float = 0.6
+    stanley_gain_k: float = 1.15
+    stanley_softening: float = 2.4
+    stanley_heading_gain: float = 0.75
+    stanley_lookahead_fraction: float = 0.35
+    stanley_near_path_weight: float = 0.35
+    steering_ema_alpha: float = 0.28
+    max_steering_delta: float = 0.10
+    steering_deadband: float = 0.03
+    target_speed_mph: float = 12.0
+    speed_limit_mph: float = 15.0
+    min_turn_speed_mph: float = 7.0
+    curve_speed_gain: float = 475.0
+    heading_speed_gain: float = 1.1
+    max_throttle: float = 0.45
     max_brake: float = 0.8
-    speed_kp: float = 0.3
+    speed_kp: float = 0.22
     dashboard_colors: dict[str, tuple[int, int, int]] = field(
         default_factory=lambda: DEFAULT_DASHBOARD_COLORS.copy()
     )

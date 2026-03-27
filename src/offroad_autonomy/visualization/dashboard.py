@@ -14,7 +14,7 @@ from offroad_autonomy.types import DEFAULT_DASHBOARD_COLORS, PathPlan
 class DashboardTelemetry:
     """Compact status values shown in the dashboard sidebar."""
 
-    speed_mps: float
+    speed_mph: float
     steering: float
     throttle: float
     brake: float
@@ -333,7 +333,7 @@ class AutonomyDashboard:
 
         cv2.putText(
             canvas,
-            f"{telemetry.speed_mps:4.1f} m/s",
+            f"{telemetry.speed_mph:4.1f} mph",
             (x + 18, y + 66),
             cv2.FONT_HERSHEY_DUPLEX,
             1.0,
@@ -740,3 +740,4 @@ class AutonomyDashboard:
                 1,
                 cv2.LINE_AA,
             )
+

@@ -45,7 +45,7 @@ beamng:
     automation_test_track:
       spawns:
         - pos: [-384.82, 84.05, 114.82]
-          rot: [0, 0, 0, 1]
+          rot: [0, 0, 0.6962, 0.7175]
         - pos: [-374.83, 84.82, 118.0]
           rot: [0, 0, 0, 1]
         - pos: [487.25, 178.73, 131.93]
@@ -80,18 +80,36 @@ postprocessing:
 
 planning:
   centerline_samples: 20
+  backend: heuristic
+  horizon_fraction: 0.82
+  smoothing_window: 7
+  clearance_weight: 0.65
+  prior_std_fraction: 0.10
+  min_confidence: 0.18
+  temporal_blend: 0.58
+  max_lateral_step_px: 32.0
   kalman_process_noise: 1.0e-3
   kalman_measurement_noise: 1.0e-1
   fallback_after_n_misses: 3
   min_road_pixels: 500
 
 control:
-  stanley_gain_k: 2.5
-  stanley_softening: 1.0
-  target_speed_mps: 5.0
-  max_throttle: 0.6
+  stanley_gain_k: 1.15
+  stanley_softening: 2.4
+  stanley_heading_gain: 0.75
+  stanley_lookahead_fraction: 0.35
+  stanley_near_path_weight: 0.35
+  steering_ema_alpha: 0.28
+  max_steering_delta: 0.10
+  steering_deadband: 0.03
+  target_speed_mph: 12.0
+  speed_limit_mph: 15.0
+  min_turn_speed_mph: 7.0
+  curve_speed_gain: 475.0
+  heading_speed_gain: 1.1
+  max_throttle: 0.45
   max_brake: 0.8
-  speed_kp: 0.3
+  speed_kp: 0.22
 
 visualization:
   dashboard:
