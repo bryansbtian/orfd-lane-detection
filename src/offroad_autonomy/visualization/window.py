@@ -47,7 +47,7 @@ class DashboardWindow:
         try:
             import tkinter as tk
             from PIL import Image, ImageTk
-        except Exception as exc:  # pragma: no cover - depends on local environment
+        except Exception as exc:
             logger.warning("Tkinter window backend unavailable: %s", exc)
             return False
 
@@ -62,7 +62,7 @@ class DashboardWindow:
             label = tk.Label(root, bd=0, bg="#11161a", highlightthickness=0)
             label.pack(fill="both", expand=True)
             root.update_idletasks()
-        except Exception as exc:  # pragma: no cover - depends on local environment
+        except Exception as exc:
             logger.warning("Failed to initialise Tkinter dashboard window: %s", exc)
             return False
 
