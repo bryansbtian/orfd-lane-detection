@@ -3,19 +3,28 @@
 Loads configuration, initialises the BeamNG client and the autonomy
 pipeline, then runs the main perception-planning-control loop until
 interrupted.
+
+Drive modes (toggle via keyboard while the dashboard window is focused):
+    P  — Path-planning (autonomous via Stanley + Kalman)
+    M  — Manual (no controls sent, drive with keyboard/wheel)
+    B  — BeamNG AI (simulator's built-in AI driver)
+    Q  — Quit
 """
 
 from __future__ import annotations
 
 import argparse
+import csv
 import logging
 import signal
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 from offroad_autonomy.pipeline import AutonomyPipeline
 from offroad_autonomy.simulation.beamng_client import BeamNGClient
+from offroad_autonomy.types import ControlCommand, PipelineConfig, VehicleState
 from offroad_autonomy.utils.config import load_config
 from offroad_autonomy.utils.logger import setup_logger
 from offroad_autonomy.visualization import (
@@ -28,6 +37,10 @@ logger = logging.getLogger("offroad_autonomy.main")
 
 _shutdown = False
 _WINDOW_TITLE = "Off-Road Autonomy Dashboard"
+
+DRIVE_MANUAL = "MANUAL"
+DRIVE_AUTO = "AUTO"
+DRIVE_BEAMNG_AI = "BEAMNG_AI"
 
 
 def _signal_handler(signum, frame) -> None:
@@ -84,6 +97,36 @@ def _build_dashboard_telemetry(
     )
 
 
+# ── CSV logger ───────────────────────────────────────────────────────────────
+
+LOG_FIELDS = [
+    "frame", "time_s", "lateral_offset_m", "heading_error_deg",
+    "speed_mps", "steering", "throttle", "brake", "drive_mode",
+]
+
+
+class RunLogger:
+    """Lightweight CSV logger — writes essentials each frame."""
+
+    def __init__(self, output_dir: Path) -> None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.path = output_dir / f"run_{stamp}.csv"
+        self._fp = open(self.path, "w", newline="")
+        self._writer = csv.DictWriter(self._fp, fieldnames=LOG_FIELDS)
+        self._writer.writeheader()
+        self._fp.flush()
+
+    def log(self, row: dict) -> None:
+        self._writer.writerow(row)
+        self._fp.flush()
+
+    def close(self) -> None:
+        self._fp.close()
+
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+
 def main() -> None:
     global _shutdown
     _shutdown = False
@@ -109,10 +152,19 @@ def main() -> None:
         colors=config.dashboard_colors,
     )
     dashboard_window = None
+    run_log = RunLogger(Path("simulator_log"))
 
     frame_count = 0
     t_start = time.perf_counter()
     fps_ema = 0.0
+    drive_mode = DRIVE_MANUAL
+
+    print("=" * 60)
+    print("  Off-Road Autonomy Pipeline")
+    print("=" * 60)
+    print(f"  Mode: {drive_mode}")
+    print("  P=PathPlan  M=Manual  B=BeamNG AI  Q=Quit")
+    print("=" * 60)
 
     try:
         client.connect()
@@ -121,7 +173,7 @@ def main() -> None:
             dashboard.width,
             dashboard.height,
         )
-        logger.info("Entering main loop - press Ctrl+C to stop")
+        logger.info("Entering main loop — default mode: MANUAL")
 
         while not _shutdown:
             frame = client.capture_frame()
@@ -131,12 +183,42 @@ def main() -> None:
 
             state = client.get_vehicle_state()
             t_loop = time.perf_counter()
+
+            # Always run perception + planning (for dashboard display)
             result = pipeline.step_result(frame, state)
-            client.send_controls(result.command)
+
+            # Only send controls in AUTO mode; manual = hands off
+            if drive_mode == DRIVE_AUTO:
+                client.send_controls(result.command)
 
             loop_latency_ms = (time.perf_counter() - t_loop) * 1000.0
             fps_now = 1000.0 / max(loop_latency_ms, 1e-6)
             fps_ema = fps_now if fps_ema <= 0.0 else (0.18 * fps_now + 0.82 * fps_ema)
+
+            # Compute lateral offset from plan centerline
+            lateral_offset_m = 0.0
+            heading_error_deg = 0.0
+            if len(result.plan.centerline) > 0:
+                cx_bottom = result.plan.centerline[-1, 0]
+                frame_w = result.frame.width
+                # Normalize to [-1, 1] range (rough estimate, not ground truth)
+                lateral_offset_m = (cx_bottom - frame_w / 2.0) / (frame_w / 2.0)
+            heading_error_deg = result.plan.heading_rad * 57.2958  # rad to deg
+
+            # Log
+            elapsed = time.perf_counter() - t_start
+            cmd = result.command if drive_mode == DRIVE_AUTO else ControlCommand()
+            run_log.log({
+                "frame": frame_count,
+                "time_s": round(elapsed, 3),
+                "lateral_offset_m": round(lateral_offset_m, 4),
+                "heading_error_deg": round(heading_error_deg, 2),
+                "speed_mps": round(state.speed_mps, 3),
+                "steering": round(cmd.steering, 4),
+                "throttle": round(cmd.throttle, 3),
+                "brake": round(cmd.brake, 3),
+                "drive_mode": drive_mode,
+            })
 
             telemetry = _build_dashboard_telemetry(
                 speed_mps=state.speed_mps,
@@ -155,9 +237,30 @@ def main() -> None:
                 result.plan,
                 telemetry,
             )
-            if dashboard_window is not None and not dashboard_window.show(dashboard_frame):
-                _shutdown = True
-                continue
+
+            key = -1
+            if dashboard_window is not None:
+                key = dashboard_window.show(dashboard_frame)
+                if key == -2:
+                    _shutdown = True
+                    continue
+
+            # Key handling
+            if key == ord("p") or key == ord("P"):
+                drive_mode = DRIVE_AUTO
+                client.set_beamng_ai(False)
+                logger.info("Switched to AUTO (path planning)")
+                print(f"[MODE] {drive_mode}")
+            elif key == ord("m") or key == ord("M"):
+                drive_mode = DRIVE_MANUAL
+                client.set_beamng_ai(False)
+                logger.info("Switched to MANUAL")
+                print(f"[MODE] {drive_mode}")
+            elif key == ord("b") or key == ord("B"):
+                drive_mode = DRIVE_BEAMNG_AI
+                client.set_beamng_ai(True)
+                logger.info("Switched to BEAMNG AI")
+                print(f"[MODE] {drive_mode}")
 
             frame_count += 1
             if frame_count % 100 == 0:
@@ -170,8 +273,10 @@ def main() -> None:
     finally:
         if dashboard_window is not None:
             dashboard_window.close()
+        run_log.close()
         client.disconnect()
         elapsed = time.perf_counter() - t_start
+        logger.info("Log saved: %s", run_log.path)
         logger.info("Session complete - %d frames in %.1f s", frame_count, elapsed)
 
 

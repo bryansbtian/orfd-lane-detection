@@ -84,6 +84,11 @@ class CenterlinePlanner:
             r=config.kalman_measurement_noise,
         )
         self._consecutive_misses = 0
+        # Per-row width history for known-width correction.
+        # Stores recent unclipped widths bucketed by image row zone (near/mid/far)
+        # so irregular road shapes are handled — each zone tracks its own width.
+        self._width_history: dict[str, list[float]] = {"near": [], "mid": [], "far": []}
+        self._width_history_max = 30  # max samples per zone
 
     def plan(self, stabilized: StabilizedResult) -> PathPlan:
         """Compute a centered path through the traversable region."""
@@ -147,10 +152,23 @@ class CenterlinePlanner:
         h: int,
         w: int,
     ) -> tuple[np.ndarray, float]:
-        """Scan horizontal rows to find the road midpoint at each height."""
+        """Scan horizontal rows to find the road midpoint at each height.
+
+        When one road edge is clipped by the camera frame (left==0 or
+        right==W-1), the naive midpoint is biased toward the visible side.
+        We correct this using a per-zone width history learned from frames
+        where both edges are fully visible (known-width prior — see
+        notes.txt for paper references).  Three zones (near/mid/far)
+        handle irregular road shapes where width varies with distance.
+        """
         row_indices = np.linspace(
             int(h * 0.1), int(h * 0.95), self._n_samples, dtype=int,
         )
+
+        EDGE_MARGIN = 2  # pixels — treat edges within this margin as clipped
+        # Zone boundaries as fractions of image height
+        mid_boundary = h * 0.4
+        far_boundary = h * 0.7
 
         points: list[tuple[float, float]] = []
         widths: list[float] = []
@@ -164,9 +182,44 @@ class CenterlinePlanner:
 
             left = float(cols[0])
             right = float(cols[-1])
-            cx = (left + right) / 2.0
+            raw_width = right - left
+
+            left_clipped = left <= EDGE_MARGIN
+            right_clipped = right >= (w - 1 - EDGE_MARGIN)
+
+            # Determine which zone this row belongs to
+            if y >= far_boundary:
+                zone = "near"
+            elif y >= mid_boundary:
+                zone = "mid"
+            else:
+                zone = "far"
+
+            # Track width only from rows where both edges are fully visible
+            if not left_clipped and not right_clipped:
+                hist = self._width_history[zone]
+                hist.append(raw_width)
+                if len(hist) > self._width_history_max:
+                    hist.pop(0)
+
+            # Get the median width estimate for this zone
+            zone_width = 0.0
+            if self._width_history[zone]:
+                zone_width = float(np.median(self._width_history[zone]))
+
+            # Correct centerline using known-width prior when an edge is clipped
+            if zone_width > 0:
+                if left_clipped and not right_clipped:
+                    cx = right - zone_width / 2.0
+                elif right_clipped and not left_clipped:
+                    cx = left + zone_width / 2.0
+                else:
+                    cx = (left + right) / 2.0
+            else:
+                cx = (left + right) / 2.0
+
             points.append((cx, float(y)))
-            widths.append(right - left)
+            widths.append(raw_width)
 
         if not points:
             return np.empty((0, 2)), 0.0
@@ -201,3 +254,4 @@ class CenterlinePlanner:
             r=self._kf.R[0, 0],
         )
         self._consecutive_misses = 0
+        self._width_history = {"near": [], "mid": [], "far": []}

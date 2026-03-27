@@ -128,6 +128,20 @@ class BeamNGClient:
             brake=cmd.brake,
         )
 
+    def set_beamng_ai(self, enabled: bool) -> None:
+        """Toggle BeamNG's built-in AI driver."""
+        if self._vehicle is None:
+            return
+        try:
+            if enabled:
+                self._vehicle.ai.set_mode("span")
+                logger.info("BeamNG AI enabled (span mode)")
+            else:
+                self._vehicle.ai.set_mode("disabled")
+                logger.info("BeamNG AI disabled")
+        except Exception as exc:
+            logger.warning("Failed to toggle BeamNG AI: %s", exc)
+
     def disconnect(self) -> None:
         """Tear down the session gracefully."""
         if self._camera is not None:

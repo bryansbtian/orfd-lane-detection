@@ -74,31 +74,38 @@ class DashboardWindow:
         logger.info("Dashboard window backend: Tkinter")
         return True
 
-    def show(self, frame_bgr) -> bool:
-        """Display the latest dashboard frame. Returns False when closed."""
+    def show(self, frame_bgr) -> int:
+        """Display the latest dashboard frame.
+
+        Returns
+        -------
+        int
+            The key code pressed this frame, or -1 if none.
+            Returns -2 when the window has been closed.
+        """
         if self._closed:
-            return False
+            return -2
 
         if self._backend == "opencv":
             cv2.imshow(self.title, frame_bgr)
             key = cv2.waitKey(1) & 0xFF
             if key in (27, ord("q")):
                 self._closed = True
-                return False
+                return -2
 
             try:
                 if cv2.getWindowProperty(self.title, cv2.WND_PROP_VISIBLE) < 1:
                     self._closed = True
-                    return False
+                    return -2
             except cv2.error:
                 self._closed = True
-                return False
-            return True
+                return -2
+            return key if key != 255 else -1
 
         if self._backend == "tkinter":
-            return self._show_tkinter(frame_bgr)
+            return -1 if self._show_tkinter(frame_bgr) else -2
 
-        return False
+        return -2
 
     def _show_tkinter(self, frame_bgr) -> bool:
         if self._closed or self._root is None or self._label is None:

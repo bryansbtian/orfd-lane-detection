@@ -1,8 +1,8 @@
 beamng:
-  home: "E:\\BeamNG.tech.v0.38.3.0"
+  home: "C:\\Users\\chrrr\\Downloads\\Carla\\BeamNG.tech.v0.38.3.0"
   host: localhost
   port: 64256
-  map: jungle_rock_island
+  map: automation_test_track
   vehicle: pickup
   spawn_index: 0
   camera:
@@ -45,7 +45,7 @@ beamng:
     automation_test_track:
       spawns:
         - pos: [-384.82, 84.05, 114.82]
-          rot: [0, 0, 0, 1]
+          rot: [0, 0, 0.6962, 0.7175]
         - pos: [-374.83, 84.82, 118.0]
           rot: [0, 0, 0, 1]
         - pos: [487.25, 178.73, 131.93]
