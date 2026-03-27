@@ -34,11 +34,12 @@ class StanleyController:
         self._max_brake = config.max_brake
         self._speed_kp = config.speed_kp
         self._frame_w: float = config.preprocess_width
+        self._prev_steer: float = 0.0
 
     def compute(self, plan: PathPlan, state: VehicleState) -> ControlCommand:
         """Compute actuator commands from the path plan and vehicle state."""
         steering = self._lateral_control(plan, state)
-        throttle, brake = self._longitudinal_control(state)
+        throttle, brake = self._longitudinal_control(state, plan.kalman_active)
 
         return ControlCommand(
             steering=float(np.clip(steering, -1.0, 1.0)),
@@ -47,21 +48,53 @@ class StanleyController:
         )
 
     def _lateral_control(self, plan: PathPlan, state: VehicleState) -> float:
-        heading_err = plan.heading_rad
+        # When centerline is lost (mask dropout), hold last good steering
+        # with gentle decay toward zero.  This keeps the car turning through
+        # curves where perception briefly fails instead of snapping to 0.
+        if len(plan.centerline) < 2:
+            # Decay factor: retain 95% per frame (~15 fps → halves in ~1 s)
+            self._prev_steer *= 0.95
+            logger.debug("No centerline — holding steer %.3f", self._prev_steer)
+            return self._prev_steer
 
-        if len(plan.centerline) > 0:
-            cx_bottom = plan.centerline[-1, 0]
-            cte = (cx_bottom - self._frame_w / 2.0) / (self._frame_w / 2.0)
-        else:
-            cte = 0.0
+        n = len(plan.centerline)
+        ego_x = self._frame_w / 2.0
 
-        speed = max(state.speed_mps, 0.1)
-        stanley_term = math.atan2(self._k * cte, speed + self._k_soft)
+        # Lookahead target: ~50% up the centerline (far = early curve detection)
+        look_idx = max(0, n - 1 - int(n * 0.5))
+        target = plan.centerline[look_idx]
+        target_x, target_y = target[0], target[1]
 
-        return heading_err + stanley_term
+        bottom = plan.centerline[-1]
+        bottom_y = bottom[1]
 
-    def _longitudinal_control(self, state: VehicleState) -> tuple[float, float]:
-        speed_err = self._target_speed - state.speed_mps
+        dx = target_x - ego_x
+        dy = bottom_y - target_y
+        if dy < 1.0:
+            self._prev_steer *= 0.95
+            return self._prev_steer
+
+        steer = math.atan2(dx, dy) * 2.0  # gain — far lookahead gives small angles
+        self._prev_steer = steer
+        return steer
+
+    def _longitudinal_control(
+        self, state: VehicleState, kalman_active: bool = False,
+    ) -> tuple[float, float]:
+        # When mask is lost (Kalman coasting), slow down — we're flying blind.
+        # Also slow down proportionally to how hard we're steering (curves).
+        target = self._target_speed
+
+        if kalman_active:
+            # Reduce target to 40% of normal — coast cautiously
+            target *= 0.4
+
+        # Curvature braking: steering near ±1 → target drops to 60%
+        steer_mag = abs(self._prev_steer)
+        curve_factor = 1.0 - 0.4 * min(steer_mag / 0.5, 1.0)
+        target *= curve_factor
+
+        speed_err = target - state.speed_mps
 
         if speed_err > 0:
             throttle = min(self._speed_kp * speed_err, self._max_throttle)

@@ -100,8 +100,10 @@ def _build_dashboard_telemetry(
 # ── CSV logger ───────────────────────────────────────────────────────────────
 
 LOG_FIELDS = [
-    "frame", "time_s", "lateral_offset_m", "heading_error_deg",
+    "frame", "time_s", "lateral_offset_norm", "heading_error_deg",
     "speed_mps", "steering", "throttle", "brake", "drive_mode",
+    # Diagnostics: raw vs filtered to tell planning vs control issues
+    "raw_heading_deg", "raw_lateral_px", "kalman_active", "width_corrected_rows",
 ]
 
 
@@ -196,28 +198,32 @@ def main() -> None:
             fps_ema = fps_now if fps_ema <= 0.0 else (0.18 * fps_now + 0.82 * fps_ema)
 
             # Compute lateral offset from plan centerline
-            lateral_offset_m = 0.0
+            lateral_offset_norm = 0.0
             heading_error_deg = 0.0
             if len(result.plan.centerline) > 0:
                 cx_bottom = result.plan.centerline[-1, 0]
                 frame_w = result.frame.width
-                # Normalize to [-1, 1] range (rough estimate, not ground truth)
-                lateral_offset_m = (cx_bottom - frame_w / 2.0) / (frame_w / 2.0)
+                lateral_offset_norm = (cx_bottom - frame_w / 2.0) / (frame_w / 2.0)
             heading_error_deg = result.plan.heading_rad * 57.2958  # rad to deg
 
             # Log
             elapsed = time.perf_counter() - t_start
             cmd = result.command if drive_mode == DRIVE_AUTO else ControlCommand()
+            plan = result.plan
             run_log.log({
                 "frame": frame_count,
                 "time_s": round(elapsed, 3),
-                "lateral_offset_m": round(lateral_offset_m, 4),
+                "lateral_offset_norm": round(lateral_offset_norm, 4),
                 "heading_error_deg": round(heading_error_deg, 2),
                 "speed_mps": round(state.speed_mps, 3),
                 "steering": round(cmd.steering, 4),
                 "throttle": round(cmd.throttle, 3),
                 "brake": round(cmd.brake, 3),
                 "drive_mode": drive_mode,
+                "raw_heading_deg": round(plan.raw_heading_rad * 57.2958, 2),
+                "raw_lateral_px": round(plan.raw_lateral_offset_px, 1),
+                "kalman_active": plan.kalman_active,
+                "width_corrected_rows": plan.width_corrected_rows,
             })
 
             telemetry = _build_dashboard_telemetry(

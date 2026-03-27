@@ -45,28 +45,40 @@ class _KalmanTracker:
         self.x = np.zeros(self.DIM_X)
         self.P = np.eye(self.DIM_X) * 100.0
 
+        # Curvature decay: 0.8 means curvature fades toward zero each step
+        # instead of persisting forever. Prevents runaway integration during
+        # long straights followed by sudden curves.
         self.F = np.array([
             [1.0, 1.0, 0.0],
             [0.0, 1.0, 1.0],
-            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 0.8],
         ])
         self.H = np.array([
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
         ])
         self.Q = np.eye(self.DIM_X) * q
-        self.R = np.eye(self.DIM_Z) * r
+        # Heading measurement is noisier than lateral — give it more slack
+        self.R = np.diag([r, r * 5.0])
+
+    @staticmethod
+    def _wrap_angle(a: float) -> float:
+        """Wrap angle to [-pi, pi]."""
+        return (a + math.pi) % (2 * math.pi) - math.pi
 
     def predict(self) -> np.ndarray:
         self.x = self.F @ self.x
+        self.x[1] = self._wrap_angle(self.x[1])  # keep heading bounded
         self.P = self.F @ self.P @ self.F.T + self.Q
         return self.x.copy()
 
     def update(self, z: np.ndarray) -> np.ndarray:
         y = z - self.H @ self.x
+        y[1] = self._wrap_angle(y[1])  # wrap heading innovation
         S = self.H @ self.P @ self.H.T + self.R
         K = self.P @ self.H.T @ np.linalg.inv(S)
         self.x = self.x + K @ y
+        self.x[1] = self._wrap_angle(self.x[1])  # keep heading bounded
         self.P = (np.eye(self.DIM_X) - K @ self.H) @ self.P
         return self.x.copy()
 
@@ -99,7 +111,7 @@ class CenterlinePlanner:
         if road_px < self._min_road_px:
             return self._fallback(h, w)
 
-        centerline, road_width = self._extract_centerline(mask, h, w)
+        centerline, road_width, corrected_rows = self._extract_centerline(mask, h, w)
 
         if len(centerline) < 2:
             return self._fallback(h, w)
@@ -118,6 +130,9 @@ class CenterlinePlanner:
             curvature=float(state[2]),
             road_width_px=road_width,
             kalman_active=False,
+            raw_heading_rad=heading,
+            raw_lateral_offset_px=lateral_offset,
+            width_corrected_rows=corrected_rows,
         )
 
     def _fallback(self, h: int, w: int) -> PathPlan:
@@ -151,7 +166,7 @@ class CenterlinePlanner:
         mask: np.ndarray,
         h: int,
         w: int,
-    ) -> tuple[np.ndarray, float]:
+    ) -> tuple[np.ndarray, float, int]:
         """Scan horizontal rows to find the road midpoint at each height.
 
         When one road edge is clipped by the camera frame (left==0 or
@@ -172,6 +187,7 @@ class CenterlinePlanner:
 
         points: list[tuple[float, float]] = []
         widths: list[float] = []
+        corrected_count = 0
 
         for y in row_indices:
             row = mask[y, :]
@@ -211,8 +227,10 @@ class CenterlinePlanner:
             if zone_width > 0:
                 if left_clipped and not right_clipped:
                     cx = right - zone_width / 2.0
+                    corrected_count += 1
                 elif right_clipped and not left_clipped:
                     cx = left + zone_width / 2.0
+                    corrected_count += 1
                 else:
                     cx = (left + right) / 2.0
             else:
@@ -222,22 +240,30 @@ class CenterlinePlanner:
             widths.append(raw_width)
 
         if not points:
-            return np.empty((0, 2)), 0.0
+            return np.empty((0, 2)), 0.0, 0
 
         centerline = np.array(points)
         avg_width = float(np.mean(widths)) if widths else 0.0
-        return centerline, avg_width
+        return centerline, avg_width, corrected_count
 
     @staticmethod
     def _estimate_heading(centerline: np.ndarray) -> float:
-        """Compute heading from the bottom third of the centerline."""
+        """Compute heading as lookahead angle from ego to a point ~40% up.
+
+        Using the bottom-third slope is extremely noisy — small pixel
+        shifts at nearby points cause huge angle changes.  A lookahead
+        angle to a distant point is much more stable because distant
+        points shift less between frames.
+        """
         n = len(centerline)
         if n < 2:
             return 0.0
 
-        bottom_third = max(1, n // 3)
+        # centerline is ordered bottom-to-top: [-1] is near, [0] is far
         pt_near = centerline[-1]
-        pt_far = centerline[-bottom_third]
+        # Look ~40% of the way up the centerline
+        lookahead_idx = max(0, n - 1 - int(n * 0.4))
+        pt_far = centerline[lookahead_idx]
 
         dx = pt_far[0] - pt_near[0]
         dy = pt_near[1] - pt_far[1]

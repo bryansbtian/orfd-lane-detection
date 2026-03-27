@@ -76,6 +76,10 @@ class PathPlan:
     curvature: float = 0.0
     road_width_px: float = 0.0
     kalman_active: bool = False
+    # Diagnostics — raw (pre-Kalman) values for debugging
+    raw_heading_rad: float = 0.0
+    raw_lateral_offset_px: float = 0.0
+    width_corrected_rows: int = 0
 
 
 @dataclass
