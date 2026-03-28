@@ -84,15 +84,15 @@ planning:
   horizon_fraction: 0.82
   smoothing_window: 7
   clearance_weight: 0.65
-  prior_std_fraction: 0.10
+  prior_std_fraction: 0.14
   min_confidence: 0.18
   segment_center_weight: 0.68
-  temporal_blend: 0.58
+  temporal_blend: 0.65
   max_lateral_step_px: 32.0
   straight_blend: 0.72
   straight_residual_px: 4.0
   straight_heading_threshold: 0.08
-  kalman_process_noise: 1.0e-3
+  kalman_process_noise: 5.0e-4
   kalman_measurement_noise: 1.0e-1
   fallback_after_n_misses: 3
   min_road_pixels: 500

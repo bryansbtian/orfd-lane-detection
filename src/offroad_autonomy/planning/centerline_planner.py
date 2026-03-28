@@ -179,11 +179,15 @@ class _HeuristicViPlannerBackend:
         if not segments:
             return None
 
+        width_scale = max(float(len(valid)), 1.0)
+        min_width_px = max(4, int(width_scale * 0.05))
+        wide_segments = [(s, e) for s, e in segments if (e - s + 1) >= min_width_px]
+        candidates = wide_segments if wide_segments else segments
+
         best_segment = None
         best_value = -math.inf
-        width_scale = max(float(len(valid)), 1.0)
 
-        for start, end in segments:
+        for start, end in candidates:
             segment_scores = scores[start : end + 1]
             if len(segment_scores) == 0:
                 continue
@@ -193,7 +197,7 @@ class _HeuristicViPlannerBackend:
             mean_score = float(segment_scores.mean())
             peak_score = float(segment_scores.max())
             width_score = (end - start + 1) / width_scale
-            value = 0.38 * prior + 0.32 * mean_score + 0.18 * peak_score + 0.12 * width_score
+            value = 0.36 * prior + 0.26 * mean_score + 0.13 * peak_score + 0.25 * width_score
 
             if value > best_value:
                 best_value = value
