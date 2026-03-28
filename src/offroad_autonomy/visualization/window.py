@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 import cv2
+import numpy as np
 
 logger = logging.getLogger("offroad_autonomy.visualization")
 
@@ -23,6 +24,7 @@ class DashboardWindow:
         self._photo = None
         self._tk = None
         self._image_tk = None
+        self._background = (17, 22, 26)
 
         if self._try_opencv():
             return
@@ -33,7 +35,10 @@ class DashboardWindow:
 
     def _try_opencv(self) -> bool:
         try:
-            cv2.namedWindow(self.title, cv2.WINDOW_NORMAL)
+            flags = cv2.WINDOW_NORMAL
+            if hasattr(cv2, "WINDOW_FREERATIO"):
+                flags |= cv2.WINDOW_FREERATIO
+            cv2.namedWindow(self.title, flags)
             cv2.resizeWindow(self.title, self.width, self.height)
         except cv2.error as exc:
             logger.warning("OpenCV window backend unavailable: %s", exc)
@@ -46,7 +51,7 @@ class DashboardWindow:
     def _try_tkinter(self) -> bool:
         try:
             import tkinter as tk
-            from PIL import Image, ImageTk
+            from PIL import ImageTk
         except Exception as exc:
             logger.warning("Tkinter window backend unavailable: %s", exc)
             return False
@@ -55,6 +60,7 @@ class DashboardWindow:
             root = tk.Tk()
             root.title(self.title)
             root.geometry(f"{self.width}x{self.height}")
+            root.resizable(True, True)
             root.configure(bg="#11161a")
             root.protocol("WM_DELETE_WINDOW", self._request_close)
             root.bind("<Escape>", lambda event: self._request_close())
@@ -80,25 +86,30 @@ class DashboardWindow:
             return False
 
         if self._backend == "opencv":
-            cv2.imshow(self.title, frame_bgr)
-            key = cv2.waitKey(1) & 0xFF
-            if key in (27, ord("q")):
-                self._closed = True
-                return False
-
-            try:
-                if cv2.getWindowProperty(self.title, cv2.WND_PROP_VISIBLE) < 1:
-                    self._closed = True
-                    return False
-            except cv2.error:
-                self._closed = True
-                return False
-            return True
+            return self._show_opencv(frame_bgr)
 
         if self._backend == "tkinter":
             return self._show_tkinter(frame_bgr)
 
         return False
+
+    def _show_opencv(self, frame_bgr) -> bool:
+        target_w, target_h = self._opencv_viewport_size()
+        display = self._prepare_frame_for_display(frame_bgr, target_w, target_h, self._background)
+        cv2.imshow(self.title, display)
+        key = cv2.waitKey(1) & 0xFF
+        if key in (27, ord("q")):
+            self._closed = True
+            return False
+
+        try:
+            if cv2.getWindowProperty(self.title, cv2.WND_PROP_VISIBLE) < 1:
+                self._closed = True
+                return False
+        except cv2.error:
+            self._closed = True
+            return False
+        return True
 
     def _show_tkinter(self, frame_bgr) -> bool:
         if self._closed or self._root is None or self._label is None:
@@ -106,7 +117,13 @@ class DashboardWindow:
 
         from PIL import Image
 
-        rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        target_w = max(int(self._label.winfo_width()), 1)
+        target_h = max(int(self._label.winfo_height()), 1)
+        if target_w <= 1 or target_h <= 1:
+            target_w, target_h = self.width, self.height
+
+        display = self._prepare_frame_for_display(frame_bgr, target_w, target_h, self._background)
+        rgb = cv2.cvtColor(display, cv2.COLOR_BGR2RGB)
         image = Image.fromarray(rgb)
         self._photo = self._image_tk.PhotoImage(image=image)
         self._label.configure(image=self._photo)
@@ -118,6 +135,43 @@ class DashboardWindow:
             return False
 
         return not self._closed
+
+    def _opencv_viewport_size(self) -> tuple[int, int]:
+        if hasattr(cv2, "getWindowImageRect"):
+            try:
+                _, _, width, height = cv2.getWindowImageRect(self.title)
+                if width > 0 and height > 0:
+                    return int(width), int(height)
+            except cv2.error:
+                pass
+        return self.width, self.height
+
+    @staticmethod
+    def _prepare_frame_for_display(
+        frame_bgr,
+        target_w: int,
+        target_h: int,
+        background: tuple[int, int, int],
+    ):
+        src_h, src_w = frame_bgr.shape[:2]
+        if src_h <= 0 or src_w <= 0:
+            return frame_bgr
+
+        target_w = max(int(target_w), 1)
+        target_h = max(int(target_h), 1)
+        scale = min(target_w / src_w, target_h / src_h)
+        new_w = max(1, int(round(src_w * scale)))
+        new_h = max(1, int(round(src_h * scale)))
+        resized = cv2.resize(frame_bgr, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+        if new_w == target_w and new_h == target_h:
+            return resized
+
+        canvas = np.full((target_h, target_w, 3), background, dtype=np.uint8)
+        off_x = (target_w - new_w) // 2
+        off_y = (target_h - new_h) // 2
+        canvas[off_y:off_y + new_h, off_x:off_x + new_w] = resized
+        return canvas
 
     def _request_close(self) -> None:
         self._closed = True

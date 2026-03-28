@@ -79,6 +79,9 @@ class _HeuristicViPlannerBackend:
         self._n_samples = config.centerline_samples
         self._horizon_fraction = float(np.clip(config.planner_horizon_fraction, 0.30, 0.95))
         self._clearance_weight = float(np.clip(config.planner_clearance_weight, 0.0, 1.0))
+        self._segment_center_weight = float(
+            np.clip(config.planner_segment_center_weight, 0.0, 1.0)
+        )
         self._prior_std_fraction = max(0.02, float(config.planner_prior_std_fraction))
 
     def infer(self, scene: _PlannerScene) -> tuple[np.ndarray, float]:
@@ -109,15 +112,27 @@ class _HeuristicViPlannerBackend:
             if float(scores.max()) <= 1e-6:
                 continue
 
-            prior = np.exp(-0.5 * np.square((cols - prior_x) / sigma))
-            scores = scores * (0.35 + 0.65 * prior)
-            score_sum = float(scores.sum())
+            segment = self._select_segment(valid, scores, prior_x, sigma)
+            if segment is None:
+                continue
+
+            start, end = segment
+            segment_cols = cols[start : end + 1]
+            segment_scores = scores[start : end + 1]
+            prior = np.exp(-0.5 * np.square((segment_cols - prior_x) / sigma))
+            segment_scores = segment_scores * (0.35 + 0.65 * prior)
+            score_sum = float(segment_scores.sum())
             if score_sum <= 1e-6:
                 continue
 
-            x = float(np.dot(scores, cols) / score_sum)
+            weighted_x = float(np.dot(segment_scores, segment_cols) / score_sum)
+            segment_center = 0.5 * (start + end)
+            x = float(
+                self._segment_center_weight * segment_center
+                + (1.0 - self._segment_center_weight) * weighted_x
+            )
             points.append((x, float(y)))
-            row_confidences.append(float(scores[int(np.clip(round(x), 0, w - 1))]))
+            row_confidences.append(float(segment_scores.mean()))
 
             if len(points) >= 2:
                 prev_x, prev_y = points[-2]
@@ -143,6 +158,49 @@ class _HeuristicViPlannerBackend:
         )
         return np.array(points, dtype=np.float32), confidence
 
+    @staticmethod
+    def _segments(valid: np.ndarray) -> list[tuple[int, int]]:
+        indices = np.flatnonzero(valid)
+        if len(indices) == 0:
+            return []
+
+        splits = np.where(np.diff(indices) > 1)[0] + 1
+        groups = np.split(indices, splits)
+        return [(int(group[0]), int(group[-1])) for group in groups if len(group) > 0]
+
+    def _select_segment(
+        self,
+        valid: np.ndarray,
+        scores: np.ndarray,
+        prior_x: float,
+        sigma: float,
+    ) -> tuple[int, int] | None:
+        segments = self._segments(valid)
+        if not segments:
+            return None
+
+        best_segment = None
+        best_value = -math.inf
+        width_scale = max(float(len(valid)), 1.0)
+
+        for start, end in segments:
+            segment_scores = scores[start : end + 1]
+            if len(segment_scores) == 0:
+                continue
+
+            center = 0.5 * (start + end)
+            prior = math.exp(-0.5 * math.pow((center - prior_x) / sigma, 2.0))
+            mean_score = float(segment_scores.mean())
+            peak_score = float(segment_scores.max())
+            width_score = (end - start + 1) / width_scale
+            value = 0.38 * prior + 0.32 * mean_score + 0.18 * peak_score + 0.12 * width_score
+
+            if value > best_value:
+                best_value = value
+                best_segment = (start, end)
+
+        return best_segment
+
 
 def _build_backend(config: PipelineConfig) -> _PlannerBackend:
     if config.planner_backend == "heuristic":
@@ -162,6 +220,11 @@ class CenterlinePlanner:
         self._smoothing_window = max(3, int(config.planner_smoothing_window))
         self._temporal_blend = float(np.clip(config.planner_temporal_blend, 0.0, 1.0))
         self._max_lateral_step_px = float(max(config.planner_max_lateral_step_px, 0.0))
+        self._straight_blend = float(np.clip(config.planner_straight_blend, 0.0, 1.0))
+        self._straight_residual_px = float(max(config.planner_straight_residual_px, 0.0))
+        self._straight_heading_threshold = float(
+            max(config.planner_straight_heading_threshold, 0.0)
+        )
         self._backend = _build_backend(config)
 
         self._kf = _KalmanTracker(
@@ -195,6 +258,7 @@ class CenterlinePlanner:
         if len(centerline) < 2:
             return self._fallback(h, w, prior_state)
         centerline = self._stabilize_trajectory(centerline, w)
+        centerline = self._straighten_trajectory(centerline, w)
 
         lateral_offset = centerline[-1, 0] - w / 2.0
         heading = self._estimate_heading(centerline)
@@ -298,6 +362,52 @@ class CenterlinePlanner:
         stabilized = centerline.copy()
         stabilized[:, 0] = np.clip(blended_x, 0.0, float(w - 1))
         return stabilized
+
+    def _straighten_trajectory(self, centerline: np.ndarray, w: int) -> np.ndarray:
+        """Pull nearly straight paths onto a clean fitted line."""
+        if len(centerline) < 3 or self._straight_blend <= 0.0:
+            return centerline
+
+        residual_px, heading_change = self._straightness_metrics(centerline)
+        if (
+            residual_px > self._straight_residual_px
+            or heading_change > self._straight_heading_threshold
+        ):
+            return centerline
+
+        line_coeffs = np.polyfit(centerline[:, 1], centerline[:, 0], deg=1)
+        line_x = np.polyval(line_coeffs, centerline[:, 1])
+
+        straightened = centerline.copy()
+        straightened[:, 0] = np.clip(
+            self._straight_blend * line_x + (1.0 - self._straight_blend) * centerline[:, 0],
+            0.0,
+            float(w - 1),
+        )
+        return straightened
+
+    @staticmethod
+    def _straightness_metrics(centerline: np.ndarray) -> tuple[float, float]:
+        """Measure how well the path matches a single straight line."""
+        line_coeffs = np.polyfit(centerline[:, 1], centerline[:, 0], deg=1)
+        line_x = np.polyval(line_coeffs, centerline[:, 1])
+        residual_px = float(np.mean(np.abs(centerline[:, 0] - line_x)))
+
+        dx = np.diff(centerline[:, 0])
+        dy = np.diff(centerline[:, 1])
+        valid = dy > 1e-6
+        if not np.any(valid):
+            return residual_px, 0.0
+
+        headings = np.unwrap(np.arctan2(dx[valid], dy[valid]))
+        if len(headings) == 0:
+            return residual_px, 0.0
+
+        window = min(3, len(headings))
+        near_heading = float(np.mean(headings[-window:]))
+        far_heading = float(np.mean(headings[:window]))
+        heading_change = abs(far_heading - near_heading)
+        return residual_px, heading_change
 
     def _fallback(self, h: int, w: int, state: np.ndarray) -> PathPlan:
         """Use the predicted planner state when the scene is unreliable."""

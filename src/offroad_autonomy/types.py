@@ -150,8 +150,12 @@ class PipelineConfig:
     planner_clearance_weight: float = 0.65
     planner_prior_std_fraction: float = 0.10
     planner_min_confidence: float = 0.18
+    planner_segment_center_weight: float = 0.68
     planner_temporal_blend: float = 0.58
     planner_max_lateral_step_px: float = 32.0
+    planner_straight_blend: float = 0.72
+    planner_straight_residual_px: float = 4.0
+    planner_straight_heading_threshold: float = 0.08
     kalman_process_noise: float = 1e-3
     kalman_measurement_noise: float = 1e-1
     fallback_after_n_misses: int = 3
