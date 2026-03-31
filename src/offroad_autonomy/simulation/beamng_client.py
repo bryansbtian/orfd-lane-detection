@@ -119,14 +119,42 @@ class BeamNGClient:
             return VehicleState()
 
     def send_controls(self, cmd: ControlCommand) -> None:
-        """Send steering, throttle, and brake to the vehicle."""
+        """Send steering, throttle, brake, and parking brake to the vehicle."""
         if self._vehicle is None:
             return
         self._vehicle.control(
             steering=cmd.steering,
             throttle=cmd.throttle,
             brake=cmd.brake,
+            parkingbrake=cmd.parkingbrake,
         )
+
+    def release_park(self) -> None:
+        """Release parking brake so the autopilot can take over."""
+        if self._vehicle is None:
+            return
+        self._vehicle.control(steering=0, throttle=0, brake=0, parkingbrake=0)
+        try:
+            self._vehicle.queue_lua_command(
+                'input.event("parkingbrake", 0, FILTER_DIRECT, 0)'
+            )
+        except Exception as exc:
+            logger.debug("Lua release park failed: %s", exc)
+
+    def park(self) -> None:
+        """Immediately zero vehicle velocity and lock it in place."""
+        if self._vehicle is None:
+            return
+        self._vehicle.control(steering=0, throttle=0, brake=1, parkingbrake=1)
+        try:
+            self._vehicle.queue_lua_command(
+                'self:setVelocity(vec3(0,0,0)); '
+                'input.event("throttle", 0, FILTER_DIRECT, 0); '
+                'input.event("brake", 1, FILTER_DIRECT, 0); '
+                'input.event("parkingbrake", 1, FILTER_DIRECT, 0)'
+            )
+        except Exception as exc:
+            logger.debug("Lua park failed: %s", exc)
 
     def disconnect(self) -> None:
         """Tear down the session gracefully."""

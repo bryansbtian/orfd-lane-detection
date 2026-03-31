@@ -3,11 +3,27 @@
 from __future__ import annotations
 
 import logging
+import sys
 
 import cv2
 import numpy as np
 
 logger = logging.getLogger("offroad_autonomy.visualization")
+
+_WINDOWS = sys.platform == "win32"
+_VK = {"w": 0x57, "a": 0x41, "s": 0x53, "d": 0x44, "space": 0x20}
+
+
+def _async_held_keys() -> set[str]:
+    """Poll currently held drive keys via Win32 GetAsyncKeyState."""
+    if not _WINDOWS:
+        return set()
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        return {name for name, vk in _VK.items() if user32.GetAsyncKeyState(vk) & 0x8000}
+    except Exception:
+        return set()
 
 
 class DashboardWindow:
@@ -17,6 +33,8 @@ class DashboardWindow:
         self.title = title
         self.width = width
         self.height = height
+        self.last_key: int = -1
+        self._held: set[str] = set()
         self._backend = ""
         self._closed = False
         self._root = None
@@ -32,6 +50,12 @@ class DashboardWindow:
             return
 
         raise RuntimeError("No supported GUI backend is available for the dashboard window.")
+
+    @property
+    def held_keys(self) -> set[str]:
+        if self._backend == "opencv":
+            return _async_held_keys()
+        return set(self._held)
 
     def _try_opencv(self) -> bool:
         try:
@@ -64,7 +88,8 @@ class DashboardWindow:
             root.configure(bg="#11161a")
             root.protocol("WM_DELETE_WINDOW", self._request_close)
             root.bind("<Escape>", lambda event: self._request_close())
-            root.bind("q", lambda event: self._request_close())
+            root.bind("<KeyPress>", self._on_key_press)
+            root.bind("<KeyRelease>", self._on_key_release)
             label = tk.Label(root, bd=0, bg="#11161a", highlightthickness=0)
             label.pack(fill="both", expand=True)
             root.update_idletasks()
@@ -80,10 +105,30 @@ class DashboardWindow:
         logger.info("Dashboard window backend: Tkinter")
         return True
 
+    def _on_key_press(self, event) -> None:
+        sym = event.keysym.lower()
+        if sym in ("w", "a", "s", "d"):
+            self._held.add(sym)
+        elif sym == "space":
+            self._held.add("space")
+        else:
+            key_map = {"q": ord("q"), "e": ord("e"), "p": ord("p"), "escape": 27}
+            if sym in key_map:
+                code = key_map[sym]
+                self.last_key = code
+                if code in (27, ord("q")):
+                    self._request_close()
+
+    def _on_key_release(self, event) -> None:
+        self._held.discard(event.keysym.lower())
+        if event.keysym.lower() == "space":
+            self._held.discard("space")
+
     def show(self, frame_bgr) -> bool:
         """Display the latest dashboard frame. Returns False when closed."""
         if self._closed:
             return False
+        self.last_key = -1
 
         if self._backend == "opencv":
             return self._show_opencv(frame_bgr)
@@ -98,6 +143,7 @@ class DashboardWindow:
         display = self._prepare_frame_for_display(frame_bgr, target_w, target_h, self._background)
         cv2.imshow(self.title, display)
         key = cv2.waitKey(1) & 0xFF
+        self.last_key = key
         if key in (27, ord("q")):
             self._closed = True
             return False

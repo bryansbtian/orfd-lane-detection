@@ -96,6 +96,7 @@ class ControlCommand:
     steering: float = 0.0
     throttle: float = 0.0
     brake: float = 0.0
+    parkingbrake: float = 0.0
 
 
 @dataclass
