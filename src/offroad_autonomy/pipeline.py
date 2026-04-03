@@ -169,7 +169,10 @@ class AutonomyPipeline:
 
         diff = np.abs(ann.astype(np.int16) - self._road_color)
         mask = (diff.max(axis=2) <= 15).astype(bool)
-        logger.debug("Annotation mask: %d road pixels", int(mask.sum()))
+
+        # Zero out top 40% — trees share the road color but only appear up there
+        mask[:int(mask.shape[0] * 0.40), :] = False
+
         return mask
 
     def _centerline_from_mask(self, mask: np.ndarray) -> np.ndarray:

@@ -1,5 +1,5 @@
 debug:
-  mode: normal                 # normal | gt_mask | gt_centerline
+  mode: gt_centerline                 # normal | gt_mask | gt_centerline
   annotation_road_color: [128, 255, 128]  # BGR color of road surface in BeamNG annotation camera
 
 beamng:
@@ -102,13 +102,13 @@ planning:
   min_road_pixels: 500
 
 control:
-  stanley_gain_k: 1.15
+  stanley_gain_k: 1.8
   stanley_softening: 2.4
-  stanley_heading_gain: 0.75
-  stanley_lookahead_fraction: 0.35
-  stanley_near_path_weight: 0.35
-  steering_ema_alpha: 0.28
-  max_steering_delta: 0.10
+  stanley_heading_gain: 1.1
+  stanley_lookahead_fraction: 0.20
+  stanley_near_path_weight: 0.55
+  steering_ema_alpha: 0.55
+  max_steering_delta: 0.30
   steering_deadband: 0.03
   target_speed_mph: 12.0
   speed_limit_mph: 15.0

@@ -165,13 +165,14 @@ def main() -> None:
     frame_count = 0
     t_start = time.perf_counter()
     fps_ema = 0.0
-    autopilot_active = True
+    autopilot_active = False  # start in manual — press P to engage autopilot
     _SAFE_STOP_COMMAND = ControlCommand(steering=0.0, throttle=0.0, brake=0.0, parkingbrake=1.0)
     _last_mask: np.ndarray | None = None
     stuck_detector = _StuckDetector()
 
     try:
         client.connect()
+        client.release_park()
         if config.debug_mode != "normal":
             ann_map = client.get_annotation_map()
             if ann_map:
@@ -181,8 +182,8 @@ def main() -> None:
             dashboard.width,
             dashboard.height,
         )
-        logger.info("Entering main loop - press Ctrl+C to stop")
-        logger.info("Press E in dashboard to trigger safe stop; press P to resume autopilot")
+        logger.info("Entering main loop in MANUAL mode - press P to start autopilot, Ctrl+C to stop")
+        logger.info("Press E to trigger safe stop; press P to engage/resume autopilot")
 
         while not _shutdown:
             frame = client.capture_frame()
@@ -218,6 +219,18 @@ def main() -> None:
                     )
                     if road_mask_gt is None:
                         annotation_frame = client.capture_annotation_frame()
+                    else:
+                        # Overlay projected edge DOTS on actual camera frame to verify math
+                        vis = cv2.resize(frame, (config.preprocess_width, config.preprocess_height))
+                        edge_pts = client.get_road_edge_projected_points(
+                            state, config.preprocess_width, config.preprocess_height
+                        )
+                        if edge_pts is not None:
+                            for (lx, ly), (rx, ry) in edge_pts:
+                                cv2.circle(vis, (int(lx), int(ly)), 3, (0, 0, 255), -1)
+                                cv2.circle(vis, (int(rx), int(ry)), 3, (255, 0, 0), -1)
+                        cv2.imshow("GT Road Edges on Camera", vis)
+                        cv2.waitKey(1)
                     result = pipeline.step_result(
                         frame, state,
                         annotation_frame=annotation_frame,

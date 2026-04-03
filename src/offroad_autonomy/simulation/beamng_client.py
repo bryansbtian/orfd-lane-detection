@@ -441,22 +441,26 @@ class BeamNGClient:
         x_img = np.clip(img_w / 2.0 + lat_r * (img_w / 2.0) / lateral_scale_m, 0.0, float(img_w - 1))
         return np.stack([x_img, y_img], axis=1).astype(np.float32)
 
-    def get_road_mask_image(
+    def get_road_edge_projected_points(
         self,
         vehicle_state: "VehicleState",
         img_w: int,
         img_h: int,
-        max_range_m: float = 40.0,
-        lateral_scale_m: float = 8.0,
-    ) -> np.ndarray | None:
-        """Project road edge geometry into image space using vehicle-relative coords.
+        max_range_m: float = 30.0,
+    ) -> list[tuple] | None:
+        """Return list of ((lx,ly),(rx,ry)) projected road edge pairs for debugging.
 
-        Same coordinate transform as get_road_centerline_image — forward maps to
-        y (far=top, near=bottom), lateral maps to x (center=straight ahead).
-        Only processes segments within max_range_m for speed.
+        Draw these as dots on the actual camera frame — if they land on the
+        visible road edges, the projection math is correct.
         """
         if not getattr(self, "_road_left_segs", None):
             return None
+
+        cfg = self._config
+        fov_y = math.radians(cfg.camera_fov)
+        focal = (img_h / 2.0) / math.tan(fov_y / 2.0)
+        cx, cy = img_w / 2.0, img_h / 2.0
+        cam_height = float(cfg.camera_pos[2])
 
         pos = vehicle_state.position
         heading = vehicle_state.heading_rad
@@ -464,43 +468,93 @@ class BeamNGClient:
         sin_h = math.sin(heading)
         veh_xy = np.array([pos[0], pos[1]], dtype=np.float32)
 
-        # Distance-filter: only process segments whose mean XY is within range
-        seg_means = self._road_seg_means
-        d = np.linalg.norm(seg_means - veh_xy, axis=1)
-        nearby = np.where(d < max_range_m * 1.5)[0]
+        nearby = np.where(
+            np.linalg.norm(self._road_seg_means - veh_xy, axis=1) < max_range_m
+        )[0]
+
+        def _proj(pt):
+            dx = pt[0] - pos[0]
+            dy = pt[1] - pos[1]
+            fwd = dx * cos_h + dy * sin_h
+            lat = dx * sin_h - dy * cos_h
+            if fwd < 0.5 or fwd > max_range_m:
+                return None
+            vert = cam_height - (pt[2] - pos[2])
+            return (cx + focal * lat / fwd, cy + focal * vert / fwd)
+
+        result = []
+        for i in nearby:
+            for lpt, rpt in zip(self._road_left_segs[i], self._road_right_segs[i]):
+                lp = _proj(lpt)
+                rp = _proj(rpt)
+                if lp is not None and rp is not None:
+                    result.append((lp, rp))
+
+        return result if result else None
+
+    def get_road_mask_image(
+        self,
+        vehicle_state: "VehicleState",
+        img_w: int,
+        img_h: int,
+        max_range_m: float = 40.0,
+    ) -> np.ndarray | None:
+        """Project road edges into camera image space using perspective projection.
+
+        u = cx + focal * lateral / forward     (horizontal — exact perspective)
+        v = cy + focal * cam_height / forward  (vertical — road below camera)
+
+        This matches what the actual camera sees: far road compresses toward the
+        horizon, near road fills the bottom of the frame.
+        """
+        if not getattr(self, "_road_left_segs", None):
+            return None
+
+        cfg = self._config
+        fov_y = math.radians(cfg.camera_fov)
+        focal = (img_h / 2.0) / math.tan(fov_y / 2.0)
+        cx, cy = img_w / 2.0, img_h / 2.0
+        cam_height = float(cfg.camera_pos[2])  # z offset of camera above vehicle ref
+
+        pos = vehicle_state.position
+        heading = vehicle_state.heading_rad
+        cos_h = math.cos(heading)
+        sin_h = math.sin(heading)
+        veh_xy = np.array([pos[0], pos[1]], dtype=np.float32)
+
+        nearby = np.where(
+            np.linalg.norm(self._road_seg_means - veh_xy, axis=1) < max_range_m * 1.2
+        )[0]
         if len(nearby) == 0:
             return None
 
         mask = np.zeros((img_h, img_w), dtype=np.uint8)
 
-        def _to_image(pts3d: np.ndarray) -> np.ndarray:
-            """World XY pts (N,3) → image (x,y) px using vehicle-relative transform."""
+        def _project(pts3d: np.ndarray):
             dx = pts3d[:, 0] - pos[0]
             dy = pts3d[:, 1] - pos[1]
-            forward = dx * cos_h + dy * sin_h
-            lateral = dx * sin_h - dy * cos_h
-            # forward=0 → bottom (near), forward=max_range → top (far)
-            y_img = img_h * (1.0 - forward / max_range_m)
-            x_img = img_w / 2.0 + lateral * (img_w / 2.0) / lateral_scale_m
-            return np.stack([x_img, y_img], axis=1).astype(np.float32)
+            fwd = dx * cos_h + dy * sin_h
+            lat = dx * sin_h - dy * cos_h
+            # road z relative to camera height (road pts have z≈vehicle z, cam is above)
+            road_z = pts3d[:, 2] - pos[2]  # height of road relative to vehicle origin
+            vert = cam_height - road_z      # positive = road is below camera
+
+            valid = fwd > 0.5
+            fwd_safe = np.where(valid, fwd, 1.0)
+            u = cx + focal * lat / fwd_safe
+            v = cy + focal * vert / fwd_safe
+            return u, v, valid
 
         for i in nearby:
-            left_pts = self._road_left_segs[i]
-            right_pts = self._road_right_segs[i]
-
-            l_px = _to_image(left_pts)
-            r_px = _to_image(right_pts)
-
-            # Keep only points that are ahead and within lateral bounds
-            l_fwd = left_pts[:, 0] * cos_h + left_pts[:, 1] * sin_h - (pos[0] * cos_h + pos[1] * sin_h)
-            visible = (l_fwd > 0.5) & (l_fwd < max_range_m)
+            lu, lv, l_valid = _project(self._road_left_segs[i])
+            ru, rv, r_valid = _project(self._road_right_segs[i])
+            visible = l_valid & r_valid & (lu > -img_w) & (lu < 2 * img_w)
             if visible.sum() < 2:
                 continue
 
-            l_vis = l_px[visible]
-            r_vis = r_px[visible]
-
-            poly = np.vstack([l_vis, r_vis[::-1]]).astype(np.int32)
+            l_px = np.stack([lu[visible], lv[visible]], axis=1)
+            r_px = np.stack([ru[visible], rv[visible]], axis=1)
+            poly = np.vstack([l_px, r_px[::-1]]).astype(np.int32)
             poly[:, 0] = np.clip(poly[:, 0], 0, img_w - 1)
             poly[:, 1] = np.clip(poly[:, 1], 0, img_h - 1)
             cv2.fillPoly(mask, [poly], 255)
