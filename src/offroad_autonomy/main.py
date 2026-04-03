@@ -14,11 +14,12 @@ import sys
 import time
 from pathlib import Path
 
+import cv2
 import numpy as np
 
 from offroad_autonomy.pipeline import AutonomyPipeline
 from offroad_autonomy.simulation.beamng_client import BeamNGClient
-from offroad_autonomy.types import ControlCommand
+from offroad_autonomy.types import ControlCommand, PerceptionResult, PipelineStepResult, StabilizedResult
 from offroad_autonomy.utils.config import load_config
 from offroad_autonomy.utils.logger import setup_logger
 from offroad_autonomy.visualization import (
@@ -171,6 +172,10 @@ def main() -> None:
 
     try:
         client.connect()
+        if config.debug_mode != "normal":
+            ann_map = client.get_annotation_map()
+            if ann_map:
+                pipeline.set_annotation_map(ann_map)
         dashboard_window = DashboardWindow(
             _WINDOW_TITLE,
             dashboard.width,
@@ -189,7 +194,37 @@ def main() -> None:
             t_loop = time.perf_counter()
 
             if autopilot_active:
-                result = pipeline.step_result(frame, state)
+                annotation_frame = None
+                road_mask_gt = None
+                if config.debug_mode == "gt_centerline":
+                    gt_plan = client.get_road_gt_plan(state)
+                    if gt_plan is not None:
+                        command = pipeline.controller.compute(gt_plan, state)
+                        blank = np.zeros((config.preprocess_height, config.preprocess_width), dtype=bool)
+                        perception = PerceptionResult(mask=blank, confidences=[1.0], num_detections=1)
+                        stabilized = StabilizedResult(mask=blank, stability_score=1.0)
+                        result = PipelineStepResult(
+                            frame=pipeline.preprocessor.process(frame),
+                            perception=perception,
+                            stabilized=stabilized,
+                            plan=gt_plan,
+                            command=command,
+                        )
+                    else:
+                        result = pipeline.step_result(frame, state)
+                elif config.debug_mode == "gt_mask":
+                    road_mask_gt = client.get_road_mask_image(
+                        state, img_w=config.preprocess_width, img_h=config.preprocess_height,
+                    )
+                    if road_mask_gt is None:
+                        annotation_frame = client.capture_annotation_frame()
+                    result = pipeline.step_result(
+                        frame, state,
+                        annotation_frame=annotation_frame,
+                        road_mask_gt=road_mask_gt,
+                    )
+                else:
+                    result = pipeline.step_result(frame, state)
                 command = result.command
                 steering = command.steering
                 throttle = command.throttle

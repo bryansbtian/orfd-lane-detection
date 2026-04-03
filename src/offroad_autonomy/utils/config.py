@@ -58,6 +58,7 @@ def load_config(path: str | Path) -> PipelineConfig:
     with open(path, "r", encoding="utf-8") as fh:
         raw = yaml.safe_load(fh) or {}
 
+    dbg = raw.get("debug", {})
     bng = raw.get("beamng", {})
     cam = bng.get("camera", {})
     perc = raw.get("perception", {})
@@ -142,4 +143,6 @@ def load_config(path: str | Path) -> PipelineConfig:
         max_brake=ctrl.get("max_brake", 0.8),
         speed_kp=ctrl.get("speed_kp", 0.22),
         dashboard_colors=_load_dashboard_colors(dashboard.get("colors")),
+        debug_mode=dbg.get("mode", "normal"),
+        annotation_road_color=dbg.get("annotation_road_color", [0, 255, 0]),
     )

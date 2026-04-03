@@ -1,5 +1,9 @@
+debug:
+  mode: gt_centerline                 # normal | gt_mask | gt_centerline
+  annotation_road_color: [128, 255, 128]  # BGR color of road surface in BeamNG annotation camera
+
 beamng:
-  home: "E:\\BeamNG.tech.v0.38.3.0"
+  home: "C:\\Users\\chrrr\\Downloads\\Carla\\BeamNG.tech.v0.38.3.0"
   host: localhost
   port: 64256
   map: automation_test_track
@@ -56,7 +60,7 @@ beamng:
           rot: [0, 0, 0, 1]
 
 perception:
-  model_weights: "models/yoloe-26x-seg.pt"
+  model_weights: "C:\\Users\\chrrr\\Downloads\\Carla\\orfd-lane-detection\\models\\yoloe-26x-seg.pt"
   confidence_threshold: 0.25
   input_size: 640
   prompts:

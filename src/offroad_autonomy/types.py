@@ -162,6 +162,13 @@ class PipelineConfig:
     fallback_after_n_misses: int = 3
     min_road_pixels: int = 500
 
+    # Ablation / debug modes
+    # "normal"         — full pipeline (YOLO mask → our centerline → control)
+    # "gt_mask"        — annotation camera mask → our centerline → control
+    # "gt_centerline"  — annotation camera mask → direct geometric centerline → control
+    debug_mode: str = "normal"
+    annotation_road_color: list[int] = field(default_factory=lambda: [0, 255, 0])  # BGR
+
     stanley_gain_k: float = 1.15
     stanley_softening: float = 2.4
     stanley_heading_gain: float = 0.75
