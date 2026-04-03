@@ -43,6 +43,7 @@ class AutonomyDashboard:
         self._colors = DEFAULT_DASHBOARD_COLORS.copy()
         if colors is not None:
             self._colors.update(colors)
+        self._prev_coeffs: np.ndarray | None = None  # temporal EMA for centerline
 
     def render(
         self,
@@ -50,12 +51,12 @@ class AutonomyDashboard:
         postprocessed_mask: np.ndarray,
         plan: PathPlan | None,
         telemetry: DashboardTelemetry,
+        raw_mask: np.ndarray | None = None,
     ) -> np.ndarray:
         """Build the dashboard frame."""
         camera = self._ensure_bgr(camera_bgr)
         mask_source_shape = postprocessed_mask.shape[:2]
-        mask = self._ensure_mask(postprocessed_mask, camera.shape[:2])
-        overlay = self._build_overlay(camera, mask, plan, mask_source_shape)
+        post_mask = self._ensure_mask(postprocessed_mask, camera.shape[:2])
 
         canvas = np.full((self.height, self.width, 3), self._colors["BG"], dtype=np.uint8)
         self._draw_header(canvas)
@@ -71,22 +72,41 @@ class AutonomyDashboard:
         self._draw_panel(canvas, side_rect)
 
         inner_pad = 16
-        viewport_rect = (
-            main_rect[0] + inner_pad,
-            main_rect[1] + inner_pad,
-            main_rect[2] - inner_pad * 2,
-            main_rect[3] - inner_pad * 2,
-        )
-        viewport = self._fit_image(
-            overlay,
-            viewport_rect[2],
-            viewport_rect[3],
-            fill=self._colors["PANEL_BG"],
-        )
-        self._blit(canvas, viewport, viewport_rect[0], viewport_rect[1])
-        self._draw_viewport_labels(canvas, viewport_rect)
+        inner_x = main_rect[0] + inner_pad
+        inner_y = main_rect[1] + inner_pad
+        inner_w = main_rect[2] - inner_pad * 2
+        inner_h = main_rect[3] - inner_pad * 2
 
-        self._draw_sidebar(canvas, side_rect, mask, telemetry)
+        if raw_mask is not None:
+            # Side-by-side: left = raw, right = diff-coded postprocessed
+            half_w = (inner_w - self._gap) // 2
+            raw_mask_r = self._ensure_mask(raw_mask, camera.shape[:2])
+
+            left_overlay = self._build_overlay(camera, raw_mask_r, None, mask_source_shape)
+            right_overlay = self._build_diff_overlay(camera, raw_mask_r, post_mask, plan, mask_source_shape)
+
+            left_img = self._fit_image(left_overlay, half_w, inner_h, fill=self._colors["PANEL_BG"])
+            right_img = self._fit_image(right_overlay, half_w, inner_h, fill=self._colors["PANEL_BG"])
+
+            self._blit(canvas, left_img, inner_x, inner_y)
+            self._blit(canvas, right_img, inner_x + half_w + self._gap, inner_y)
+
+            # Labels
+            self._draw_chip(canvas, inner_x + 12, inner_y + 12, "RAW SEGMENTATION", self._colors["BAD"])
+            self._draw_chip(canvas, inner_x + half_w + self._gap + 12, inner_y + 12, "POSTPROCESSED", self._colors["GOOD"])
+            # Diff legend bottom-left of right panel
+            lx = inner_x + half_w + self._gap + 12
+            ly = inner_y + inner_h - 56
+            self._draw_chip(canvas, lx, ly,      "KEPT",    (80, 180, 80))
+            self._draw_chip(canvas, lx, ly + 26, "REMOVED", (60, 60, 220))
+            self._draw_chip(canvas, lx + 100, ly + 26, "FILLED",  (0, 200, 200))
+        else:
+            overlay = self._build_overlay(camera, post_mask, plan, mask_source_shape)
+            viewport = self._fit_image(overlay, inner_w, inner_h, fill=self._colors["PANEL_BG"])
+            self._blit(canvas, viewport, inner_x, inner_y)
+            self._draw_viewport_labels(canvas, (inner_x, inner_y, inner_w, inner_h))
+
+        self._draw_sidebar(canvas, side_rect, post_mask, telemetry)
         self._draw_pipeline_footer(canvas, main_rect)
         return canvas
 
@@ -134,14 +154,20 @@ class AutonomyDashboard:
             )
 
         if plan is not None and len(plan.centerline) >= 2:
-            pts = plan.centerline.astype(np.float32).copy()
             src_h, src_w = plan_shape
             dst_h, dst_w = camera.shape[:2]
-            if src_h > 0 and src_w > 0 and (src_h, src_w) != (dst_h, dst_w):
-                pts[:, 0] *= dst_w / src_w
-                pts[:, 1] *= dst_h / src_h
+            sx = dst_w / src_w if src_w > 0 else 1.0
+            sy = dst_h / src_h if src_h > 0 else 1.0
 
-            pts = self._smooth_points(pts)
+            # Ego = bottom-center of frame; top of centerline = farthest point
+            ego = np.array([[dst_w / 2.0, float(dst_h)]], dtype=np.float32)
+            cl = plan.centerline.astype(np.float32).copy()
+            cl[:, 0] *= sx
+            cl[:, 1] *= sy
+
+            # Build path: ego → centerline points (bottom-to-top already)
+            raw_pts = np.concatenate([ego, cl], axis=0)
+            pts = self._smooth_points(raw_pts)
             pts_i = np.round(pts).astype(np.int32).reshape(-1, 1, 2)
 
             glow = display.copy()
@@ -193,22 +219,64 @@ class AutonomyDashboard:
 
         return display
 
-    @staticmethod
-    def _smooth_points(points: np.ndarray, samples: int = 120) -> np.ndarray:
-        if len(points) < 2:
+    def _build_diff_overlay(
+        self,
+        camera: np.ndarray,
+        raw_mask: np.ndarray,
+        post_mask: np.ndarray,
+        plan: PathPlan | None,
+        plan_shape: tuple[int, int],
+    ) -> np.ndarray:
+        """Camera overlay with three-color diff: kept / removed / filled."""
+        display = camera.copy()
+
+        kept    = raw_mask & post_mask   # in both — road kept
+        removed = raw_mask & ~post_mask  # in raw but not post — noise removed
+        filled  = ~raw_mask & post_mask  # in post but not raw — hole filled
+
+        layer = display.copy()
+        layer[kept]    = (80,  180,  80)   # green  — stable road
+        layer[removed] = (60,   60, 220)   # red    — cleaned out
+        layer[filled]  = (0,   200, 200)   # yellow — morphology filled
+        display = cv2.addWeighted(layer, 0.45, display, 0.55, 0)
+
+        # Draw path if available
+        if plan is not None and len(plan.centerline) >= 2:
+            src_h, src_w = plan_shape
+            dst_h, dst_w = camera.shape[:2]
+            sx = dst_w / src_w if src_w > 0 else 1.0
+            sy = dst_h / src_h if src_h > 0 else 1.0
+            ego = np.array([[dst_w / 2.0, float(dst_h)]], dtype=np.float32)
+            cl = plan.centerline.astype(np.float32).copy()
+            cl[:, 0] *= sx
+            cl[:, 1] *= sy
+            pts = self._smooth_points(np.concatenate([ego, cl], axis=0))
+            pts_i = np.round(pts).astype(np.int32).reshape(-1, 1, 2)
+            cv2.polylines(display, [pts_i], False, self._colors["PATH_CORE"], 4, lineType=cv2.LINE_AA)
+
+        return display
+
+    def _smooth_points(self, points: np.ndarray, samples: int = 120) -> np.ndarray:
+        if len(points) < 4:
             return points
 
-        diffs = np.diff(points, axis=0)
-        lengths = np.linalg.norm(diffs, axis=1)
-        arc = np.concatenate(([0.0], np.cumsum(lengths)))
-        total = float(arc[-1])
-        if total <= 1e-6:
+        ys_raw = points[:, 1]
+        xs_raw = points[:, 0]
+
+        try:
+            coeffs = np.polyfit(ys_raw, xs_raw, min(3, len(points) - 1))
+        except (np.linalg.LinAlgError, ValueError):
             return points
 
-        q = np.linspace(0.0, total, max(samples, len(points)))
-        xs = np.interp(q, arc, points[:, 0])
-        ys = np.interp(q, arc, points[:, 1])
-        return np.stack([xs, ys], axis=1)
+        # Temporal EMA on polynomial coefficients — prevents frame-to-frame wobble
+        alpha = 0.3  # low = smoother but laggier
+        if self._prev_coeffs is not None and len(self._prev_coeffs) == len(coeffs):
+            coeffs = alpha * coeffs + (1.0 - alpha) * self._prev_coeffs
+        self._prev_coeffs = coeffs.copy()
+
+        ys_smooth = np.linspace(ys_raw[0], ys_raw[-1], samples)
+        xs_smooth = np.polyval(coeffs, ys_smooth)
+        return np.stack([xs_smooth, ys_smooth], axis=1)
 
     @staticmethod
     def _fit_image(image: np.ndarray, target_w: int, target_h: int, fill: tuple[int, int, int]) -> np.ndarray:

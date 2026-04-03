@@ -104,6 +104,7 @@ LOG_FIELDS = [
     "speed_mps", "steering", "throttle", "brake", "drive_mode",
     # Diagnostics: raw vs filtered to tell planning vs control issues
     "raw_heading_deg", "raw_lateral_px", "kalman_active", "width_corrected_rows",
+    "curvature",
 ]
 
 
@@ -224,6 +225,7 @@ def main() -> None:
                 "raw_lateral_px": round(plan.raw_lateral_offset_px, 1),
                 "kalman_active": plan.kalman_active,
                 "width_corrected_rows": plan.width_corrected_rows,
+                "curvature": round(plan.curvature, 5),
             })
 
             telemetry = _build_dashboard_telemetry(
@@ -242,6 +244,7 @@ def main() -> None:
                 result.stabilized.mask,
                 result.plan,
                 telemetry,
+                raw_mask=result.perception.mask,
             )
 
             key = -1

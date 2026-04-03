@@ -155,6 +155,9 @@ class PipelineConfig:
 
     stanley_gain_k: float = 2.5
     stanley_softening: float = 1.0
+    steer_kp: float = 2.0
+    steer_ki: float = 0.3
+    steer_kd: float = 0.4
     target_speed_mps: float = 5.0
     max_throttle: float = 0.6
     max_brake: float = 0.8

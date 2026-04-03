@@ -14,12 +14,16 @@ from __future__ import annotations
 
 import logging
 import math
+import time
 
 import numpy as np
 
 from offroad_autonomy.types import PathPlan, PipelineConfig, StabilizedResult
 
 logger = logging.getLogger("offroad_autonomy.planning")
+
+_REF_DT = 1.0 / 15.0  # seconds — Kalman dynamics tuned at 15 fps
+_CURVATURE_DECAY_REF = 0.8  # per-step decay at reference rate
 
 
 class _KalmanTracker:
@@ -29,13 +33,13 @@ class _KalmanTracker:
     ------------
     x[0]  lateral_offset   pixels from frame centre (positive = road right)
     x[1]  heading          road angle relative to forward (radians)
-    x[2]  curvature        rate of change of heading (rad/step)
+    x[2]  curvature        rate of change of heading (rad/step at ref rate)
 
-    Transition model (constant curvature)
-    -------------------------------------
-    offset'   = offset + heading
-    heading'  = heading + curvature
-    curvature' = curvature
+    Transition model (constant curvature, time-scaled)
+    --------------------------------------------------
+    offset'    = offset + heading · dt_ratio
+    heading'   = heading + curvature · dt_ratio
+    curvature' = curvature · decay^dt_ratio
     """
 
     DIM_X = 3
@@ -45,19 +49,11 @@ class _KalmanTracker:
         self.x = np.zeros(self.DIM_X)
         self.P = np.eye(self.DIM_X) * 100.0
 
-        # Curvature decay: 0.8 means curvature fades toward zero each step
-        # instead of persisting forever. Prevents runaway integration during
-        # long straights followed by sudden curves.
-        self.F = np.array([
-            [1.0, 1.0, 0.0],
-            [0.0, 1.0, 1.0],
-            [0.0, 0.0, 0.8],
-        ])
         self.H = np.array([
             [1.0, 0.0, 0.0],
             [0.0, 1.0, 0.0],
         ])
-        self.Q = np.eye(self.DIM_X) * q
+        self._q = q
         # Heading measurement is noisier than lateral — give it more slack
         self.R = np.diag([r, r * 5.0])
 
@@ -66,19 +62,28 @@ class _KalmanTracker:
         """Wrap angle to [-pi, pi]."""
         return (a + math.pi) % (2 * math.pi) - math.pi
 
-    def predict(self) -> np.ndarray:
-        self.x = self.F @ self.x
-        self.x[1] = self._wrap_angle(self.x[1])  # keep heading bounded
-        self.P = self.F @ self.P @ self.F.T + self.Q
+    def predict(self, dt_ratio: float = 1.0) -> np.ndarray:
+        # Build F scaled by dt_ratio (1.0 = reference timestep)
+        F = np.array([
+            [1.0, dt_ratio, 0.0],
+            [0.0, 1.0,      dt_ratio],
+            [0.0, 0.0,      _CURVATURE_DECAY_REF ** dt_ratio],
+        ])
+        # Process noise scales with time step
+        Q = np.eye(self.DIM_X) * self._q * dt_ratio
+
+        self.x = F @ self.x
+        self.x[1] = self._wrap_angle(self.x[1])
+        self.P = F @ self.P @ F.T + Q
         return self.x.copy()
 
     def update(self, z: np.ndarray) -> np.ndarray:
         y = z - self.H @ self.x
-        y[1] = self._wrap_angle(y[1])  # wrap heading innovation
+        y[1] = self._wrap_angle(y[1])
         S = self.H @ self.P @ self.H.T + self.R
         K = self.P @ self.H.T @ np.linalg.inv(S)
         self.x = self.x + K @ y
-        self.x[1] = self._wrap_angle(self.x[1])  # keep heading bounded
+        self.x[1] = self._wrap_angle(self.x[1])
         self.P = (np.eye(self.DIM_X) - K @ self.H) @ self.P
         return self.x.copy()
 
@@ -96,31 +101,41 @@ class CenterlinePlanner:
             r=config.kalman_measurement_noise,
         )
         self._consecutive_misses = 0
+        self._last_time: float = 0.0
         # Per-row width history for known-width correction.
         # Stores recent unclipped widths bucketed by image row zone (near/mid/far)
         # so irregular road shapes are handled — each zone tracks its own width.
         self._width_history: dict[str, list[float]] = {"near": [], "mid": [], "far": []}
         self._width_history_max = 30  # max samples per zone
 
+    def _dt_ratio(self) -> float:
+        """Compute dt / reference_dt for time-scaling Kalman dynamics."""
+        now = time.perf_counter()
+        dt = now - self._last_time if self._last_time > 0 else _REF_DT
+        dt = min(dt, 0.5)
+        self._last_time = now
+        return dt / _REF_DT
+
     def plan(self, stabilized: StabilizedResult) -> PathPlan:
         """Compute a centered path through the traversable region."""
+        dt_ratio = self._dt_ratio()
         mask = stabilized.mask
         h, w = mask.shape[:2]
         road_px = int(mask.sum())
 
         if road_px < self._min_road_px:
-            return self._fallback(h, w)
+            return self._fallback(h, w, dt_ratio)
 
         centerline, road_width, corrected_rows = self._extract_centerline(mask, h, w)
 
         if len(centerline) < 2:
-            return self._fallback(h, w)
+            return self._fallback(h, w, dt_ratio)
 
         lateral_offset = centerline[-1, 0] - w / 2.0
         heading = self._estimate_heading(centerline)
 
         z = np.array([lateral_offset, heading])
-        self._kf.predict()
+        self._kf.predict(dt_ratio)
         state = self._kf.update(z)
         self._consecutive_misses = 0
 
@@ -135,10 +150,10 @@ class CenterlinePlanner:
             width_corrected_rows=corrected_rows,
         )
 
-    def _fallback(self, h: int, w: int) -> PathPlan:
+    def _fallback(self, h: int, w: int, dt_ratio: float = 1.0) -> PathPlan:
         """Use Kalman prediction when the mask is absent or degraded."""
         self._consecutive_misses += 1
-        state = self._kf.predict()
+        state = self._kf.predict(dt_ratio)
 
         if self._consecutive_misses > self._max_misses:
             logger.warning(
@@ -276,8 +291,9 @@ class CenterlinePlanner:
     def reset(self) -> None:
         """Clear Kalman state (e.g. on map reload)."""
         self._kf = _KalmanTracker(
-            q=self._kf.Q[0, 0],
+            q=self._kf._q,
             r=self._kf.R[0, 0],
         )
         self._consecutive_misses = 0
+        self._last_time = 0.0
         self._width_history = {"near": [], "mid": [], "far": []}

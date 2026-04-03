@@ -74,7 +74,7 @@ preprocessing:
   clahe_grid_size: 8
 
 postprocessing:
-  ema_alpha: 0.7
+  ema_alpha: 0.4
   min_mask_area_fraction: 0.001
   morphology_kernel_size: 5
 
@@ -88,6 +88,9 @@ planning:
 control:
   stanley_gain_k: 2.5
   stanley_softening: 1.0
+  steer_kp: 3.0
+  steer_ki: 0.1
+  steer_kd: 0.0
   target_speed_mps: 5.0
   max_throttle: 0.6
   max_brake: 0.8
