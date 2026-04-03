@@ -1,5 +1,5 @@
 debug:
-  mode: gt_centerline                 # normal | gt_mask | gt_centerline
+  mode: normal                 # normal | gt_mask | gt_centerline
   annotation_road_color: [128, 255, 128]  # BGR color of road surface in BeamNG annotation camera
 
 beamng:

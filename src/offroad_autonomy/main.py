@@ -19,7 +19,7 @@ import numpy as np
 
 from offroad_autonomy.pipeline import AutonomyPipeline
 from offroad_autonomy.simulation.beamng_client import BeamNGClient
-from offroad_autonomy.types import ControlCommand, PerceptionResult, PipelineStepResult, StabilizedResult
+from offroad_autonomy.types import ControlCommand, PathPlan, PerceptionResult, PipelineStepResult, StabilizedResult
 from offroad_autonomy.utils.config import load_config
 from offroad_autonomy.utils.logger import setup_logger
 from offroad_autonomy.visualization import (
@@ -197,21 +197,21 @@ def main() -> None:
                 annotation_frame = None
                 road_mask_gt = None
                 if config.debug_mode == "gt_centerline":
+                    command = ControlCommand(steering=0.0, throttle=0.2, brake=0.0)
                     gt_plan = client.get_road_gt_plan(state)
+                    blank = np.zeros((config.preprocess_height, config.preprocess_width), dtype=bool)
+                    perception = PerceptionResult(mask=blank, confidences=[1.0], num_detections=1)
+                    stabilized = StabilizedResult(mask=blank, stability_score=1.0)
                     if gt_plan is not None:
                         command = pipeline.controller.compute(gt_plan, state)
-                        blank = np.zeros((config.preprocess_height, config.preprocess_width), dtype=bool)
-                        perception = PerceptionResult(mask=blank, confidences=[1.0], num_detections=1)
-                        stabilized = StabilizedResult(mask=blank, stability_score=1.0)
-                        result = PipelineStepResult(
-                            frame=pipeline.preprocessor.process(frame),
-                            perception=perception,
-                            stabilized=stabilized,
-                            plan=gt_plan,
-                            command=command,
-                        )
-                    else:
-                        result = pipeline.step_result(frame, state)
+                    # if gt_plan is None (transient poll failure) reuse last command
+                    result = PipelineStepResult(
+                        frame=pipeline.preprocessor.process(frame),
+                        perception=perception,
+                        stabilized=stabilized,
+                        plan=gt_plan or PathPlan(centerline=np.empty((0, 2))),
+                        command=command,
+                    )
                 elif config.debug_mode == "gt_mask":
                     road_mask_gt = client.get_road_mask_image(
                         state, img_w=config.preprocess_width, img_h=config.preprocess_height,

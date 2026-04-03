@@ -374,18 +374,11 @@ class BeamNGClient:
             logger.debug("RoadsSensor poll failed: %s", exc)
             return None
 
-        # Use projected road centerline for both visualization and CTE
-        centerline = self.get_road_centerline_image(
-            vehicle_state,
-            img_w=self._config.preprocess_width,
-            img_h=self._config.preprocess_height,
-        )
-        if centerline is None or len(centerline) < 2:
-            frame_w = float(self._config.preprocess_width)
-            frame_h = float(self._config.preprocess_height)
-            cte_norm = float(np.clip(-lat_m / half_w, -1.0, 1.0))
-            cx = frame_w / 2.0 + cte_norm * (frame_w / 2.0)
-            centerline = np.array([[cx, frame_h * 0.1], [cx, frame_h * 0.9]], dtype=np.float32)
+        frame_w = float(self._config.preprocess_width)
+        frame_h = float(self._config.preprocess_height)
+        cte_norm = float(np.clip(-lat_m / half_w, -1.0, 1.0))
+        cx = frame_w / 2.0 + cte_norm * (frame_w / 2.0)
+        centerline = np.array([[cx, frame_h * 0.1], [cx, frame_h * 0.9]], dtype=np.float32)
 
         return PathPlan(
             centerline=centerline,
