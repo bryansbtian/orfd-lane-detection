@@ -14,7 +14,7 @@ from offroad_autonomy.types import DEFAULT_DASHBOARD_COLORS, PathPlan
 class DashboardTelemetry:
     """Compact status values shown in the dashboard sidebar."""
 
-    speed_mps: float
+    speed_mph: float
     steering: float
     throttle: float
     brake: float
@@ -23,6 +23,7 @@ class DashboardTelemetry:
     kalman_active: bool
     fps: float
     latency_ms: float
+    autopilot_active: bool = True
 
 
 class AutonomyDashboard:
@@ -38,12 +39,11 @@ class AutonomyDashboard:
         self.height = height
         self._pad = 24
         self._gap = 20
-        self._header_h = 72
-        self._sidebar_w = 360
+        self._header_h = 52
+        self._sidebar_w = 420
         self._colors = DEFAULT_DASHBOARD_COLORS.copy()
         if colors is not None:
             self._colors.update(colors)
-        self._prev_coeffs: np.ndarray | None = None  # temporal EMA for centerline
 
     def render(
         self,
@@ -51,15 +51,15 @@ class AutonomyDashboard:
         postprocessed_mask: np.ndarray,
         plan: PathPlan | None,
         telemetry: DashboardTelemetry,
-        raw_mask: np.ndarray | None = None,
     ) -> np.ndarray:
         """Build the dashboard frame."""
         camera = self._ensure_bgr(camera_bgr)
         mask_source_shape = postprocessed_mask.shape[:2]
-        post_mask = self._ensure_mask(postprocessed_mask, camera.shape[:2])
+        mask = self._ensure_mask(postprocessed_mask, camera.shape[:2])
+        overlay = self._build_overlay(camera, mask, plan, mask_source_shape)
 
         canvas = np.full((self.height, self.width, 3), self._colors["BG"], dtype=np.uint8)
-        self._draw_header(canvas)
+        self._draw_header(canvas, telemetry.autopilot_active)
 
         content_top = self._pad + self._header_h
         content_h = self.height - content_top - self._pad
@@ -72,42 +72,25 @@ class AutonomyDashboard:
         self._draw_panel(canvas, side_rect)
 
         inner_pad = 16
-        inner_x = main_rect[0] + inner_pad
-        inner_y = main_rect[1] + inner_pad
-        inner_w = main_rect[2] - inner_pad * 2
-        inner_h = main_rect[3] - inner_pad * 2
+        viewport_rect = (
+            main_rect[0] + inner_pad,
+            main_rect[1] + inner_pad,
+            main_rect[2] - inner_pad * 2,
+            main_rect[3] - inner_pad * 2,
+        )
+        viewport = self._fit_image(
+            overlay,
+            viewport_rect[2],
+            viewport_rect[3],
+            fill=self._colors["PANEL_BG"],
+        )
+        self._blit(canvas, viewport, viewport_rect[0], viewport_rect[1])
+        self._draw_viewport_labels(canvas, viewport_rect)
 
-        if raw_mask is not None:
-            # Side-by-side: left = raw, right = diff-coded postprocessed
-            half_w = (inner_w - self._gap) // 2
-            raw_mask_r = self._ensure_mask(raw_mask, camera.shape[:2])
+        if not telemetry.autopilot_active:
+            self._draw_safe_stop_overlay(canvas, viewport_rect)
 
-            left_overlay = self._build_overlay(camera, raw_mask_r, None, mask_source_shape)
-            right_overlay = self._build_diff_overlay(camera, raw_mask_r, post_mask, plan, mask_source_shape)
-
-            left_img = self._fit_image(left_overlay, half_w, inner_h, fill=self._colors["PANEL_BG"])
-            right_img = self._fit_image(right_overlay, half_w, inner_h, fill=self._colors["PANEL_BG"])
-
-            self._blit(canvas, left_img, inner_x, inner_y)
-            self._blit(canvas, right_img, inner_x + half_w + self._gap, inner_y)
-
-            # Labels
-            self._draw_chip(canvas, inner_x + 12, inner_y + 12, "RAW SEGMENTATION", self._colors["BAD"])
-            self._draw_chip(canvas, inner_x + half_w + self._gap + 12, inner_y + 12, "POSTPROCESSED", self._colors["GOOD"])
-            # Diff legend bottom-left of right panel
-            lx = inner_x + half_w + self._gap + 12
-            ly = inner_y + inner_h - 56
-            self._draw_chip(canvas, lx, ly,      "KEPT",    (80, 180, 80))
-            self._draw_chip(canvas, lx, ly + 26, "REMOVED", (60, 60, 220))
-            self._draw_chip(canvas, lx + 100, ly + 26, "FILLED",  (0, 200, 200))
-        else:
-            overlay = self._build_overlay(camera, post_mask, plan, mask_source_shape)
-            viewport = self._fit_image(overlay, inner_w, inner_h, fill=self._colors["PANEL_BG"])
-            self._blit(canvas, viewport, inner_x, inner_y)
-            self._draw_viewport_labels(canvas, (inner_x, inner_y, inner_w, inner_h))
-
-        self._draw_sidebar(canvas, side_rect, post_mask, telemetry)
-        self._draw_pipeline_footer(canvas, main_rect)
+        self._draw_sidebar(canvas, side_rect, mask, telemetry)
         return canvas
 
     @staticmethod
@@ -154,20 +137,14 @@ class AutonomyDashboard:
             )
 
         if plan is not None and len(plan.centerline) >= 2:
+            pts = plan.centerline.astype(np.float32).copy()
             src_h, src_w = plan_shape
             dst_h, dst_w = camera.shape[:2]
-            sx = dst_w / src_w if src_w > 0 else 1.0
-            sy = dst_h / src_h if src_h > 0 else 1.0
+            if src_h > 0 and src_w > 0 and (src_h, src_w) != (dst_h, dst_w):
+                pts[:, 0] *= dst_w / src_w
+                pts[:, 1] *= dst_h / src_h
 
-            # Ego = bottom-center of frame; top of centerline = farthest point
-            ego = np.array([[dst_w / 2.0, float(dst_h)]], dtype=np.float32)
-            cl = plan.centerline.astype(np.float32).copy()
-            cl[:, 0] *= sx
-            cl[:, 1] *= sy
-
-            # Build path: ego → centerline points (bottom-to-top already)
-            raw_pts = np.concatenate([ego, cl], axis=0)
-            pts = self._smooth_points(raw_pts)
+            pts = self._smooth_points(pts)
             pts_i = np.round(pts).astype(np.int32).reshape(-1, 1, 2)
 
             glow = display.copy()
@@ -219,64 +196,22 @@ class AutonomyDashboard:
 
         return display
 
-    def _build_diff_overlay(
-        self,
-        camera: np.ndarray,
-        raw_mask: np.ndarray,
-        post_mask: np.ndarray,
-        plan: PathPlan | None,
-        plan_shape: tuple[int, int],
-    ) -> np.ndarray:
-        """Camera overlay with three-color diff: kept / removed / filled."""
-        display = camera.copy()
-
-        kept    = raw_mask & post_mask   # in both — road kept
-        removed = raw_mask & ~post_mask  # in raw but not post — noise removed
-        filled  = ~raw_mask & post_mask  # in post but not raw — hole filled
-
-        layer = display.copy()
-        layer[kept]    = (80,  180,  80)   # green  — stable road
-        layer[removed] = (60,   60, 220)   # red    — cleaned out
-        layer[filled]  = (0,   200, 200)   # yellow — morphology filled
-        display = cv2.addWeighted(layer, 0.45, display, 0.55, 0)
-
-        # Draw path if available
-        if plan is not None and len(plan.centerline) >= 2:
-            src_h, src_w = plan_shape
-            dst_h, dst_w = camera.shape[:2]
-            sx = dst_w / src_w if src_w > 0 else 1.0
-            sy = dst_h / src_h if src_h > 0 else 1.0
-            ego = np.array([[dst_w / 2.0, float(dst_h)]], dtype=np.float32)
-            cl = plan.centerline.astype(np.float32).copy()
-            cl[:, 0] *= sx
-            cl[:, 1] *= sy
-            pts = self._smooth_points(np.concatenate([ego, cl], axis=0))
-            pts_i = np.round(pts).astype(np.int32).reshape(-1, 1, 2)
-            cv2.polylines(display, [pts_i], False, self._colors["PATH_CORE"], 4, lineType=cv2.LINE_AA)
-
-        return display
-
-    def _smooth_points(self, points: np.ndarray, samples: int = 120) -> np.ndarray:
-        if len(points) < 4:
+    @staticmethod
+    def _smooth_points(points: np.ndarray, samples: int = 120) -> np.ndarray:
+        if len(points) < 2:
             return points
 
-        ys_raw = points[:, 1]
-        xs_raw = points[:, 0]
-
-        try:
-            coeffs = np.polyfit(ys_raw, xs_raw, min(3, len(points) - 1))
-        except (np.linalg.LinAlgError, ValueError):
+        diffs = np.diff(points, axis=0)
+        lengths = np.linalg.norm(diffs, axis=1)
+        arc = np.concatenate(([0.0], np.cumsum(lengths)))
+        total = float(arc[-1])
+        if total <= 1e-6:
             return points
 
-        # Temporal EMA on polynomial coefficients — prevents frame-to-frame wobble
-        alpha = 0.3  # low = smoother but laggier
-        if self._prev_coeffs is not None and len(self._prev_coeffs) == len(coeffs):
-            coeffs = alpha * coeffs + (1.0 - alpha) * self._prev_coeffs
-        self._prev_coeffs = coeffs.copy()
-
-        ys_smooth = np.linspace(ys_raw[0], ys_raw[-1], samples)
-        xs_smooth = np.polyval(coeffs, ys_smooth)
-        return np.stack([xs_smooth, ys_smooth], axis=1)
+        q = np.linspace(0.0, total, max(samples, len(points)))
+        xs = np.interp(q, arc, points[:, 0])
+        ys = np.interp(q, arc, points[:, 1])
+        return np.stack([xs, ys], axis=1)
 
     @staticmethod
     def _fit_image(image: np.ndarray, target_w: int, target_h: int, fill: tuple[int, int, int]) -> np.ndarray:
@@ -302,7 +237,7 @@ class AutonomyDashboard:
         cv2.rectangle(canvas, (x, y), (x + w, y + h), self._colors["PANEL_BG"], -1)
         cv2.rectangle(canvas, (x, y), (x + w, y + h), self._colors["CARD_BORDER"], 1)
 
-    def _draw_header(self, canvas: np.ndarray) -> None:
+    def _draw_header(self, canvas: np.ndarray, autopilot_active: bool = True) -> None:
         x = self._pad
         y = self._pad
         w = self.width - self._pad * 2
@@ -314,51 +249,32 @@ class AutonomyDashboard:
         cv2.putText(
             canvas,
             "OFF-ROAD AUTONOMY DEVELOPMENT DASHBOARD",
-            (x + 20, y + 28),
+            (x + 20, y + 34),
             cv2.FONT_HERSHEY_DUPLEX,
             0.75,
             self._colors["TEXT_PRIMARY"],
             1,
             cv2.LINE_AA,
         )
-        cv2.putText(
-            canvas,
-            "BeamNG.tech camera input  |  postprocessed traversability  |  smoothed controller reference path",
-            (x + 20, y + 53),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.48,
-            self._colors["TEXT_SECONDARY"],
-            1,
-            cv2.LINE_AA,
-        )
 
-        chip_text = "AUTONOMY ACTIVE"
+        if autopilot_active:
+            chip_text = "AUTONOMY ACTIVE"
+            chip_color = self._colors["GOOD"]
+        else:
+            chip_text = "SAFE STOP  |  MANUAL CONTROL"
+            chip_color = self._colors["BAD"]
         chip_size, _ = cv2.getTextSize(chip_text, cv2.FONT_HERSHEY_SIMPLEX, 0.46, 1)
         self._draw_chip(
             canvas,
             x + w - chip_size[0] - 44,
-            y + 18,
+            y + 14,
             chip_text,
-            self._colors["GOOD"],
+            chip_color,
         )
 
     def _draw_viewport_labels(self, canvas: np.ndarray, rect: tuple[int, int, int, int]) -> None:
         x, y, w, h = rect
         self._draw_chip(canvas, x + 18, y + 18, "FRONT CAMERA POV", self._colors["WARN"])
-        self._draw_chip(
-            canvas,
-            x + 18,
-            y + h - 64,
-            "POSTPROCESSED TRAVERSABLE REGION",
-            self._colors["MASK_FILL"],
-        )
-        self._draw_chip(
-            canvas,
-            x + 18,
-            y + h - 30,
-            "SMOOTHED CONTROLLER REFERENCE PATH",
-            self._colors["PATH_CORE"],
-        )
 
     def _draw_sidebar(
         self,
@@ -401,7 +317,7 @@ class AutonomyDashboard:
 
         cv2.putText(
             canvas,
-            f"{telemetry.speed_mps:4.1f} m/s",
+            f"{telemetry.speed_mph:4.1f} mph",
             (x + 18, y + 66),
             cv2.FONT_HERSHEY_DUPLEX,
             1.0,
@@ -423,7 +339,7 @@ class AutonomyDashboard:
         self._draw_value_row(
             canvas,
             x + 18,
-            y + min(h - 62, 98),
+            y + h - 78,
             w - 36,
             "Steering",
             f"{telemetry.steering:+.2f}",
@@ -431,7 +347,7 @@ class AutonomyDashboard:
         self._draw_progress_row(
             canvas,
             x + 18,
-            y + h - 40,
+            y + h - 52,
             w - 36,
             "Throttle",
             telemetry.throttle,
@@ -440,7 +356,7 @@ class AutonomyDashboard:
         self._draw_progress_row(
             canvas,
             x + 18,
-            y + h - 18,
+            y + h - 24,
             w - 36,
             "Brake",
             telemetry.brake,
@@ -558,27 +474,18 @@ class AutonomyDashboard:
     def _draw_provenance_card(self, canvas: np.ndarray, rect: tuple[int, int, int, int]) -> None:
         x, y, w, h = rect
         self._draw_card(canvas, rect, "PIPELINE OUTPUT")
-        row_1_y = y + min(44, h // 2 - 6)
-        row_2_y = y + h - 28
+        row_1_y = y + min(40, h // 2 - 4)
+        row_2_y = y + h - 22
 
-        self._draw_legend_row(
-            canvas,
-            x + 18,
-            row_1_y,
-            self._colors["MASK_FILL"],
-            "Mask",
-            "Temporal smoothing + morphology cleanup",
-            "Postprocessed traversable region",
-        )
-        self._draw_legend_row(
-            canvas,
-            x + 18,
-            row_2_y,
-            self._colors["PATH_CORE"],
-            "Path",
-            "Smoothed planning output",
-            "Controller reference centerline",
-        )
+        for row_y, color, label, detail in (
+            (row_1_y, self._colors["MASK_FILL"], "Mask", "Temporal smooth + morphology"),
+            (row_2_y, self._colors["PATH_CORE"], "Path", "Smoothed planning output"),
+        ):
+            cv2.rectangle(canvas, (x + 18, row_y - 9), (x + 30, row_y + 3), color, -1)
+            cv2.putText(canvas, label, (x + 38, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.50,
+                        self._colors["TEXT_PRIMARY"], 1, cv2.LINE_AA)
+            cv2.putText(canvas, detail, (x + 90, row_y), cv2.FONT_HERSHEY_SIMPLEX, 0.42,
+                        self._colors["TEXT_SECONDARY"], 1, cv2.LINE_AA)
 
     def _draw_mask_preview(
         self,
@@ -669,6 +576,11 @@ class AutonomyDashboard:
         color: tuple[int, int, int],
     ) -> None:
         value_clamped = float(np.clip(value, 0.0, 1.0))
+        val_str = f"{value_clamped:.2f}"
+        val_size, _ = cv2.getTextSize(val_str, cv2.FONT_HERSHEY_SIMPLEX, 0.48, 1)
+        val_col_w = val_size[0] + 10
+        bar_w = width - val_col_w
+
         cv2.putText(
             canvas,
             label,
@@ -681,8 +593,8 @@ class AutonomyDashboard:
         )
         cv2.putText(
             canvas,
-            f"{value_clamped:.2f}",
-            (x + width - 38, y),
+            val_str,
+            (x + width - val_size[0], y),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.48,
             self._colors["TEXT_PRIMARY"],
@@ -691,55 +603,46 @@ class AutonomyDashboard:
         )
 
         bar_y = y + 8
-        cv2.rectangle(
-            canvas,
-            (x, bar_y),
-            (x + width, bar_y + 8),
-            self._colors["MUTED_LINE"],
-            -1,
-        )
-        fill_w = int(round(width * value_clamped))
+        cv2.rectangle(canvas, (x, bar_y), (x + bar_w, bar_y + 8), self._colors["MUTED_LINE"], -1)
+        fill_w = int(round(bar_w * value_clamped))
         if fill_w > 0:
             cv2.rectangle(canvas, (x, bar_y), (x + fill_w, bar_y + 8), color, -1)
 
-    def _draw_legend_row(
-        self,
-        canvas: np.ndarray,
-        x: int,
-        y: int,
-        color: tuple[int, int, int],
-        title: str,
-        detail_1: str,
-        detail_2: str,
-    ) -> None:
-        cv2.rectangle(canvas, (x, y - 10), (x + 12, y + 2), color, -1)
+    def _draw_safe_stop_overlay(self, canvas: np.ndarray, rect: tuple[int, int, int, int]) -> None:
+        x, y, w, h = rect
+        overlay = canvas.copy()
+        cv2.rectangle(overlay, (x, y), (x + w, y + h), (30, 30, 160), -1)
+        cv2.addWeighted(overlay, 0.35, canvas, 0.65, 0, canvas)
+
+        cv2.rectangle(canvas, (x, y), (x + w, y + h), (60, 60, 220), 3)
+
+        banner_h = 72
+        banner_y = y + h // 2 - banner_h // 2
+        cv2.rectangle(canvas, (x, banner_y), (x + w, banner_y + banner_h), (20, 20, 100), -1)
+        cv2.rectangle(canvas, (x, banner_y), (x + w, banner_y + banner_h), (60, 60, 220), 2)
+
+        line1 = "SAFE STOP  -  MANUAL CONTROL REQUIRED"
+        sz1, _ = cv2.getTextSize(line1, cv2.FONT_HERSHEY_DUPLEX, 0.78, 1)
         cv2.putText(
             canvas,
-            title,
-            (x + 20, y),
+            line1,
+            (x + (w - sz1[0]) // 2, banner_y + 28),
+            cv2.FONT_HERSHEY_DUPLEX,
+            0.78,
+            (180, 180, 255),
+            1,
+            cv2.LINE_AA,
+        )
+
+        line2 = "W/A/S/D = drive  |  SPACE = brake  |  P = resume autopilot"
+        sz2, _ = cv2.getTextSize(line2, cv2.FONT_HERSHEY_SIMPLEX, 0.50, 1)
+        cv2.putText(
+            canvas,
+            line2,
+            (x + (w - sz2[0]) // 2, banner_y + 56),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.50,
-            self._colors["TEXT_PRIMARY"],
-            1,
-            cv2.LINE_AA,
-        )
-        cv2.putText(
-            canvas,
-            detail_1,
-            (x + 84, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.42,
-            self._colors["TEXT_SECONDARY"],
-            1,
-            cv2.LINE_AA,
-        )
-        cv2.putText(
-            canvas,
-            detail_2,
-            (x + 20, y + 18),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.42,
-            self._colors["TEXT_SECONDARY"],
+            (155, 163, 200),
             1,
             cv2.LINE_AA,
         )
@@ -769,42 +672,4 @@ class AutonomyDashboard:
             cv2.LINE_AA,
         )
 
-    def _draw_pipeline_footer(self, canvas: np.ndarray, rect: tuple[int, int, int, int]) -> None:
-        x, y, w, h = rect
-        footer_y = y + h - 34
-        cv2.line(
-            canvas,
-            (x + 16, footer_y - 18),
-            (x + w - 16, footer_y - 18),
-            self._colors["MUTED_LINE"],
-            1,
-            cv2.LINE_AA,
-        )
 
-        stages = [
-            "CAMERA",
-            "PREPROCESS",
-            "PERCEPTION",
-            "POSTPROCESS",
-            "PLANNING",
-            "CONTROL",
-        ]
-
-        step_w = (w - 32) // len(stages)
-        for idx, stage in enumerate(stages):
-            sx = x + 16 + idx * step_w
-            color = (
-                self._colors["TEXT_PRIMARY"]
-                if idx in {0, 2, 3, 4, 5}
-                else self._colors["TEXT_SECONDARY"]
-            )
-            cv2.putText(
-                canvas,
-                stage,
-                (sx + 4, footer_y),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.44,
-                color,
-                1,
-                cv2.LINE_AA,
-            )

@@ -68,7 +68,7 @@ class AutonomyPipeline:
         frame = self.preprocessor.process(raw_frame)
         perception = self.segmenter.predict(frame)
         stabilized = self.stabilizer.stabilize(perception)
-        plan = self.planner.plan(stabilized)
+        plan = self.planner.plan(stabilized, vehicle_state=vehicle_state)
         command = self.controller.compute(plan, vehicle_state)
 
         logger.debug(
@@ -91,3 +91,4 @@ class AutonomyPipeline:
         """Clear all temporal state (e.g. on map reload)."""
         self.stabilizer.reset()
         self.planner.reset()
+        self.controller.reset()

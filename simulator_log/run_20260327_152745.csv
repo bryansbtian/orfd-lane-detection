@@ -1,0 +1,2 @@
+frame,time_s,lateral_offset_norm,heading_error_deg,speed_mps,steering,throttle,brake,drive_mode,raw_heading_deg,raw_lateral_px,kalman_active,width_corrected_rows,curvature
+0,34.998,-0.0016,-0.05,0.0,0.0,0.0,0.0,MANUAL,0.0,-0.5,False,1,0.1328

@@ -32,6 +32,27 @@ def _load_dashboard_colors(raw: object) -> dict[str, tuple[int, int, int]]:
     return colors
 
 
+def _load_speed_setting_mph(
+    raw: dict,
+    mph_key: str,
+    mps_key: str | None,
+    default: float,
+) -> float:
+    if mph_key in raw:
+        try:
+            return float(raw[mph_key])
+        except (TypeError, ValueError):
+            return default
+
+    if mps_key is not None and mps_key in raw:
+        try:
+            return float(raw[mps_key]) * 2.2369362920544
+        except (TypeError, ValueError):
+            return default
+
+    return default
+
+
 def load_config(path: str | Path) -> PipelineConfig:
     """Load a YAML configuration file into a ``PipelineConfig``."""
     with open(path, "r", encoding="utf-8") as fh:
@@ -73,18 +94,52 @@ def load_config(path: str | Path) -> PipelineConfig:
         min_mask_area_fraction=post.get("min_mask_area_fraction", 0.001),
         morphology_kernel_size=post.get("morphology_kernel_size", 5),
         centerline_samples=plan.get("centerline_samples", 20),
+        planner_backend=plan.get("backend", "heuristic"),
+        planner_horizon_fraction=plan.get("horizon_fraction", 0.82),
+        planner_smoothing_window=plan.get("smoothing_window", 7),
+        planner_clearance_weight=plan.get("clearance_weight", 0.65),
+        planner_prior_std_fraction=plan.get("prior_std_fraction", 0.10),
+        planner_min_confidence=plan.get("min_confidence", 0.18),
+        planner_segment_center_weight=plan.get("segment_center_weight", 0.68),
+        planner_temporal_blend=plan.get("temporal_blend", 0.58),
+        planner_max_lateral_step_px=plan.get("max_lateral_step_px", 32.0),
+        planner_straight_blend=plan.get("straight_blend", 0.72),
+        planner_straight_residual_px=plan.get("straight_residual_px", 4.0),
+        planner_straight_heading_threshold=plan.get("straight_heading_threshold", 0.08),
         kalman_process_noise=plan.get("kalman_process_noise", 1e-3),
         kalman_measurement_noise=plan.get("kalman_measurement_noise", 1e-1),
         fallback_after_n_misses=plan.get("fallback_after_n_misses", 3),
         min_road_pixels=plan.get("min_road_pixels", 500),
-        stanley_gain_k=ctrl.get("stanley_gain_k", 2.5),
-        stanley_softening=ctrl.get("stanley_softening", 1.0),
-        steer_kp=ctrl.get("steer_kp", 2.0),
-        steer_ki=ctrl.get("steer_ki", 0.3),
-        steer_kd=ctrl.get("steer_kd", 0.4),
-        target_speed_mps=ctrl.get("target_speed_mps", 5.0),
-        max_throttle=ctrl.get("max_throttle", 0.6),
+        stanley_gain_k=ctrl.get("stanley_gain_k", 1.15),
+        stanley_softening=ctrl.get("stanley_softening", 2.4),
+        stanley_heading_gain=ctrl.get("stanley_heading_gain", 0.75),
+        stanley_lookahead_fraction=ctrl.get("stanley_lookahead_fraction", 0.35),
+        stanley_near_path_weight=ctrl.get("stanley_near_path_weight", 0.35),
+        steering_ema_alpha=ctrl.get("steering_ema_alpha", 0.28),
+        max_steering_delta=ctrl.get("max_steering_delta", 0.10),
+        steering_deadband=ctrl.get("steering_deadband", 0.03),
+        target_speed_mph=_load_speed_setting_mph(
+            ctrl,
+            mph_key="target_speed_mph",
+            mps_key="target_speed_mps",
+            default=12.0,
+        ),
+        speed_limit_mph=_load_speed_setting_mph(
+            ctrl,
+            mph_key="speed_limit_mph",
+            mps_key=None,
+            default=15.0,
+        ),
+        min_turn_speed_mph=_load_speed_setting_mph(
+            ctrl,
+            mph_key="min_turn_speed_mph",
+            mps_key=None,
+            default=7.0,
+        ),
+        curve_speed_gain=ctrl.get("curve_speed_gain", 475.0),
+        heading_speed_gain=ctrl.get("heading_speed_gain", 1.1),
+        max_throttle=ctrl.get("max_throttle", 0.45),
         max_brake=ctrl.get("max_brake", 0.8),
-        speed_kp=ctrl.get("speed_kp", 0.3),
+        speed_kp=ctrl.get("speed_kp", 0.22),
         dashboard_colors=_load_dashboard_colors(dashboard.get("colors")),
     )

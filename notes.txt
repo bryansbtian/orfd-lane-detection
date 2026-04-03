@@ -1,0 +1,116 @@
+Lateral Position Estimation Under Partial Road Visibility
+==========================================================
+
+PROBLEM: When a forward-facing camera can't see both road edges (wide road,
+tight curve, or narrow FOV), the computed "center" of visible pixels is
+biased. The car thinks it's centered when it's actually off to one side.
+
+RELEVANT PAPERS & APPROACHES
+-----------------------------
+
+1. Vanishing Point + Road Model Methods
+   - Kong, Audibert, Ponce (2009) - "Vanishing Point Detection for Road Detection" - CVPR 2009
+     Uses vanishing point as anchor to infer road geometry even when edges are clipped.
+     VP is invariant to lateral position.
+
+   - Lee et al. (2017) - "VPGNet: Vanishing Point Guided Network for Lane and Road Marking Detection" - ICCV 2017
+     End-to-end network that jointly estimates vanishing point and lane markings.
+     Provides geometric constraints when markings are partially visible.
+
+2. Polynomial / Parametric Lane Models
+   - Aly (2008) - "Real time Detection of Lane Markers in Urban Streets" - IEEE IV 2008
+     Fits parametric curves (B-splines) to detected lane features; the parametric
+     model extrapolates beyond visible edges.
+
+   - Bar Hillel, Lerner, Levi, Raz (2014) - "Recent progress in road and lane detection: a survey"
+     Machine Vision and Applications. Comprehensive survey covering model-based
+     approaches that handle partial visibility through geometric priors.
+
+3. Bird's Eye View (BEV) / Inverse Perspective Mapping (IPM)
+   - In BEV, parallel lane boundaries can be extrapolated even when one edge
+     leaves the frame. RANSAC polyfit is a step in this direction.
+
+4. Deep Learning with Structural Priors
+   - Neven et al. (2018) - "Towards End-to-End Lane Detection: Instance Segmentation Approach" - IEEE IV 2018
+     LaneNet with learned embeddings; handles partial lanes.
+
+   - Tabelini et al. (2021) - "Keep your Eyes on the Lane: Real-time Attention-guided Lane Detection" - CVPR 2021
+     LaneATT - attention-based detection robust to partially visible lanes.
+
+   - Liu et al. (2021) - "CondLaneNet: Top-to-Down Lane Detection Based on Conditional Convolution" - ICCV 2021
+     Row-wise detection that naturally handles lanes entering/exiting the frame.
+
+5. Ego-Lane Estimation
+   - Borkar, Hayes, Smith (2012) - "Polar Randomized Hough Transform for Lane Detection
+     Using Loose Constraints of Parallel Lines" - ICIP 2012
+     Uses parallel line constraints to infer the missing edge.
+
+   - Mammeri, Boukerche, Tang (2016) - "A model-based approach for lane change and merge prediction"
+     Uses Kalman filtering of lateral offset.
+
+PRACTICAL SOLUTIONS (ranked by feasibility for our setup)
+----------------------------------------------------------
+
+1. ASSUME KNOWN ROAD WIDTH
+   - Track road width from frames where both edges are fully visible.
+   - When one edge is clipped (left==0 or right==W-1), use:
+       true_center = visible_edge +/- (known_width / 2)
+   - Simplest, most effective for our case.
+
+2. VANISHING POINT ANCHORING
+   - VP gives road heading; combined with one visible edge, center can be
+     triangulated. More complex but doesn't need width assumption.
+
+3. TEMPORAL KALMAN FILTERING
+   - Already implemented. Smooth lateral offset across frames where visibility
+     alternates between full and partial.
+
+4. SYMMETRY-BASED CORRECTION
+   - Measure how much of each edge is visible (is left at 0? is right at W-1?)
+   - Apply bias correction proportional to the asymmetry.
+
+5. HOMOGRAPHY + PARALLEL LINE PRIOR (BEV)
+   - Transform to bird's eye view where road edges are parallel.
+   - Fit one edge, offset by estimated width to get the other.
+   - Most robust but requires camera calibration / homography matrix.
+
+PAPERS WITH URLS
+-----------------
+
+- "Advances in centerline estimation for autonomous lateral control" (2020)
+  https://arxiv.org/abs/2002.12685
+  Complete monocular perception pipeline for road centerline, heading, and lateral
+  displacement. Directly relevant — addresses centerline estimation for lateral control.
+
+- "Vehicle Ego-Lane Estimation with Sensor Failure Modeling" (2020)
+  https://arxiv.org/abs/2002.01913
+  Ego-lane estimation robust to sensor failure, uses geometric constraints.
+
+- "A novel approach to the enhancement of lane estimator by using Kalman filter" (2017)
+  https://ieeexplore.ieee.org/document/8204376
+  Kalman filter for lane tracking with road width constraints.
+
+- "Lane Detection Based on Road Module and Extended Kalman Filter"
+  https://www.researchgate.net/publication/323197197
+  EKF combined with road structure model and lane width constraints.
+
+- "Camera-Based Lane Marking Detection for ADAS and Autonomous Driving"
+  https://www.researchgate.net/publication/300650187
+  Uses curbs, road edges, and road width as visual cues for robust lane tracking.
+
+- "LOID: Lane Occlusion Inpainting and Detection for Enhanced Autonomous Driving" (2024)
+  https://arxiv.org/abs/2408.09117
+  Handles occluded/missing lane boundaries through inpainting.
+
+- "Tracking and estimation of ego-vehicle's state for lateral localization"
+  https://www.researchgate.net/publication/268516649
+  Particle filter with lateral offset and lane width constraints.
+
+OUR IMPLEMENTATION: Known-width correction (solution #1)
+---------------------------------------------------------
+Based on the lane width prior approach used across multiple papers above.
+When both edges visible: track running average of road width.
+When one edge clipped: estimate true center = visible_edge +/- (avg_width / 2).
+This is the same geometric prior used in classical ADAS lane estimators.
+
+NOTE: Verify paper citations on Google Scholar before using formally.

@@ -1,9 +1,9 @@
 beamng:
-  home: "C:\\Users\\chrrr\\Downloads\\Carla\\BeamNG.tech.v0.38.3.0"
+  home: "E:\\BeamNG.tech.v0.38.3.0"
   host: localhost
   port: 64256
   map: automation_test_track
-  vehicle: pickup
+  vehicle: hopper
   spawn_index: 0
   camera:
     width: 1280
@@ -74,27 +74,46 @@ preprocessing:
   clahe_grid_size: 8
 
 postprocessing:
-  ema_alpha: 0.4
+  ema_alpha: 0.7
   min_mask_area_fraction: 0.001
   morphology_kernel_size: 5
 
 planning:
   centerline_samples: 20
-  kalman_process_noise: 1.0e-3
+  backend: heuristic
+  horizon_fraction: 0.82
+  smoothing_window: 7
+  clearance_weight: 0.65
+  prior_std_fraction: 0.14
+  min_confidence: 0.18
+  segment_center_weight: 0.68
+  temporal_blend: 0.65
+  max_lateral_step_px: 32.0
+  straight_blend: 0.72
+  straight_residual_px: 4.0
+  straight_heading_threshold: 0.08
+  kalman_process_noise: 5.0e-4
   kalman_measurement_noise: 1.0e-1
   fallback_after_n_misses: 3
   min_road_pixels: 500
 
 control:
-  stanley_gain_k: 2.5
-  stanley_softening: 1.0
-  steer_kp: 3.0
-  steer_ki: 0.1
-  steer_kd: 0.0
-  target_speed_mps: 5.0
-  max_throttle: 0.6
+  stanley_gain_k: 1.15
+  stanley_softening: 2.4
+  stanley_heading_gain: 0.75
+  stanley_lookahead_fraction: 0.35
+  stanley_near_path_weight: 0.35
+  steering_ema_alpha: 0.28
+  max_steering_delta: 0.10
+  steering_deadband: 0.03
+  target_speed_mph: 12.0
+  speed_limit_mph: 15.0
+  min_turn_speed_mph: 7.0
+  curve_speed_gain: 475.0
+  heading_speed_gain: 1.1
+  max_throttle: 0.45
   max_brake: 0.8
-  speed_kp: 0.3
+  speed_kp: 0.22
 
 visualization:
   dashboard:

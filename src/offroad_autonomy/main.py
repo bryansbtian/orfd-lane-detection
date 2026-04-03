@@ -3,28 +3,22 @@
 Loads configuration, initialises the BeamNG client and the autonomy
 pipeline, then runs the main perception-planning-control loop until
 interrupted.
-
-Drive modes (toggle via keyboard while the dashboard window is focused):
-    P  — Path-planning (autonomous via Stanley + Kalman)
-    M  — Manual (no controls sent, drive with keyboard/wheel)
-    B  — BeamNG AI (simulator's built-in AI driver)
-    Q  — Quit
 """
 
 from __future__ import annotations
 
 import argparse
-import csv
 import logging
 import signal
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
+
+import numpy as np
 
 from offroad_autonomy.pipeline import AutonomyPipeline
 from offroad_autonomy.simulation.beamng_client import BeamNGClient
-from offroad_autonomy.types import ControlCommand, PipelineConfig, VehicleState
+from offroad_autonomy.types import ControlCommand
 from offroad_autonomy.utils.config import load_config
 from offroad_autonomy.utils.logger import setup_logger
 from offroad_autonomy.visualization import (
@@ -37,10 +31,7 @@ logger = logging.getLogger("offroad_autonomy.main")
 
 _shutdown = False
 _WINDOW_TITLE = "Off-Road Autonomy Dashboard"
-
-DRIVE_MANUAL = "MANUAL"
-DRIVE_AUTO = "AUTO"
-DRIVE_BEAMNG_AI = "BEAMNG_AI"
+_MPH_PER_MPS = 2.2369362920544
 
 
 def _signal_handler(signum, frame) -> None:
@@ -67,6 +58,53 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+_NO_ROAD_CONFIDENCE_THRESHOLD = 0.05
+_NO_ROAD_TIME_S = 2.0
+_STUCK_SPEED_MPS = 0.4
+_STUCK_THROTTLE_MIN = 0.15
+_STUCK_TIME_S = 3.0
+
+
+class _StuckDetector:
+    """Detects stuck or off-road conditions from perception and motion data."""
+
+    def __init__(self) -> None:
+        self._no_road_since: float | None = None
+        self._stuck_since: float | None = None
+
+    def reset(self) -> None:
+        self._no_road_since = None
+        self._stuck_since = None
+
+    def update(
+        self,
+        now: float,
+        perception_confidence: float,
+        speed_mps: float,
+        throttle: float,
+    ) -> tuple[bool, str]:
+        """Return (should_trigger, reason). Resets internal timers on trigger."""
+        if perception_confidence < _NO_ROAD_CONFIDENCE_THRESHOLD:
+            if self._no_road_since is None:
+                self._no_road_since = now
+            elif now - self._no_road_since >= _NO_ROAD_TIME_S:
+                self.reset()
+                return True, "no road detected"
+        else:
+            self._no_road_since = None
+
+        if speed_mps < _STUCK_SPEED_MPS and throttle > _STUCK_THROTTLE_MIN:
+            if self._stuck_since is None:
+                self._stuck_since = now
+            elif now - self._stuck_since >= _STUCK_TIME_S:
+                self.reset()
+                return True, "vehicle stuck"
+        else:
+            self._stuck_since = None
+
+        return False, ""
+
+
 def _mean_confidence(values: list[float]) -> float:
     if not values:
         return 0.0
@@ -85,7 +123,7 @@ def _build_dashboard_telemetry(
     latency_ms: float,
 ) -> DashboardTelemetry:
     return DashboardTelemetry(
-        speed_mps=speed_mps,
+        speed_mph=speed_mps * _MPH_PER_MPS,
         steering=steering,
         throttle=throttle,
         brake=brake,
@@ -96,39 +134,6 @@ def _build_dashboard_telemetry(
         latency_ms=latency_ms,
     )
 
-
-# ── CSV logger ───────────────────────────────────────────────────────────────
-
-LOG_FIELDS = [
-    "frame", "time_s", "lateral_offset_norm", "heading_error_deg",
-    "speed_mps", "steering", "throttle", "brake", "drive_mode",
-    # Diagnostics: raw vs filtered to tell planning vs control issues
-    "raw_heading_deg", "raw_lateral_px", "kalman_active", "width_corrected_rows",
-    "curvature",
-]
-
-
-class RunLogger:
-    """Lightweight CSV logger — writes essentials each frame."""
-
-    def __init__(self, output_dir: Path) -> None:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.path = output_dir / f"run_{stamp}.csv"
-        self._fp = open(self.path, "w", newline="")
-        self._writer = csv.DictWriter(self._fp, fieldnames=LOG_FIELDS)
-        self._writer.writeheader()
-        self._fp.flush()
-
-    def log(self, row: dict) -> None:
-        self._writer.writerow(row)
-        self._fp.flush()
-
-    def close(self) -> None:
-        self._fp.close()
-
-
-# ── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     global _shutdown
@@ -155,19 +160,14 @@ def main() -> None:
         colors=config.dashboard_colors,
     )
     dashboard_window = None
-    run_log = RunLogger(Path("simulator_log"))
 
     frame_count = 0
     t_start = time.perf_counter()
     fps_ema = 0.0
-    drive_mode = DRIVE_MANUAL
-
-    print("=" * 60)
-    print("  Off-Road Autonomy Pipeline")
-    print("=" * 60)
-    print(f"  Mode: {drive_mode}")
-    print("  P=PathPlan  M=Manual  B=BeamNG AI  Q=Quit")
-    print("=" * 60)
+    autopilot_active = True
+    _SAFE_STOP_COMMAND = ControlCommand(steering=0.0, throttle=0.0, brake=0.0, parkingbrake=1.0)
+    _last_mask: np.ndarray | None = None
+    stuck_detector = _StuckDetector()
 
     try:
         client.connect()
@@ -176,7 +176,8 @@ def main() -> None:
             dashboard.width,
             dashboard.height,
         )
-        logger.info("Entering main loop — default mode: MANUAL")
+        logger.info("Entering main loop - press Ctrl+C to stop")
+        logger.info("Press E in dashboard to trigger safe stop; press P to resume autopilot")
 
         while not _shutdown:
             frame = client.capture_frame()
@@ -187,89 +188,92 @@ def main() -> None:
             state = client.get_vehicle_state()
             t_loop = time.perf_counter()
 
-            # Always run perception + planning (for dashboard display)
-            result = pipeline.step_result(frame, state)
+            if autopilot_active:
+                result = pipeline.step_result(frame, state)
+                command = result.command
+                steering = command.steering
+                throttle = command.throttle
+                brake = command.brake
+                perception_confidences = result.perception.confidences
+                stability_score = result.stabilized.stability_score
+                kalman_active = result.plan.kalman_active
+                plan = result.plan
+                mask = result.stabilized.mask
+                raw_frame = result.frame.raw
+                _last_mask = mask
 
-            # Only send controls in AUTO mode; manual = hands off
-            if drive_mode == DRIVE_AUTO:
-                client.send_controls(result.command)
+                triggered, reason = stuck_detector.update(
+                    now=t_loop,
+                    perception_confidence=_mean_confidence(perception_confidences),
+                    speed_mps=state.speed_mps,
+                    throttle=throttle,
+                )
+                if triggered:
+                    autopilot_active = False
+                    client.park()
+                    logger.warning("Safe stop triggered automatically: %s", reason)
+            else:
+                held = dashboard_window.held_keys if dashboard_window is not None else set()
+                if held:
+                    steer_val = (-0.4 if "a" in held else 0.0) + (0.4 if "d" in held else 0.0)
+                    if "space" in held:
+                        command = ControlCommand(steering=steer_val, throttle=0.0, brake=1.0, parkingbrake=1.0)
+                    elif "w" in held:
+                        command = ControlCommand(steering=steer_val, throttle=0.25, brake=0.0, parkingbrake=0.0)
+                    elif "s" in held:
+                        command = ControlCommand(steering=steer_val, throttle=0.0, brake=0.35, parkingbrake=0.0)
+                    else:
+                        command = ControlCommand(steering=steer_val, throttle=0.0, brake=0.0, parkingbrake=0.0)
+                else:
+                    command = _SAFE_STOP_COMMAND
+                steering = command.steering
+                throttle = command.throttle
+                brake = command.brake
+                perception_confidences = []
+                stability_score = 0.0
+                kalman_active = False
+                plan = None
+                mask = _last_mask if _last_mask is not None else np.zeros(
+                    (frame.shape[0], frame.shape[1]), dtype=np.uint8
+                )
+                raw_frame = frame
+
+            client.send_controls(command)
 
             loop_latency_ms = (time.perf_counter() - t_loop) * 1000.0
             fps_now = 1000.0 / max(loop_latency_ms, 1e-6)
             fps_ema = fps_now if fps_ema <= 0.0 else (0.18 * fps_now + 0.82 * fps_ema)
 
-            # Compute lateral offset from plan centerline
-            lateral_offset_norm = 0.0
-            heading_error_deg = 0.0
-            if len(result.plan.centerline) > 0:
-                cx_bottom = result.plan.centerline[-1, 0]
-                frame_w = result.frame.width
-                lateral_offset_norm = (cx_bottom - frame_w / 2.0) / (frame_w / 2.0)
-            heading_error_deg = result.plan.heading_rad * 57.2958  # rad to deg
-
-            # Log
-            elapsed = time.perf_counter() - t_start
-            cmd = result.command if drive_mode == DRIVE_AUTO else ControlCommand()
-            plan = result.plan
-            run_log.log({
-                "frame": frame_count,
-                "time_s": round(elapsed, 3),
-                "lateral_offset_norm": round(lateral_offset_norm, 4),
-                "heading_error_deg": round(heading_error_deg, 2),
-                "speed_mps": round(state.speed_mps, 3),
-                "steering": round(cmd.steering, 4),
-                "throttle": round(cmd.throttle, 3),
-                "brake": round(cmd.brake, 3),
-                "drive_mode": drive_mode,
-                "raw_heading_deg": round(plan.raw_heading_rad * 57.2958, 2),
-                "raw_lateral_px": round(plan.raw_lateral_offset_px, 1),
-                "kalman_active": plan.kalman_active,
-                "width_corrected_rows": plan.width_corrected_rows,
-                "curvature": round(plan.curvature, 5),
-            })
-
             telemetry = _build_dashboard_telemetry(
                 speed_mps=state.speed_mps,
-                steering=result.command.steering,
-                throttle=result.command.throttle,
-                brake=result.command.brake,
-                perception_confidences=result.perception.confidences,
-                stability_score=result.stabilized.stability_score,
-                kalman_active=result.plan.kalman_active,
+                steering=steering,
+                throttle=throttle,
+                brake=brake,
+                perception_confidences=perception_confidences,
+                stability_score=stability_score,
+                kalman_active=kalman_active,
                 fps=fps_ema,
                 latency_ms=loop_latency_ms,
             )
-            dashboard_frame = dashboard.render(
-                result.frame.raw,
-                result.stabilized.mask,
-                result.plan,
-                telemetry,
-                raw_mask=result.perception.mask,
-            )
+            telemetry.autopilot_active = autopilot_active
+            dashboard_frame = dashboard.render(raw_frame, mask, plan, telemetry)
 
-            key = -1
-            if dashboard_window is not None:
-                key = dashboard_window.show(dashboard_frame)
-                if key == -2:
-                    _shutdown = True
-                    continue
+            if dashboard_window is not None and not dashboard_window.show(dashboard_frame):
+                _shutdown = True
+                continue
 
-            # Key handling
-            if key == ord("p") or key == ord("P"):
-                drive_mode = DRIVE_AUTO
-                client.set_beamng_ai(False)
-                logger.info("Switched to AUTO (path planning)")
-                print(f"[MODE] {drive_mode}")
-            elif key == ord("m") or key == ord("M"):
-                drive_mode = DRIVE_MANUAL
-                client.set_beamng_ai(False)
-                logger.info("Switched to MANUAL")
-                print(f"[MODE] {drive_mode}")
-            elif key == ord("b") or key == ord("B"):
-                drive_mode = DRIVE_BEAMNG_AI
-                client.set_beamng_ai(True)
-                logger.info("Switched to BEAMNG AI")
-                print(f"[MODE] {drive_mode}")
+            key = dashboard_window.last_key if dashboard_window is not None else -1
+            if key == ord("e") or key == ord("E"):
+                if autopilot_active:
+                    autopilot_active = False
+                    client.park()
+                    logger.info("Safe stop triggered - autopilot disabled, manual control required")
+            elif key == ord("p") or key == ord("P"):
+                if not autopilot_active:
+                    client.release_park()
+                    autopilot_active = True
+                    stuck_detector.reset()
+                    logger.info("Autopilot resumed")
 
             frame_count += 1
             if frame_count % 100 == 0:
@@ -282,10 +286,8 @@ def main() -> None:
     finally:
         if dashboard_window is not None:
             dashboard_window.close()
-        run_log.close()
         client.disconnect()
         elapsed = time.perf_counter() - t_start
-        logger.info("Log saved: %s", run_log.path)
         logger.info("Session complete - %d frames in %.1f s", frame_count, elapsed)
 
 
