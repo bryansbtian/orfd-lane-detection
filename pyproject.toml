@@ -1,29 +1,33 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "offroad-autonomy"
 version = "0.1.0"
-description = "End-to-end autonomous off-road driving pipeline for BeamNG.tech"
+description = "Autonomous off-road driving for BeamNG.tech"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
 
 dependencies = [
-    "beamngpy>=1.29",
+    "beamngpy>=1.35,<1.36",
     "numpy>=1.26",
     "opencv-python>=4.8",
     "pyyaml>=6.0",
     "scipy>=1.11",
     "torch>=2.1",
-    "ultralytics>=8.1",
+    "ultralytics>=8.4.15,<8.5",
 ]
 
 [project.optional-dependencies]
 dev = [
+    "build>=1.0",
     "pytest>=7.0",
-    "ruff>=0.1",
+    "pytest-cov>=5.0",
+    # Pinned: a new ruff release can enable new default rules and fail CI
+    # with no code change. Dependabot proposes upgrades as pull requests.
+    "ruff==0.16.8",
 ]
 
 [project.scripts]
@@ -34,3 +38,29 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+# RUF046 calls int(round(x)) redundant, but round() on numpy scalars does not
+# reliably return a Python int, and OpenCV rejects anything else as a pixel.
+ignore = ["RUF046"]
+
+[tool.ruff.lint.per-file-ignores]
+# beamngpy and the GUI backends raise a wide, undocumented range of exceptions;
+# a failed poll or window call must degrade, never end the session.
+"src/offroad_autonomy/simulation/beamng_client.py" = ["BLE001"]
+"src/offroad_autonomy/visualization/window.py" = ["BLE001"]
+# Multi-line YAML fixtures read better as a list of lines than as one f-string.
+"tests/**" = ["FLY002"]
+
+[tool.coverage.run]
+source = ["offroad_autonomy"]
+
+[tool.coverage.report]
+# Below the measured 75%: main.py, the BeamNG client and the window need a
+# live simulator and a display, which CI has neither of.
+fail_under = 70

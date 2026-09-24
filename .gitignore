@@ -19,9 +19,11 @@ venv/
 .idea/
 .claude/
 
-# Model weights
+# Model weights and exported engines
 *.pt
 *.ts
+*.engine
+*.onnx
 models/
 
 # Datasets (too large for git)

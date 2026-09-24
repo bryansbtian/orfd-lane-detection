@@ -1,4 +1,4 @@
-"""Structured logging setup for offroad_autonomy."""
+"""Console logging."""
 
 from __future__ import annotations
 
@@ -10,9 +10,10 @@ def setup_logger(
     name: str = "offroad_autonomy",
     level: int = logging.INFO,
 ) -> logging.Logger:
-    """Return a configured logger with a clean console format."""
     logger = logging.getLogger(name)
 
+    # Idempotent so tests and scripts can call it repeatedly without
+    # duplicating every line.
     if logger.handlers:
         return logger
 

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: Lint, Format, Test, and Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # 3.10 is what the JetPack 6 image ships, so it is the version that
+      # must keep working.
+      - name: Set Up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # CPU wheels first: the tests mock the model, and the default CUDA
+      # wheels would add gigabytes to every run for nothing.
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check src tests scripts
+
+      - name: Check Formatting
+        run: ruff format --check src tests scripts
+
+      # ----------------------------------------------------------------------
+      # Per-repository setup. Everything above this line is the same in every
+      # repository; everything between the markers is what this one needs.
+      # ----------------------------------------------------------------------
+
+      # opencv-python links against libGL even when nothing is drawn.
+      - name: Install OpenCV System Libraries
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0
+
+      - name: Check Controller On Synthetic S-Bend
+        run: python scripts/sbend_sim.py
+
+      # ----------------------------------------------------------------------
+
+      - name: Test with Coverage
+        run: pytest --cov --cov-report=term --cov-report=html:coverage
+
+      - name: Build
+        run: python -m build
+
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+          retention-days: 7
+          if-no-files-found: ignore

@@ -15,11 +15,13 @@ _VK = {"w": 0x57, "a": 0x41, "s": 0x53, "d": 0x44, "space": 0x20}
 
 
 def _async_held_keys() -> set[str]:
-    """Poll currently held drive keys via Win32 GetAsyncKeyState."""
+    """HighGUI only reports key presses, not holds, so manual driving needs
+    the OS key state; only Win32 exposes it without extra dependencies."""
     if not _WINDOWS:
         return set()
     try:
         import ctypes
+
         user32 = ctypes.windll.user32
         return {name for name, vk in _VK.items() if user32.GetAsyncKeyState(vk) & 0x8000}
     except Exception:
@@ -27,8 +29,6 @@ def _async_held_keys() -> set[str]:
 
 
 class DashboardWindow:
-    """Display dashboard frames using OpenCV when possible, else Tkinter."""
-
     def __init__(self, title: str, width: int, height: int) -> None:
         self.title = title
         self.width = width
@@ -50,6 +50,12 @@ class DashboardWindow:
             return
 
         raise RuntimeError("No supported GUI backend is available for the dashboard window.")
+
+    @property
+    def backend(self) -> str:
+        """Matters for threading: HighGUI can live on one non-main thread,
+        while Tkinter's event loop is tied to the thread that created it."""
+        return self._backend
 
     @property
     def held_keys(self) -> set[str]:
@@ -75,6 +81,7 @@ class DashboardWindow:
     def _try_tkinter(self) -> bool:
         try:
             import tkinter as tk
+
             from PIL import ImageTk
         except Exception as exc:
             logger.warning("Tkinter window backend unavailable: %s", exc)
@@ -112,7 +119,8 @@ class DashboardWindow:
         elif sym == "space":
             self._held.add("space")
         else:
-            key_map = {"q": ord("q"), "e": ord("e"), "p": ord("p"), "escape": 27}
+            key_map = {"q": ord("q"), "e": ord("e"), "p": ord("p"), "t": ord("t"), "escape": 27}
+            key_map.update({str(digit): ord(str(digit)) for digit in range(10)})
             if sym in key_map:
                 code = key_map[sym]
                 self.last_key = code
@@ -125,7 +133,7 @@ class DashboardWindow:
             self._held.discard("space")
 
     def show(self, frame_bgr) -> bool:
-        """Display the latest dashboard frame. Returns False when closed."""
+        """False once the window has been closed."""
         if self._closed:
             return False
         self.last_key = -1
@@ -216,14 +224,13 @@ class DashboardWindow:
         canvas = np.full((target_h, target_w, 3), background, dtype=np.uint8)
         off_x = (target_w - new_w) // 2
         off_y = (target_h - new_h) // 2
-        canvas[off_y:off_y + new_h, off_x:off_x + new_w] = resized
+        canvas[off_y : off_y + new_h, off_x : off_x + new_w] = resized
         return canvas
 
     def _request_close(self) -> None:
         self._closed = True
 
     def close(self) -> None:
-        """Close the active dashboard window backend safely."""
         self._closed = True
 
         if self._backend == "opencv":
@@ -240,6 +247,6 @@ class DashboardWindow:
         if self._backend == "tkinter" and self._root is not None:
             try:
                 self._root.destroy()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Tkinter window was already gone: %s", exc)
             self._root = None

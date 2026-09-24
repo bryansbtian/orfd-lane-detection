@@ -1,17 +1,27 @@
-"""ViPlanner-style local planning with predictive fallback."""
+"""Planning entry point: the perception gate, then the baseline or the
+advanced (ViPlanner-style) planner."""
 
 from __future__ import annotations
 
 import logging
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 
 import cv2
 import numpy as np
 from scipy.signal import savgol_filter
 
-from offroad_autonomy.types import PathPlan, PipelineConfig, StabilizedResult, VehicleState
+from offroad_autonomy.perception.camera_geometry import CameraModel
+from offroad_autonomy.planning.baseline_planner import BaselinePlanner
+from offroad_autonomy.planning.perception_gate import GateDecision, PerceptionGate
+from offroad_autonomy.types import (
+    PathPlan,
+    PipelineConfig,
+    StabilizedResult,
+    TerrainAnalysis,
+    VehicleState,
+)
 
 logger = logging.getLogger("offroad_autonomy.planning")
 
@@ -26,15 +36,19 @@ class _KalmanTracker:
         self.x = np.zeros(self.DIM_X)
         self.P = np.eye(self.DIM_X) * 100.0
 
-        self.F = np.array([
-            [1.0, 1.0, 0.0],
-            [0.0, 1.0, 1.0],
-            [0.0, 0.0, 1.0],
-        ])
-        self.H = np.array([
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-        ])
+        self.F = np.array(
+            [
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 1.0],
+                [0.0, 0.0, 1.0],
+            ]
+        )
+        self.H = np.array(
+            [
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ]
+        )
         self.Q = np.eye(self.DIM_X) * q
         self.R = np.eye(self.DIM_Z) * r
 
@@ -61,6 +75,8 @@ class _PlannerScene:
     lateral_prior_px: float
     heading_prior: float
     ego_heading_rad: float
+    clearance_m: np.ndarray | None = None
+    min_clearance_m: float = float("inf")
 
 
 class _PlannerBackend(Protocol):
@@ -71,30 +87,24 @@ class _PlannerBackend(Protocol):
 
 
 class _HeuristicViPlannerBackend:
-    """Traversability-driven local planner backend."""
-
     name = "heuristic"
 
     def __init__(self, config: PipelineConfig) -> None:
         self._n_samples = config.centerline_samples
         self._horizon_fraction = float(np.clip(config.planner_horizon_fraction, 0.30, 0.95))
         self._clearance_weight = float(np.clip(config.planner_clearance_weight, 0.0, 1.0))
-        self._segment_center_weight = float(
-            np.clip(config.planner_segment_center_weight, 0.0, 1.0)
-        )
+        self._segment_center_weight = float(np.clip(config.planner_segment_center_weight, 0.0, 1.0))
         self._prior_std_fraction = max(0.02, float(config.planner_prior_std_fraction))
 
     def infer(self, scene: _PlannerScene) -> tuple[np.ndarray, float]:
-        """Infer waypoints from dense traversability features."""
         h, w = scene.mask.shape[:2]
         top_y = max(0, int(round(h * (1.0 - self._horizon_fraction))))
         bottom_y = min(h - 1, int(round(h * 0.95)))
         row_indices = np.linspace(bottom_y, top_y, self._n_samples, dtype=int)
 
         feature_map = (
-            (1.0 - self._clearance_weight) * scene.traversability
-            + self._clearance_weight * scene.clearance
-        )
+            1.0 - self._clearance_weight
+        ) * scene.traversability + self._clearance_weight * scene.clearance
         cols = np.arange(w, dtype=np.float32)
         prior_x = float(w / 2.0 + scene.lateral_prior_px)
         heading = float(np.clip(scene.heading_prior, -0.75, 0.75))
@@ -148,7 +158,9 @@ class _HeuristicViPlannerBackend:
             return np.empty((0, 2), dtype=np.float32), 0.0
 
         coverage = len(points) / len(row_indices)
-        local_confidence = float(np.mean(row_confidences)) if row_confidences else 0.0
+        local_confidence = 0.0
+        if row_confidences:
+            local_confidence = float(np.mean(row_confidences))
         confidence = float(
             np.clip(
                 (0.55 * coverage + 0.45 * local_confidence) * max(scene.stability_score, 0.0),
@@ -181,8 +193,9 @@ class _HeuristicViPlannerBackend:
 
         width_scale = max(float(len(valid)), 1.0)
         min_width_px = max(4, int(width_scale * 0.05))
-        wide_segments = [(s, e) for s, e in segments if (e - s + 1) >= min_width_px]
-        candidates = wide_segments if wide_segments else segments
+        candidates = [(s, e) for s, e in segments if (e - s + 1) >= min_width_px]
+        if not candidates:
+            candidates = segments
 
         best_segment = None
         best_value = -math.inf
@@ -213,9 +226,7 @@ def _build_backend(config: PipelineConfig) -> _PlannerBackend:
 
 
 class CenterlinePlanner:
-    """Local planner over traversability features with predictive fallback."""
-
-    def __init__(self, config: PipelineConfig) -> None:
+    def __init__(self, config: PipelineConfig, camera: CameraModel | None = None) -> None:
         self._n_samples = config.centerline_samples
         self._min_road_px = config.min_road_pixels
         self._max_misses = config.fallback_after_n_misses
@@ -229,6 +240,12 @@ class CenterlinePlanner:
         self._straight_heading_threshold = float(
             max(config.planner_straight_heading_threshold, 0.0)
         )
+        self._depth_clearance_weight = float(
+            np.clip(config.planner_depth_clearance_weight, 0.0, 1.0)
+        )
+        self._min_clearance_m = float(max(config.planner_min_clearance_m, 0.0))
+        self._obstacle_penalty = float(np.clip(config.planner_obstacle_penalty, 0.0, 1.0))
+        self._vehicle_half_width_m = float(max(config.vehicle_half_width_m, 1e-3))
         self._backend = _build_backend(config)
 
         self._kf = _KalmanTracker(
@@ -237,30 +254,121 @@ class CenterlinePlanner:
         )
         self._consecutive_misses = 0
         self._prev_centerline: np.ndarray | None = None
-        logger.info("Planning backend: %s", self._backend.name)
+
+        self._mode = config.planner_mode
+        self._gate = PerceptionGate(config)
+        self._baseline = BaselinePlanner(config, camera=camera)
+        self._hold_frames = max(0, int(config.gate_hold_frames))
+        self._hold_speed_scale = float(np.clip(config.gate_hold_speed_scale, 0.0, 1.0))
+        self._last_good: PathPlan | None = None
+        self._held = 0
+        logger.info("Planning mode: %s (advanced backend %s)", self._mode, self._backend.name)
 
     def plan(
         self,
         stabilized: StabilizedResult,
         vehicle_state: VehicleState | None = None,
+        terrain: TerrainAnalysis | None = None,
     ) -> PathPlan:
-        """Compute a local trajectory from the traversability scene."""
+        """A frame that fails the gate never produces a new path: driving a
+        path no perception supports is how the vehicle used to leave the
+        trail. The last good path is held briefly at reduced speed instead.
+        """
+        decision = self._gate.evaluate(stabilized)
+        if not decision.ok:
+            return self._hold(decision)
+
+        if self._mode == "baseline":
+            centerline = self._baseline.centerline(decision.component, decision.roi_top)
+            if len(centerline) < 2:
+                decision.reason = "centerline too short"
+                return self._hold(decision)
+            # No clearance term: the baseline must not be slowed or steered
+            # by depth until perception is verified on its own.
+            plan = PathPlan(
+                centerline=centerline,
+                heading_rad=self._estimate_heading(centerline),
+                curvature=self._estimate_curvature(centerline),
+                road_width_px=self._estimate_road_width(decision.component, centerline),
+            )
+        else:
+            plan = self._plan_advanced(stabilized, vehicle_state, terrain)
+            if plan.kalman_active:
+                # A predicted path is not a perceived one; never drive it at
+                # full speed or remember it as the last good path.
+                decision.reason = "advanced planner found no path"
+                return self._hold(decision)
+
+        plan.planner_mask = decision.component
+        plan.roi_top = decision.roi_top
+        self._last_good = plan
+        self._held = 0
+        return plan
+
+    def _hold(self, decision: GateDecision) -> PathPlan:
+        self._held += 1
+        if self._held == self._hold_frames + 1:
+            logger.warning("Perception gate: %s - no valid path, braking", decision.reason)
+
+        if self._last_good is not None and self._held <= self._hold_frames:
+            return replace(
+                self._last_good,
+                fallback_active=True,
+                fallback_reason=(
+                    f"{decision.reason} - holding path {self._held}/{self._hold_frames}"
+                ),
+                speed_scale=self._hold_speed_scale,
+                planner_mask=decision.component,
+                roi_top=decision.roi_top,
+            )
+        # Out of held path: forget it, so the next road seen is taken as-is
+        # rather than blended toward a stale one.
+        self._baseline.reset()
+        return PathPlan(
+            centerline=np.empty((0, 2), dtype=np.float32),
+            fallback_active=True,
+            fallback_reason=f"{decision.reason} - stopping",
+            speed_scale=0.0,
+            planner_mask=decision.component,
+            roi_top=decision.roi_top,
+        )
+
+    def _plan_advanced(
+        self,
+        stabilized: StabilizedResult,
+        vehicle_state: VehicleState | None = None,
+        terrain: TerrainAnalysis | None = None,
+    ) -> PathPlan:
+        """With ``terrain`` the scene gains a metric clearance channel, so the
+        planner prefers gaps the vehicle actually fits through rather than the
+        widest patch of road-coloured pixels."""
         mask = stabilized.mask
         h, w = mask.shape[:2]
         road_px = int(mask.sum())
         prior_state = self._kf.predict()
 
-        if road_px < self._min_road_px:
-            return self._fallback(h, w, prior_state)
+        min_clearance = float("inf")
+        if terrain is not None:
+            min_clearance = float(terrain.min_forward_clearance_m)
 
-        scene = self._build_scene(mask, stabilized.stability_score, prior_state, vehicle_state)
+        if road_px < self._min_road_px:
+            return self._fallback(h, w, prior_state, min_clearance)
+
+        scene = self._build_scene(
+            mask,
+            stabilized.stability_score,
+            prior_state,
+            vehicle_state,
+            stabilized.traversability,
+            terrain,
+        )
         waypoints, confidence = self._backend.infer(scene)
         if len(waypoints) < 2 or confidence < self._min_confidence:
-            return self._fallback(h, w, prior_state)
+            return self._fallback(h, w, prior_state, min_clearance)
 
         centerline = self._postprocess_trajectory(waypoints, h, w)
         if len(centerline) < 2:
-            return self._fallback(h, w, prior_state)
+            return self._fallback(h, w, prior_state, min_clearance)
         centerline = self._stabilize_trajectory(centerline, w)
         centerline = self._straighten_trajectory(centerline, w)
 
@@ -280,6 +388,7 @@ class CenterlinePlanner:
             curvature=self._estimate_curvature(centerline),
             road_width_px=road_width,
             kalman_active=False,
+            min_clearance_m=self._path_clearance(centerline, scene, min_clearance),
         )
 
     def _build_scene(
@@ -288,15 +397,38 @@ class CenterlinePlanner:
         stability_score: float,
         prior_state: np.ndarray,
         vehicle_state: VehicleState | None,
+        fused_traversability: np.ndarray | None = None,
+        terrain: TerrainAnalysis | None = None,
     ) -> _PlannerScene:
         mask_u8 = mask.astype(np.uint8)
-        traversability = cv2.GaussianBlur(mask_u8.astype(np.float32), (0, 0), sigmaX=2.4, sigmaY=2.4)
+
+        if fused_traversability is not None and fused_traversability.shape == mask.shape:
+            # The fused field already encodes geometry; blur only to soften
+            # per-pixel stereo noise, not to reshape the corridor.
+            traversability = cv2.GaussianBlur(
+                fused_traversability.astype(np.float32), (0, 0), sigmaX=1.6, sigmaY=1.6
+            )
+        else:
+            traversability = cv2.GaussianBlur(
+                mask_u8.astype(np.float32), (0, 0), sigmaX=2.4, sigmaY=2.4
+            )
         if float(traversability.max()) > 0.0:
             traversability /= float(traversability.max())
 
         clearance = cv2.distanceTransform(mask_u8, cv2.DIST_L2, 5)
         if float(clearance.max()) > 0.0:
             clearance /= float(clearance.max())
+
+        clearance_m: np.ndarray | None = None
+        min_clearance = float("inf")
+        if terrain is not None and terrain.clearance_m.shape == mask.shape:
+            clearance_m = terrain.clearance_m
+            min_clearance = float(terrain.min_forward_clearance_m)
+            clearance = self._blend_metric_clearance(clearance, clearance_m, terrain)
+
+        ego_heading = 0.0
+        if vehicle_state is not None:
+            ego_heading = float(vehicle_state.heading_rad)
 
         return _PlannerScene(
             mask=mask.astype(bool),
@@ -305,11 +437,59 @@ class CenterlinePlanner:
             stability_score=float(stability_score),
             lateral_prior_px=float(prior_state[0]),
             heading_prior=float(prior_state[1]),
-            ego_heading_rad=0.0 if vehicle_state is None else float(vehicle_state.heading_rad),
+            ego_heading_rad=ego_heading,
+            clearance_m=clearance_m,
+            min_clearance_m=min_clearance,
         )
 
+    def _blend_metric_clearance(
+        self,
+        pixel_clearance: np.ndarray,
+        clearance_m: np.ndarray,
+        terrain: TerrainAnalysis,
+    ) -> np.ndarray:
+        """Pixel distance shrinks with range purely because of perspective,
+        biasing the planner toward the bottom of the frame; the metric channel
+        makes a far gap comparable to a near one."""
+        if self._depth_clearance_weight <= 0.0:
+            return pixel_clearance
+
+        # One vehicle width of room is "as clear as it needs to be".
+        full_clearance = max(2.0 * self._vehicle_half_width_m, 1e-3)
+        metric = np.clip(clearance_m / full_clearance, 0.0, 1.0).astype(np.float32)
+        metric = np.where(terrain.valid, metric, pixel_clearance)
+
+        blended = (
+            1.0 - self._depth_clearance_weight
+        ) * pixel_clearance + self._depth_clearance_weight * metric
+
+        # Anything too narrow to drive through is pushed down hard rather
+        # than merely scored lower, so the planner routes around it.
+        too_narrow = terrain.valid & (clearance_m < self._min_clearance_m)
+        blended[too_narrow] *= 1.0 - self._obstacle_penalty
+        return blended.astype(np.float32)
+
+    def _path_clearance(
+        self,
+        centerline: np.ndarray,
+        scene: _PlannerScene,
+        fallback: float,
+    ) -> float:
+        if scene.clearance_m is None or len(centerline) == 0:
+            return fallback
+
+        h, w = scene.clearance_m.shape[:2]
+        xs = np.clip(np.round(centerline[:, 0]).astype(int), 0, w - 1)
+        ys = np.clip(np.round(centerline[:, 1]).astype(int), 0, h - 1)
+        sampled = scene.clearance_m[ys, xs]
+        on_road = scene.mask[ys, xs]
+        if on_road.any():
+            sampled = sampled[on_road]
+        if sampled.size == 0:
+            return fallback
+        return float(min(float(sampled.min()), fallback))
+
     def _postprocess_trajectory(self, waypoints: np.ndarray, h: int, w: int) -> np.ndarray:
-        """Resample and smooth backend waypoints into a controller path."""
         if len(waypoints) < 2:
             return np.empty((0, 2), dtype=np.float32)
 
@@ -332,7 +512,6 @@ class CenterlinePlanner:
         return np.stack([target_x, target_y], axis=1).astype(np.float32)
 
     def _smooth_lateral_positions(self, x_vals: np.ndarray) -> np.ndarray:
-        """Apply stable smoothing to lateral waypoint positions."""
         count = len(x_vals)
         if count < 3:
             return x_vals
@@ -343,11 +522,12 @@ class CenterlinePlanner:
         if window < 3:
             return x_vals
 
-        polyorder = 2 if window >= 5 else 1
+        polyorder = 1
+        if window >= 5:
+            polyorder = 2
         return savgol_filter(x_vals, window_length=window, polyorder=polyorder, mode="interp")
 
     def _stabilize_trajectory(self, centerline: np.ndarray, w: int) -> np.ndarray:
-        """Blend the current trajectory with the previous one to reduce zigzag."""
         if self._prev_centerline is None or len(self._prev_centerline) < 2:
             return centerline
 
@@ -368,7 +548,8 @@ class CenterlinePlanner:
         return stabilized
 
     def _straighten_trajectory(self, centerline: np.ndarray, w: int) -> np.ndarray:
-        """Pull nearly straight paths onto a clean fitted line."""
+        """Mask noise on a straight road otherwise reads as small curves the
+        controller would chase."""
         if len(centerline) < 3 or self._straight_blend <= 0.0:
             return centerline
 
@@ -392,7 +573,6 @@ class CenterlinePlanner:
 
     @staticmethod
     def _straightness_metrics(centerline: np.ndarray) -> tuple[float, float]:
-        """Measure how well the path matches a single straight line."""
         line_coeffs = np.polyfit(centerline[:, 1], centerline[:, 0], deg=1)
         line_x = np.polyval(line_coeffs, centerline[:, 1])
         residual_px = float(np.mean(np.abs(centerline[:, 0] - line_x)))
@@ -413,8 +593,13 @@ class CenterlinePlanner:
         heading_change = abs(far_heading - near_heading)
         return residual_px, heading_change
 
-    def _fallback(self, h: int, w: int, state: np.ndarray) -> PathPlan:
-        """Use the predicted planner state when the scene is unreliable."""
+    def _fallback(
+        self,
+        h: int,
+        w: int,
+        state: np.ndarray,
+        min_clearance_m: float = float("inf"),
+    ) -> PathPlan:
         self._consecutive_misses += 1
 
         if self._consecutive_misses > self._max_misses:
@@ -438,11 +623,11 @@ class CenterlinePlanner:
             curvature=float(state[2]),
             road_width_px=0.0,
             kalman_active=True,
+            min_clearance_m=min_clearance_m,
         )
 
     @staticmethod
     def _estimate_road_width(mask: np.ndarray, centerline: np.ndarray) -> float:
-        """Estimate local corridor width around the trajectory."""
         if len(centerline) == 0:
             return 0.0
 
@@ -468,11 +653,14 @@ class CenterlinePlanner:
 
             widths.append(float(right - left))
 
-        return float(np.mean(widths)) if widths else 0.0
+        if not widths:
+            return 0.0
+        return float(np.mean(widths))
 
     @staticmethod
     def _estimate_heading(centerline: np.ndarray) -> float:
-        """Compute heading from the lower section of the trajectory."""
+        """From the near third only: that is the part the vehicle is about to
+        drive, and the far end is the least precise."""
         n = len(centerline)
         if n < 2:
             return 0.0
@@ -490,7 +678,6 @@ class CenterlinePlanner:
 
     @staticmethod
     def _estimate_curvature(centerline: np.ndarray) -> float:
-        """Estimate mean geometric curvature over the planned path."""
         if len(centerline) < 3:
             return 0.0
 
@@ -508,10 +695,12 @@ class CenterlinePlanner:
         return float(np.mean(curvature))
 
     def reset(self) -> None:
-        """Clear Kalman state (e.g. on map reload)."""
         self._kf = _KalmanTracker(
             q=self._kf.Q[0, 0],
             r=self._kf.R[0, 0],
         )
         self._consecutive_misses = 0
         self._prev_centerline = None
+        self._baseline.reset()
+        self._last_good = None
+        self._held = 0

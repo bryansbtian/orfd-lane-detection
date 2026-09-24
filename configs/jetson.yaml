@@ -1,0 +1,27 @@
+# Deployment overlay for the Jetson container: BeamNG runs on another machine,
+# so the stack attaches over the network and draws nothing locally.
+extends: default.yaml
+
+beamng:
+  # Set BEAMNG_HOST to the simulator's address; BeamNG must be started with
+  # the tech socket listening on that interface, not only on 127.0.0.1.
+  home: ""
+  launch: false
+  camera_transport: socket
+  cameras:
+    sync:
+      # Each socket poll ships a full frame (~2.4 MB), so the two reads of a
+      # pair are tens of milliseconds apart rather than ~1 ms. The 8 ms
+      # shared-memory limit would reject every pair and starve stereo; this
+      # accepts pairs within about two render frames at 30 FPS.
+      max_read_skew_ms: 60.0
+
+perception:
+  # 26x alone costs ~40 ms per frame on a laptop RTX 3060, so a Jetson needs
+  # a smaller model and a TensorRT engine to leave time for stereo. Engines
+  # are tied to the GPU that built them: run scripts/export_engine.py on the
+  # device.
+  model_weights: "models/yoloe-26s-seg.engine"
+
+ui:
+  headless: true
