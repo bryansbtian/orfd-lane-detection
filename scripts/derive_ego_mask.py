@@ -42,8 +42,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from offroad_autonomy.perception.camera_geometry import CameraModel  # noqa: E402
-from offroad_autonomy.utils.config import load_config  # noqa: E402
+from offroad_autonomy.perception.camera_geometry import CameraModel
+from offroad_autonomy.utils.config import load_config
 
 # (y, z_centre, z_outer, half_width) per node row, front -> rear: the front
 # bumper's top face, then the hood deck, then the cowl up to the windshield

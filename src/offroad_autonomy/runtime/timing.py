@@ -11,9 +11,9 @@ from __future__ import annotations
 import threading
 import time
 from collections import deque
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Iterator
 
 import numpy as np
 

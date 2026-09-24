@@ -25,7 +25,9 @@ dev = [
     "build>=1.0",
     "pytest>=7.0",
     "pytest-cov>=5.0",
-    "ruff>=0.6",
+    # Pinned: a new ruff release can enable new default rules and fail CI
+    # with no code change. Dependabot proposes upgrades as pull requests.
+    "ruff==0.16.8",
 ]
 
 [project.scripts]
@@ -41,6 +43,19 @@ pythonpath = ["src"]
 [tool.ruff]
 target-version = "py310"
 line-length = 100
+
+[tool.ruff.lint]
+# RUF046 calls int(round(x)) redundant, but round() on numpy scalars does not
+# reliably return a Python int, and OpenCV rejects anything else as a pixel.
+ignore = ["RUF046"]
+
+[tool.ruff.lint.per-file-ignores]
+# beamngpy and the GUI backends raise a wide, undocumented range of exceptions;
+# a failed poll or window call must degrade, never end the session.
+"src/offroad_autonomy/simulation/beamng_client.py" = ["BLE001"]
+"src/offroad_autonomy/visualization/window.py" = ["BLE001"]
+# Multi-line YAML fixtures read better as a list of lines than as one f-string.
+"tests/**" = ["FLY002"]
 
 [tool.coverage.run]
 source = ["offroad_autonomy"]

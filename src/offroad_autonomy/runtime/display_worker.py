@@ -26,8 +26,8 @@ import logging
 import threading
 import time
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import numpy as np
 
@@ -172,7 +172,7 @@ class DisplayWorker:
             t2 = time.perf_counter()
             alive = self._show(canvas)
             t3 = time.perf_counter()
-        except Exception:  # noqa: BLE001 - a broken dashboard must not stop the car
+        except Exception:
             self.failed += 1
             if t0 - self._last_error_log > 5.0:
                 logger.exception("Dashboard rendering failed")

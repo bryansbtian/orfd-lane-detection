@@ -532,7 +532,7 @@ class ControlCommand:
     brake: float = 0.0
     parkingbrake: float = 0.0
     #: ``None`` for manual input, which has no controller internals to show.
-    debug: "SteeringDebug | None" = None
+    debug: SteeringDebug | None = None
 
 
 @dataclass

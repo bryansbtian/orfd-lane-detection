@@ -192,13 +192,13 @@ class CameraModel:
     @classmethod
     def from_intrinsics(
         cls,
-        base: "CameraModel",
+        base: CameraModel,
         name: str,
         projection: np.ndarray,
         rotation_to_new: np.ndarray,
         width: int,
         height: int,
-    ) -> "CameraModel":
+    ) -> CameraModel:
         """A virtual camera sharing ``base``'s centre with new K and attitude.
 
         This is what a rectified camera is: the same optical centre, rotated

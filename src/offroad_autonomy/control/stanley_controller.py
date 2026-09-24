@@ -56,6 +56,7 @@ import logging
 import math
 import time
 from dataclasses import dataclass, field
+from functools import partial
 
 import numpy as np
 
@@ -168,6 +169,12 @@ class TrailBoundaries:
         )
 
 
+def _distance_to_run(run: tuple[int, int], x: float) -> float:
+    if run[0] <= x <= run[1]:
+        return 0.0
+    return min(abs(run[0] - x), abs(run[1] - x))
+
+
 def measure_trail(
     camera: CameraModel,
     mask: np.ndarray,
@@ -195,14 +202,8 @@ def measure_trail(
         splits = np.flatnonzero(np.diff(cols) > merge_px) + 1
         runs = [(int(g[0]), int(g[-1])) for g in np.split(cols, splits)]
         u_c = float(np.clip(u, 0, w - 1))
-
-        def gap(run):
-            if run[0] <= u_c <= run[1]:
-                return 0.0
-            return min(abs(run[0] - u_c), abs(run[1] - u_c))
-
-        lo, hi = min(runs, key=gap)
-        ground_f, ground_r, ok = camera.image_to_ground(
+        lo, hi = min(runs, key=partial(_distance_to_run, x=u_c))
+        _, ground_r, ok = camera.image_to_ground(
             np.array([[lo - 0.5, row], [hi + 0.5, row]], dtype=np.float64)
         )
         if not ok.all():
@@ -352,7 +353,7 @@ class StanleyController:
         # Every term is read where the car will be when the command lands.
         f0 = min(speed * self._latency, path.end)
         trust = self._curvature_trust(path, f0)
-        kappa = lambda f: path.curvature(f, self._max_curvature, trust)  # noqa: E731
+        kappa = lambda f: path.curvature(f, self._max_curvature, trust)
         lookahead = self.lookahead_distance(speed, float(kappa(f0)))
         f_end = min(f0 + lookahead, path.end)
         window = np.linspace(f0, max(f_end, f0 + 1e-3), 8)

@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 
 from offroad_autonomy.perception.camera_geometry import CameraModel
-from offroad_autonomy.perception.stereo_depth import StereoDepthEstimator
 from offroad_autonomy.perception.fusion import fuse_rgb_depth
+from offroad_autonomy.perception.stereo_depth import StereoDepthEstimator
 from offroad_autonomy.perception.terrain_analyzer import TerrainAnalyzer
 from offroad_autonomy.types import DepthResult, PerceptionResult, PipelineConfig
 

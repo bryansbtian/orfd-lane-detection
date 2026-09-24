@@ -26,10 +26,10 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from offroad_autonomy.control.stanley_controller import StanleyController  # noqa: E402
-from offroad_autonomy.perception.camera_geometry import CameraModel  # noqa: E402
-from offroad_autonomy.types import PathPlan, PipelineConfig, VehicleState  # noqa: E402
-from offroad_autonomy.utils.config import load_config  # noqa: E402
+from offroad_autonomy.control.stanley_controller import StanleyController
+from offroad_autonomy.perception.camera_geometry import CameraModel
+from offroad_autonomy.types import PathPlan, PipelineConfig, VehicleState
+from offroad_autonomy.utils.config import load_config
 
 
 def s_bend(radius: float, straight: float = 30.0, step: float = 0.1) -> np.ndarray:
@@ -223,22 +223,22 @@ def simulate(
         lock_frames += abs(cmd.steering) > 0.95
         dbg = cmd.debug
         log.append(
-            dict(
-                steer=cmd.steering,
-                v=v,
-                err=err_now,
-                kappa=dbg.curvature,
-                cte=dbg.cross_track_m,
-                des=dbg.desired_steering,
-                ff=dbg.feedforward_steering,
-                psi=dbg.heading_error_rad,
-                rejoin=dbg.rejoin_m,
-                path_end=dbg.path_end_m,
-                target=dbg.target_speed_mps,
-                la=dbg.lookahead_m,
-                sat=dbg.saturation,
-                reason=dbg.speed_reason,
-            )
+            {
+                "steer": cmd.steering,
+                "v": v,
+                "err": err_now,
+                "kappa": dbg.curvature,
+                "cte": dbg.cross_track_m,
+                "des": dbg.desired_steering,
+                "ff": dbg.feedforward_steering,
+                "psi": dbg.heading_error_rad,
+                "rejoin": dbg.rejoin_m,
+                "path_end": dbg.path_end_m,
+                "target": dbg.target_speed_mps,
+                "la": dbg.lookahead_m,
+                "sat": dbg.saturation,
+                "reason": dbg.speed_reason,
+            }
         )
     return _finish(log, max_err, lock_frames, False, trail_width)
 

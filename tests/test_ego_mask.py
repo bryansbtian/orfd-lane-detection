@@ -19,8 +19,8 @@ from offroad_autonomy.perception.ego_mask import (
     road_fraction,
     weighted_confidence,
 )
-from offroad_autonomy.perception.stereo_depth import StereoDepthEstimator
 from offroad_autonomy.perception.fusion import fuse_rgb_depth
+from offroad_autonomy.perception.stereo_depth import StereoDepthEstimator
 from offroad_autonomy.perception.terrain_analyzer import TerrainAnalyzer
 from offroad_autonomy.postprocessing.temporal_stabilizer import TemporalStabilizer
 from offroad_autonomy.types import (
@@ -377,7 +377,7 @@ def test_safe_stop_still_fires_when_the_road_really_is_gone():
 def test_safe_stop_does_not_fire_on_a_visible_road():
     detector = _StuckDetector(min_road_fraction=0.015, no_road_time_s=2.0)
 
-    for t in range(0, 100):
+    for t in range(100):
         triggered, _ = detector.update(float(t), road_fraction=0.25, speed_mps=5.0, throttle=0.3)
         assert not triggered
 
@@ -421,7 +421,7 @@ def test_hood_sized_exclusion_cannot_by_itself_trigger_safe_stop():
     )
 
     assert fraction == pytest.approx(1.0)
-    for t in range(0, 20):
+    for t in range(20):
         triggered, _ = detector.update(
             float(t), road_fraction=fraction, speed_mps=4.0, throttle=0.3
         )

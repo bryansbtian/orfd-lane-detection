@@ -27,7 +27,6 @@ import cv2
 import numpy as np
 
 from offroad_autonomy.perception.stereo_rectification import draw_epipolar_pair
-from offroad_autonomy.visualization.path_projector import GroundProjector
 from offroad_autonomy.types import (
     DEBUG_VIEWS,
     DEFAULT_DASHBOARD_COLORS,
@@ -38,6 +37,7 @@ from offroad_autonomy.types import (
     PipelineStepResult,
     TerrainAnalysis,
 )
+from offroad_autonomy.visualization.path_projector import GroundProjector
 
 _VIEW_TITLES = {
     "default": "PATH VISUALIZATION",

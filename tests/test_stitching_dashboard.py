@@ -9,6 +9,7 @@ from offroad_autonomy.perception.perception_view import PerceptionView
 from offroad_autonomy.perception.stitching import WideViewStitcher
 from offroad_autonomy.types import (
     DEBUG_VIEWS,
+    ControlCommand,
     DepthResult,
     EgoMaskSpec,
     FramePacket,
@@ -19,7 +20,6 @@ from offroad_autonomy.types import (
     StabilizedResult,
     StereoFramePair,
     StereoRigSpec,
-    ControlCommand,
     stereo_camera_spec,
 )
 from offroad_autonomy.visualization.dashboard import AutonomyDashboard, DashboardTelemetry

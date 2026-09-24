@@ -26,8 +26,8 @@ import os
 import sys
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import numpy as np
 
@@ -145,8 +145,8 @@ class StereoWorker:
                 # Linux threads are schedulable tasks, so this renices only
                 # the worker thread, not the whole process.
                 os.setpriority(os.PRIO_PROCESS, threading.get_native_id(), 5)
-        except Exception:  # noqa: BLE001 - purely an optimisation
-            logger.debug("Could not lower stereo worker priority")
+        except (OSError, AttributeError) as exc:
+            logger.debug("Could not lower stereo worker priority: %s", exc)
 
     def _run(self) -> None:
         self._lower_thread_priority()
@@ -174,7 +174,7 @@ class StereoWorker:
         t0 = time.perf_counter()
         try:
             result = self._compute(job)
-        except Exception:  # noqa: BLE001 - one bad frame must not kill stereo
+        except Exception:
             self.failed += 1
             if t0 - self._last_error_log > 5.0:
                 logger.exception("Stereo computation failed (frame %d)", job.pair.frame_id)

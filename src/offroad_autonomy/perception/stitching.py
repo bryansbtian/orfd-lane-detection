@@ -102,7 +102,7 @@ class WideViewStitcher:
         )
 
     @classmethod
-    def from_config(cls, config: PipelineConfig) -> "WideViewStitcher":
+    def from_config(cls, config: PipelineConfig) -> WideViewStitcher:
         work_left = CameraModel(
             config.left_camera, config.preprocess_width, config.preprocess_height
         )

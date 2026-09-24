@@ -76,14 +76,14 @@ def _wire(mocks):
 
 def _pair(**overrides) -> StereoFramePair:
     frame = np.zeros((620, 960, 3), dtype=np.uint8)
-    fields = dict(
-        left=frame,
-        right=frame.copy(),
-        timestamp=time.perf_counter(),
-        frame_id=1,
-        synchronized=True,
-        is_new=True,
-    )
+    fields = {
+        "left": frame,
+        "right": frame.copy(),
+        "timestamp": time.perf_counter(),
+        "frame_id": 1,
+        "synchronized": True,
+        "is_new": True,
+    }
     fields.update(overrides)
     return StereoFramePair(**fields)
 
@@ -130,7 +130,7 @@ def _pipeline_with_stereo(stack, config, depth=None, terrain=None):
 
 def test_pipeline_step_produces_control_command():
     with ExitStack() as stack:
-        pipeline, mocks, _, _, outputs = _pipeline_with_stereo(stack, _make_config())
+        pipeline, mocks, _, _, _ = _pipeline_with_stereo(stack, _make_config())
         command = pipeline.step(np.zeros((620, 960, 3), dtype=np.uint8), VehicleState())
 
         assert isinstance(command, ControlCommand)
@@ -142,7 +142,7 @@ def test_pipeline_step_produces_control_command():
 def test_pipeline_step_result_exposes_stage_outputs():
     with ExitStack() as stack:
         pipeline, _, _, _, outputs = _pipeline_with_stereo(stack, _make_config())
-        packet, perception, stabilized, plan, command = outputs
+        packet, _, stabilized, plan, command = outputs
 
         result = pipeline.step_result(_pair(), VehicleState())
 
@@ -362,6 +362,5 @@ def test_stitched_mode_needs_both_frames():
 
 
 def test_invalid_segmentation_mode_is_refused():
-    with ExitStack() as stack:
-        with pytest.raises(ValueError, match="segmentation"):
-            _pipeline_with_stereo(stack, replace(_make_config(), segmentation_mode="center"))
+    with ExitStack() as stack, pytest.raises(ValueError, match="segmentation"):
+        _pipeline_with_stereo(stack, replace(_make_config(), segmentation_mode="center"))

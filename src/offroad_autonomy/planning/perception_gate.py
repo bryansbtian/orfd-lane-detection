@@ -101,7 +101,7 @@ class PerceptionGate:
         h = band.shape[0]
         if not band.any():
             return band
-        count, labels, stats, _ = cv2.connectedComponentsWithStats(
+        _, labels, stats, _ = cv2.connectedComponentsWithStats(
             band.astype(np.uint8), connectivity=8
         )
         anchor_top = h - max(1, int(round((h - top) * _ANCHOR_FRACTION)))

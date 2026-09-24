@@ -27,10 +27,9 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from offroad_autonomy.pipeline import AutonomyPipeline  # noqa: E402
-from offroad_autonomy.simulation.beamng_client import BeamNGClient  # noqa: E402
-from offroad_autonomy.utils.config import load_config  # noqa: E402
-
+from offroad_autonomy.pipeline import AutonomyPipeline
+from offroad_autonomy.simulation.beamng_client import BeamNGClient
+from offroad_autonomy.utils.config import load_config
 
 _DEBUG_FIELDS = (
     ("desired", "desired_steering", 4),
@@ -120,6 +119,7 @@ def main() -> None:
     dash = snap_dir = None
     if args.snap_from is not None:
         import cv2
+
         from offroad_autonomy.visualization import AutonomyDashboard
 
         dash = AutonomyDashboard(
@@ -149,13 +149,13 @@ def main() -> None:
             gate = "ok"
             if res.plan.fallback_active:
                 gate = res.plan.fallback_reason
-            row = dict(
-                t=round(elapsed, 3),
-                speed=round(state.speed_mps, 3),
-                x=round(state.position[0], 2),
-                y=round(state.position[1], 2),
-                steer=round(res.command.steering, 4),
-            )
+            row = {
+                "t": round(elapsed, 3),
+                "speed": round(state.speed_mps, 3),
+                "x": round(state.position[0], 2),
+                "y": round(state.position[1], 2),
+                "steer": round(res.command.steering, 4),
+            }
             row.update(_debug_fields(res.command.debug))
             row.update(
                 throttle=round(res.command.throttle, 3),

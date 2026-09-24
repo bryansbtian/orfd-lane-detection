@@ -81,6 +81,7 @@ class DashboardWindow:
     def _try_tkinter(self) -> bool:
         try:
             import tkinter as tk
+
             from PIL import ImageTk
         except Exception as exc:
             logger.warning("Tkinter window backend unavailable: %s", exc)
@@ -246,6 +247,6 @@ class DashboardWindow:
         if self._backend == "tkinter" and self._root is not None:
             try:
                 self._root.destroy()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Tkinter window was already gone: %s", exc)
             self._root = None

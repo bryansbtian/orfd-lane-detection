@@ -38,7 +38,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from offroad_autonomy.utils.config import load_config  # noqa: E402
+from offroad_autonomy.utils.config import load_config
 
 logger = logging.getLogger("diagnose")
 

@@ -25,7 +25,10 @@ def _camera(config: PipelineConfig) -> CameraModel:
     )
 
 
-def _path(config, right_of_forward, forward=np.linspace(1.5, 14.0, 20)) -> PathPlan:
+_DEFAULT_FORWARD = np.linspace(1.5, 14.0, 20)
+
+
+def _path(config, right_of_forward, forward=_DEFAULT_FORWARD) -> PathPlan:
     """Image path for ground points ``right = f(forward)``, far -> near."""
     cam = _camera(config)
     forward = np.asarray(forward, dtype=np.float64)
@@ -233,7 +236,7 @@ def test_lookahead_point_is_reported_on_the_image():
     assert forward[0] == pytest.approx(3.0, abs=0.1)
 
 
-from offroad_autonomy.control.stanley_controller import measure_trail  # noqa: E402
+from offroad_autonomy.control.stanley_controller import measure_trail
 
 
 def _trail(config, width=6.0, offset=0.0, roi_top=None):
