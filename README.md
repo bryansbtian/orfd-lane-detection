@@ -1,118 +1,107 @@
 # Off-Road Autonomy
 
-If you are new to the repo, read these first:
+## Introduction
 
-1. `src/offroad_autonomy/main.py` for the runtime loop, BeamNG connection, and
-   dashboard updates.
-2. `src/offroad_autonomy/pipeline.py` for the module order and the handoff
-   between stages.
-3. `configs/default.yaml` for the map, spawn, camera, model, controller, and
-   visualization settings.
+Off-Road Autonomy drives a vehicle along unmarked dirt trails in BeamNG.tech using two front cameras. It segments the drivable trail with a YOLOE-26 model, measures obstacles with stereo depth, plans a centreline and steers with a Stanley controller.
 
-## Pipeline At A Glance
+It runs on a Windows workstation next to the simulator, or in a Docker container on an NVIDIA Jetson that connects to the simulator over the network.
 
-```text
-BeamNG Frame -> Preprocessing -> Perception -> Postprocessing -> Planning -> Control -> BeamNG Vehicle
-```
+## Development Setup
 
-Visualization runs alongside that loop and overlays the postprocessed mask, the
-planned path, and runtime telemetry on top of the front camera view.
-
-## The Seven Modules
-
-| Module         | Where it lives                         | High-level responsibility                                                                                                                                                                     |
-| -------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| BeamNG Client  | `src/offroad_autonomy/simulation/`     | Starts the simulator, loads the map and spawn point, attaches the front camera, reads frames and telemetry, and sends controls back to BeamNG.                                                |
-| Preprocessing  | `src/offroad_autonomy/preprocessing/`  | Resizes incoming frames from `1280x720` to `640x360` and can apply CLAHE to improve contrast before segmentation.                                                                             |
-| Perception     | `src/offroad_autonomy/perception/`     | Runs the configured YOLO-based segmentation model, uses open-vocabulary prompts or trained classes to detect traversable terrain, and merges instance masks into one binary traversable mask. |
-| Postprocessing | `src/offroad_autonomy/postprocessing/` | Smooths the raw mask over time with EMA and morphology so the road region is more stable from frame to frame.                                                                                 |
-| Planning       | `src/offroad_autonomy/planning/`       | Extracts a centerline, estimates heading and road width, and uses a Kalman filter plus fallback logic to keep the path usable when perception becomes noisy.                                  |
-| Control        | `src/offroad_autonomy/control/`        | Converts the planned path and current vehicle state into steering, throttle, and brake using Stanley steering and proportional speed control.                                                 |
-| Visualization  | `src/offroad_autonomy/visualization/`  | Renders the development dashboard with the front camera view, traversable mask, planned path, and metrics like confidence, stability, FPS, and latency.                                       |
-
-## One Loop Iteration
-
-1. The BeamNG client captures a new RGB frame and the latest vehicle state.
-2. Preprocessing normalizes the image so downstream modules see a consistent
-   input size and contrast.
-3. Perception produces a traversable-road mask plus model confidence and
-   inference timing.
-4. Postprocessing stabilizes that mask so small flicker and noise do not
-   immediately disturb planning.
-5. Planning turns the stabilized mask into a centerline reference path and can
-   fall back to Kalman prediction if the mask becomes unreliable.
-6. Control converts the path into a `ControlCommand` for steering, throttle,
-   and brake.
-7. Visualization overlays the latest outputs so we can debug the behavior
-   during closed-loop runs.
-
-## Why The Split Matters
-
-The module boundaries are intentional. They make it easier to tune one part of
-the system without rewriting the others, and they let us debug failures by
-asking a simple question: did the issue start in the image, the mask, the path,
-or the controller output?
-
-## Where To Go Next
-
-- If you want to change simulator setup, maps, spawns, or sensors, start in
-  `src/offroad_autonomy/simulation/` and `configs/default.yaml`.
-- If you want to improve road detection, start in
-  `src/offroad_autonomy/perception/`.
-- If you want to improve path stability, look at
-  `src/offroad_autonomy/postprocessing/` and
-  `src/offroad_autonomy/planning/`.
-- If you want to tune steering or speed behavior, look at
-  `src/offroad_autonomy/control/`.
-- If you want to change the operator view, start in
-  `src/offroad_autonomy/visualization/`.
-
-## Running Locally
+Requires Python 3.10+ and BeamNG.tech 0.38 (`beamngpy` 1.35).
 
 ```bash
+python -m venv .venv
+.venv\Scripts\activate          # Linux: source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-Set `beamng.home` in `configs/default.yaml` to your local BeamNG.tech install,
-then run:
+Put the model weights in `models/`: `yoloe-26x-seg.pt` (default config), `yoloe-26s-seg.pt` (Jetson) and `mobileclip2_b.ts` (the YOLOE text encoder).
+
+Set `beamng.home` in `configs/default.yaml` to your BeamNG.tech folder, or export `BEAMNG_HOME`.
+
+## Run Locally
 
 ```bash
-offroad-autonomy --config configs/default.yaml --log-level INFO
+offroad-autonomy --config configs/default.yaml
 ```
 
-You can also use the helper script:
+- Launches BeamNG.tech if it is not already running, then spawns the vehicle and opens the dashboard
+- `E` safe stop, `P` resume, `0`-`9` debug views, `T` timing overlay, `Q` quit
+- `--headless` runs without a window
+
+## Run On Jetson (Docker)
+
+Requires JetPack 6 with the NVIDIA container runtime.
+
+1. On the BeamNG machine, start the simulator listening on the network, and allow TCP port 64256 through the firewall:
+
+```powershell
+Bin64\BeamNG.tech.x64.exe -nosteam -tcom -tport 64256 -tcom-listen-ip "*"
+```
+
+2. On the Jetson, build the image and export the TensorRT engine (first time only, since engines are tied to the device that builds them):
 
 ```bash
-python scripts/run_main.py --config configs/default.yaml
+docker compose build
+docker compose run --rm --entrypoint python autonomy scripts/export_engine.py --weights models/yoloe-26s-seg.pt
 ```
 
-Run the test suite with:
+3. Run:
 
 ```bash
-pytest -v
+BEAMNG_HOST=192.168.1.50 docker compose up
 ```
 
-## Repository Layout
+- The container runs `configs/jetson.yaml`: attach to the running simulator, socket camera transport, TensorRT engine, headless
+- `models/`, `output/` and `configs/` are mounted from the host, so config changes need no rebuild
+- `docker compose stop` parks the vehicle before disconnecting
 
-```text
-.
-|-- configs/
-|   `-- default.yaml
-|-- scripts/
-|   `-- run_main.py
-|-- src/offroad_autonomy/
-|   |-- main.py
-|   |-- pipeline.py
-|   |-- types.py
-|   |-- control/
-|   |-- perception/
-|   |-- planning/
-|   |-- postprocessing/
-|   |-- preprocessing/
-|   |-- simulation/
-|   |-- utils/
-|   `-- visualization/
-|-- tests/
-|-- datasets/
-|-- models/
-```
+## Testing
+
+| Command                                       | What it runs                                                 | Needs BeamNG |
+| --------------------------------------------- | ------------------------------------------------------------ | ------------ |
+| `pytest`                                      | Unit and integration tests (models and simulator are mocked) | No           |
+| `pytest --cov`                                | Same suite plus the 70% coverage gate CI enforces            | No           |
+| `docker compose --profile test run --rm test` | The same suite inside the Jetson image                       | No           |
+| `python scripts/sbend_sim.py`                 | Closed-loop controller check on a synthetic S-bend           | No           |
+| `offroad-autonomy --benchmark-seconds 90`     | Timed run that writes `output/benchmarks/<label>.json`       | Yes          |
+
+## Common Commands
+
+| Command                                                         | What it does                                            |
+| --------------------------------------------------------------- | ------------------------------------------------------- |
+| `offroad-autonomy --config <file>`                              | Run the stack with a config                             |
+| `ruff check src tests scripts`                                  | Lint                                                    |
+| `ruff format src tests scripts`                                 | Format (CI runs it with `--check`)                      |
+| `python -m build`                                               | Build the wheel and sdist                               |
+| `pytest`                                                        | Run the tests                                           |
+| `python scripts/compare_benchmarks.py output/benchmarks/*.json` | Compare benchmark runs side by side                     |
+| `python scripts/derive_ego_mask.py`                             | Regenerate camera bodywork masks after moving a camera  |
+| `python scripts/diagnose_perception.py capture` / `analyze`     | Save simulator frames, then dump every perception stage |
+| `python scripts/closed_loop_log.py --seconds 120 --summary`     | Headless run that logs every control frame to CSV       |
+| `python scripts/export_engine.py`                               | Export the segmentation model to TensorRT               |
+
+## Development Notes
+
+- Package code is in `src/offroad_autonomy/`; the entry point is `main.py`, and the stage order is in `pipeline.py`
+- Only `simulation/beamng_client.py` imports `beamngpy`
+- `configs/default.yaml` holds every tuning value, with the reason for it next to the key; `configs/jetson.yaml` overrides it through `extends:`
+- `BEAMNG_HOST`, `BEAMNG_PORT`, `BEAMNG_HOME` and `BEAMNG_LAUNCH` override the `beamng:` block
+- Stereo and the dashboard run on their own threads, and the control loop never waits for either
+- After moving a camera in `beamng.cameras`, re-run `scripts/derive_ego_mask.py` and re-check `planning.roi_height` and `depth.min_depth_m`
+- Manual driving (W/A/S/D under safe stop) reads the OS key state and works only on Windows
+- CI (`.github/workflows/ci.yml`) runs lint, format, the S-bend check, tests with coverage and the build on Python 3.10; CodeQL scans weekly and on every pull request; Dependabot watches pip, the Docker base image and the Actions
+
+## Contribution Rules
+
+- Create a new branch from main for every change.
+- Do not commit directly to main.
+- Open a pull request into main when the change is ready.
+- Keep pull requests small, focused, and easy to review.
+- Run `ruff check src tests scripts`, `ruff format --check src tests scripts` and `pytest --cov` before opening a pull request.
+- Run `python scripts/sbend_sim.py` after changing the controller or its config.
+- No ternary expressions, and no single-line `if` bodies.
+- Comments explain why, not what.
+- Do not create commits unless explicitly asked.
+- Before finishing, summarize what changed, what commands were run, what commands could not be run, and any remaining risks.

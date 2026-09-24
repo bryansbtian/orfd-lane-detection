@@ -1,16 +1,120 @@
 beamng:
+  # BEAMNG_HOME / BEAMNG_HOST / BEAMNG_PORT / BEAMNG_LAUNCH override these, so
+  # a deployment can point at its simulator without editing this file.
   home: "E:\\BeamNG.tech.v0.38.3.0"
   host: localhost
   port: 64256
+  # false attaches to an already running simulator and never quits it.
+  launch: true
+  # shared_memory is fastest but needs BeamNG on this machine; a remote
+  # client (the Jetson container) must use socket.
+  camera_transport: shared_memory
   map: automation_test_track
   vehicle: hopper
   spawn_index: 0
-  camera:
-    width: 1280
-    height: 720
-    fov: 120.0
-    pos: [0, -2.5, 0.8]
-    dir: [0, -1, -0.1]
+  # Three cameras, two jobs, in BeamNG vehicle space: +X = left, -Y = forward,
+  # +Z = up.
+  #
+  #   left + right  front bumper. These two do ALL perception: segmentation,
+  #                 rectification, disparity, depth, terrain, clearance and
+  #                 confidence. Nothing else feeds any of that.
+  #   visualization roofline. Display only - the dashboard's main panel. It is
+  #                 never segmented, matched or measured; the mask and path
+  #                 drawn on it are reprojected from the bumper pair.
+  #
+  # The pair is declared once under `sensor` and `stereo_rig`, so the two
+  # mounts always share height, pitch, roll, resolution, FOV and frame timing
+  # and differ only by the baseline.
+  cameras:
+    sensor:
+      model: GMSL2
+      # Rendered at 1/3 of the 2880x1860 imager in each axis. Two full-res
+      # streams cost BeamNG far more than the 50 ms loop allows; the stack
+      # works at 720x465 (exactly 3/4 of this) so nothing is lost downstream.
+      # fov_h is HORIZONTAL; the vertical angle BeamNG wants is derived.
+      width: 960
+      height: 620
+      fov_h: 120.0
+      target_fps: 30.0
+
+    # Everything about where the perception pair sits is here and nowhere
+    # else - no camera offsets are written as literals anywhere in the code.
+    stereo_rig:
+      # Metres between the optical centres. 0.4-0.8 m is the sensible range
+      # for this vehicle: wider resolves range better, narrower keeps the
+      # near field matchable. At 720 px wide, f = 207.8 px, so 0.6 m gives
+      # 12.5 px of disparity at 10 m and 3.1 px at 40 m. The Hopper's front
+      # bumper is 1.60 m wide, so 0.6 m fits with room to spare.
+      baseline_m: 0.6
+      # Front bumper. The Hopper's frontmost bodywork is the bumper's fb1r/fb1l
+      # nodes at y = -1.78 (top face z = 0.635), so mounting at -1.95 puts both
+      # cameras 0.17 m AHEAD of any part of the vehicle: no hood, no bumper, no
+      # bodywork can enter the frame at any field of view, and there is nothing
+      # left for an ego exclusion mask to exclude.
+      height_m: 0.95
+      forward_offset_m: -1.95
+      lateral_offset_m: 0.0
+      # Unchanged from the old roofline pair on purpose: the horizon's image
+      # row depends on pitch alone, not on height, so keeping it keeps
+      # depth.roi.row_top and the planner's row bands valid.
+      pitch_deg: -2.0
+      roll_deg: 0.0
+      # Keep ~0. Toe-out widens the stitched view but eats stereo overlap.
+      toe_out_deg: 0.0
+
+    # Frames must come from the same simulation step before stereo uses them.
+    sync:
+      max_read_skew_ms: 8.0
+      require_both_new: true
+
+    # DISPLAY ONLY. This camera feeds no computation whatsoever - not
+    # segmentation, stereo, depth, planning, control, fallback or safe stop.
+    # It exists so a person can see the road ahead and the planned path from a
+    # flattering angle, which is the opposite of what the perception pair is
+    # positioned for. Captured on the dashboard thread, so its acquisition is
+    # outside the autonomy loop's timing.
+    visualization:
+      enabled: true
+      name: path_view
+      # High and pitched down: the framing that reads best to a human.
+      height_m: 1.85
+      forward_offset_m: -0.30
+      lateral_offset_m: 0.0
+      pitch_deg: -8.0
+      roll_deg: 0.0
+      # Small and slow - it is rendered, never matched, so resolution buys
+      # nothing but BeamNG render time.
+      sensor:
+        model: VIEW
+        width: 960
+        height: 540
+        fov_h: 95.0
+        target_fps: 20.0
+      # Bodywork in THIS camera's frame. Not a perception exclusion - nothing
+      # is computed here - purely a drawing clip that stops the reprojected
+      # road mask being painted across the bonnet. Regenerate after moving it:
+      #   python scripts/derive_ego_mask.py --camera display
+      overlay_clip:
+        enabled: true
+        margin_px: 1
+        polygon:
+          - [0.2242, 1.0000]
+          - [0.7769, 1.0000]
+          - [0.7070, 0.8887]
+          - [0.5057, 0.8627]
+          - [0.2941, 0.8887]
+
+    # The bumper pair sees no part of the vehicle, so neither camera needs an
+    # ego exclusion mask. Re-run scripts/derive_ego_mask.py after moving the
+    # rig; if it reports a silhouette, put the polygon back here.
+    left:
+      name: left_bumper
+      ego_mask:
+        enabled: false
+    right:
+      name: right_bumper
+      ego_mask:
+        enabled: false
   maps:
     jungle_rock_island:
       spawns:
@@ -55,10 +159,21 @@ beamng:
         - pos: [-388.39, 91.28, 120.0]
           rot: [0, 0, 0, 1]
 
+
 perception:
+  # 26x costs ~40 ms/frame on an RTX 3060 Laptop even with BeamNG idle - on
+  # its own most of the 50 ms budget. 26l is ~25 ms, 26s ~15 ms. See README.
   model_weights: "models/yoloe-26x-seg.pt"
-  confidence_threshold: 0.25
+  # SEGMENTATION_THRESHOLD: per-instance score the model must reach for an
+  # instance to enter the mask. Was 0.25 - measured on BeamNG frames
+  # (scripts/diagnose_perception.py) the correct road instance scores
+  # 0.11-0.78 and often 0.24-0.33, so 0.25 dropped whole frames at random.
+  # Frame-level trust is decided by planning.gate.confidence_threshold.
+  segmentation_threshold: 0.15
   input_size: 640
+  # left | right | stitched. A single camera is the default so segmentation
+  # and stereo can be benchmarked separately.
+  segmentation_mode: left
   prompts:
     - "traversable road"
     - "dirt road"
@@ -66,19 +181,170 @@ perception:
     - "drivable terrain"
     - "gravel path"
 
+# Optional wide view from both cameras, by precomputed remapping (no per-frame
+# feature matching). Used by segmentation_mode: stitched and by debug view 5.
+# NEVER used for stereo.
+stitching:
+  enabled: false
+  feather_px: 24
+
+# When the stack decides it can no longer see a road. The fraction is measured
+# over VALID pixels only (ego mask excluded), so bodywork in frame cannot trip
+# it - only a genuinely empty trail can.
+safety:
+  min_road_fraction: 0.015
+  no_road_time_s: 2.0
+
+# Stereo depth from the rectified left/right pair.
+depth:
+  enabled: true
+  # Stereo runs on a background worker; the control loop reads the latest
+  # result and never waits for it. async: false runs it inline (debug only).
+  async: true
+  rate_hz: 10.0
+  # Depth older than this is ignored by fusion and planning.
+  max_age_s: 0.4
+  # Rectified working size. An exact 3/4 of the 960x620 capture.
+  stereo_width: 720
+  stereo_height: 465
+  # 0 = derive the search range from the rig: f * B / min_depth_m rounded up
+  # to a multiple of 16. At 0.6 m and 1.5 m that is 83.1 -> 96.
+  num_disparities: 0
+  max_disparities: 128     # cost ceiling; the derivation is capped to this
+  block_size: 7
+  p1_factor: 8             # SGBM smoothness: P1 = p1_factor * 3 * block^2
+  p2_factor: 32
+  uniqueness_ratio: 15
+  speckle_window_size: 96
+  speckle_range: 2
+  disp12_max_diff: 1
+  # Lowered from 2.0 with the move to the bumper. The pair now sits 0.80 m
+  # lower, so far more of the frame is ground within a couple of metres: at
+  # 2.0 m only 54% of the ground it can see was inside the search range, against
+  # 86% from the roofline. The rest fell through to ground-plane fill - which
+  # keeps the maps dense but never raises an obstacle, so a rock at 1.7 m would
+  # have been invisible.
+  #
+  # The search range is the cost, so this is the dial between near-field sight
+  # and stereo latency:
+  #   2.00 ->  64 disparities (1.00x), 54% of visible ground measured
+  #   1.50 ->  96 disparities (1.50x), 72%     <- here
+  #   1.25 -> 112 disparities (1.75x), 82%
+  #   1.00 -> 128 disparities (2.00x), 92%     (at max_disparities)
+  # 1.5 is the middle: it recovers most of what the height cost without the
+  # full hit, because stereo latency has a second job to do - depth older than
+  # max_age_s above is dropped entirely, so a slower worker loses fusion
+  # altogether. Raise it if depth goes STALE on the dashboard; lower it if the
+  # worker has headroom and near-field obstacles matter more.
+  min_depth_m: 1.5
+  max_depth_m: 40.0
+  median_blur: 5
+  # cv2.stereoRectify free scaling: 0 = only valid pixels, 1 = all pixels.
+  rectify_alpha: 0.0
+  # Leave null to derive from the rig (ideal pinhole, zero distortion, R/T
+  # from the mounts). Fill in from a real calibration to override:
+  #   K_*: 3x3 at CAPTURE resolution; D_*: [k1, k2, p1, p2, k3]
+  #   R, T: X_right = R @ X_left + T (OpenCV), T in metres
+  calibration:
+    K_left: null
+    K_right: null
+    D_left: null
+    D_right: null
+    R: null
+    T: null
+  # Forward-driving ROI: depth_roi = dilate(road mask) AND forward corridor.
+  # The row band is cropped BEFORE matching (saves SGBM time); the mask and
+  # corridor gate which points reach terrain analysis.
+  roi:
+    enabled: true
+    row_top: 0.35          # fraction of image height; the sky is not matched
+    row_bottom: 1.0
+    use_road_mask: true
+    mask_dilation_px: 25   # keep the road edge and whatever stands on it
+    corridor_half_width_m: 4.0
+    corridor_length_m: 35.0
+
+terrain:
+  obstacle_height_m: 0.35    # rock/berm height that blocks the Hopper
+  drop_height_m: -0.45       # rut or washout deep enough to matter
+  max_slope_deg: 22.0        # smooth but too steep to climb
+  # Triangulation blunders land points absurdly far off the surface. Nothing
+  # outside this band around the fitted plane is terrain, so it is discarded
+  # rather than being reported as a cliff.
+  max_point_height_m: 5.0
+  min_point_height_m: -3.0
+  ground_fit_min_points: 400
+  ground_fit_near_m: 2.0
+  ground_fit_far_m: 18.0
+  ground_fit_lateral_m: 5.0
+  bev_forward_m: 30.0
+  bev_lateral_m: 10.0
+  bev_cell_m: 0.25
+  bev_min_points_per_cell: 2    # reject stereo speckle posing as a rock
+  bev_min_obstacle_ratio: 0.4   # and reject cells outvoted by ground points
+  vehicle_half_width_m: 0.95
+  clearance_lookahead_m: 18.0
+  # Stereo leaves holes (textureless dirt, rows outside the ROI band, the
+  # near field below min_depth_m); they are filled by intersecting each view
+  # ray with the fitted ground plane. Inferred pixels never raise an obstacle
+  # - they only keep the maps dense.
+  ground_fill_enabled: true
+  ground_fill_max_m: 25.0
+  fusion_weight: 0.65         # how far geometry may pull the appearance mask
+  unknown_support: 0.6        # trust in the mask where depth is missing
+  inferred_support: 0.8       # cap on ground-plane-inferred traversability
+
 preprocessing:
-  target_width: 640
-  target_height: 360
+  # Exactly 3/4 of the 960x620 capture (1/4 of the 2880x1860 imager), so the
+  # segmentation mask, the reprojected depth map and the terrain maps all
+  # share one grid and fuse pixel for pixel. The stitched view keeps this
+  # height and focal length but is as wide as the two cameras need.
+  target_width: 720
+  target_height: 465
   enable_clahe: true
   clahe_clip_limit: 2.0
   clahe_grid_size: 8
 
 postprocessing:
+  # Re-enable ONE stage at a time, once the baseline drives cleanly:
+  #   stage 1 enable_morphology   stage 2 enable_ema
+  #   stage 3 planning.baseline_temporal_blend   stage 4 planning.mode: advanced
+  #   stage 5 control tuning
+  enable_morphology: false
+  enable_ema: false
   ema_alpha: 0.7
   min_mask_area_fraction: 0.001
   morphology_kernel_size: 5
 
 planning:
+  # baseline: largest road component touching the vehicle -> centre of each
+  #           sampled row -> one quadratic fit. No scoring, clearance, Kalman
+  #           or straightening, and depth never touches the path or speed.
+  # advanced: the scoring / clearance / Kalman planner configured below.
+  mode: baseline
+  # ROI_HEIGHT: share of the frame, up from the bottom edge, the planner reads.
+  # Bumper pair at 0.95 m, pitch -2 deg, 120 deg HFOV, 720x465 working size:
+  #   horizon  row 225 (51.6% up)     15 m  row 238 (48.7% up)
+  #   10 m     row 245 (47.3% up)      6 m  row 258 (44.5% up)
+  #    3 m     row 290 (37.5% up)   bottom row = 0.8 m
+  # Everything from 6 m to 40 m lives in ~28 rows, so 0.45 would cap the
+  # lookahead at ~6 m. 0.49 reaches ~15 m and stays 12 rows below the horizon
+  # (about 3 deg of body pitch). Recompute if the rig's pitch or height changes.
+  roi_height: 0.49
+  # Stage 3 - trajectory smoothing, done on the ground in metres: weight of
+  # the previous path at equal distances ahead (0 = each frame stands alone),
+  # plus a cap on how far the path may move sideways per frame at ANY range.
+  # Keeps the road's curvature, removes frame-to-frame jumps.
+  baseline_temporal_blend: 0.4
+  baseline_max_shift_m: 0.5
+  # A frame that fails any check produces NO new path: the last good path is
+  # reused for hold_frames at hold_speed_scale x speed, then the car brakes.
+  gate:
+    confidence_threshold: 0.20   # CONFIDENCE_THRESHOLD: best detection score
+    min_mask_area: 0.05          # MIN_MASK_AREA: road component / planner ROI
+    hold_frames: 10              # ~0.5 s at 20 Hz
+    hold_speed_scale: 0.4
+  # --- advanced mode only below, except min_road_pixels (also a gate check)
   centerline_samples: 20
   backend: heuristic
   horizon_fraction: 0.82
@@ -95,25 +361,151 @@ planning:
   kalman_process_noise: 5.0e-4
   kalman_measurement_noise: 1.0e-1
   fallback_after_n_misses: 3
-  min_road_pixels: 500
+  min_road_pixels: 2000         # valid traversable pixels inside the ROI
+  depth_clearance_weight: 0.35  # metric vs. image-space clearance blend
+  min_clearance_m: 1.15         # corridor narrower than this is penalised
+  obstacle_penalty: 0.85
 
 control:
-  stanley_gain_k: 1.15
+  # Everything below runs on the ground plane: the path is projected into
+  # metres and fitted as right(f) = a + b*f + c*f^2 (see stanley_controller).
+  #
+  # ---- Steering: wheel = atan(L*kappa_ff) + k_psi*psi + atan(k*e/rejoin)
+  # psi and e are read at the pose the car will have when the command lands
+  # (speed * latency along its current arc) - see latency_pose_prediction.
+  # Curvature feedforward weight: 1.0 steers exactly for the path's arc, so
+  # turning starts as the bend arrives instead of after the error builds up.
+  curvature_feedforward_gain: 1.0
+  stanley_heading_gain: 0.85
+  # Cross-track gain per metre of offset past the deadzone, over the rejoin
+  # distance below. Was 1.0: with latency prediction on, 1.5 is stable even
+  # at 3 FPS / 3-frame delay; 2.0 was not (scripts/sbend_sim.py sweeps).
+  stanley_gain_k: 1.5
   stanley_softening: 2.4
-  stanley_heading_gain: 0.75
-  stanley_lookahead_fraction: 0.35
-  stanley_near_path_weight: 0.35
-  steering_ema_alpha: 0.28
-  max_steering_delta: 0.10
-  steering_deadband: 0.03
-  target_speed_mph: 12.0
+  # Cross-track deadzone, was a hard 0.5 m band. A hard band let the car
+  # drift to its edge and then kicked it back (a 3-4 s, ~0.9 m weave), so it
+  # is now soft: e - tol*tanh(e/tol) - ~0 for small offsets, e - tol for
+  # real ones, nothing switching in between.
+  cross_track_tolerance_m: 0.3
+  cross_track_soft_deadzone: true
+  # Read heading AND cross-track at the pose after the loop latency. Reading
+  # the offset at the bumper "now" left ~0.8 s of delay uncompensated and was
+  # the main source of drift: mean off-centre 0.54 -> 0.43 m on its own.
+  latency_pose_prediction: true
+  # Capture-to-actuation delay. Heading and curvature are read where the car
+  # will be when the command lands (speed * latency ahead), not where it was.
+  control_latency_s: 0.35
+  #
+  # ---- Adaptive lookahead: clip(base + time*v, min, max), then shrunk as
+  # base / (1 + gain * |kappa| * base). Straight road at 10 mph: ~5.7 m;
+  # a 10 m radius bend at 5 mph: ~2.7 m, so the feedforward averages over the
+  # bend the car is in, not the reverse half of an S behind it.
+  lookahead_base_m: 3.0
+  lookahead_time_s: 0.6
+  lookahead_min_m: 2.0
+  lookahead_max_m: 8.0
+  lookahead_curvature_gain: 2.0
+  #
+  # ---- Speed: min of cruise, curve profile, path end, saturation.
+  # Straights run at this (was 8 mph; bends now slow themselves down).
+  target_speed_mph: 10.0
   speed_limit_mph: 15.0
-  min_turn_speed_mph: 7.0
-  curve_speed_gain: 475.0
-  heading_speed_gain: 1.1
-  max_throttle: 0.45
+  # Curve speed v = sqrt(a_lat / |kappa|): 10 m radius -> 2.2 m/s, 5 m radius
+  # -> crawl. Low on purpose: at ~4 FPS the loop's latency is the limit, and
+  # slower bends were what kept the S-bend sim stable at 3 FPS (10/12 runs vs
+  # 6/12 at 1.0).
+  max_lateral_accel_mps2: 0.5
+  # Brake toward each bend's speed at this rate from wherever it is seen, so
+  # the car is already slow on entry.
+  curve_decel_mps2: 0.8
+  # Floor for curve/saturation slow-downs (crawl, still steerable).
+  min_turn_speed_mph: 3.0
+  #
+  # ---- Saturation: saturation = max(|applied steer|, steer the sharpest
+  # bend ahead needs). Above `start` the target speed AND the throttle
+  # ceiling are cut linearly, to `min_speed_scale` of cruise at full lock.
+  saturation_start: 0.5
+  saturation_min_speed_scale: 0.35
+  # Full lock is for crawling: the steering cap is 1.0 up to 2 m/s and
+  # falls to 0.6 at 5 m/s. Asking for more saturates -> the car slows ->
+  # the cap relaxes. Never full lock at speed.
+  steer_cap_full_speed_mps: 2.0
+  steer_cap_high_speed_mps: 5.0
+  steer_cap_at_high_speed: 0.6
+  # After a bend, the target speed rises by at most this per control frame
+  # (~0.4 m/s^2 at 4 FPS). Between the two halves of an S the fitted path
+  # looks straight for a moment; without this the car sprinted into the
+  # reverse bend and braked inside it.
+  max_target_speed_increase_mps: 0.1
+  # Routine slow-downs (bend, saturation) brake at most this hard; hard
+  # braking pitched the bumper camera and shook the path. Path end and
+  # clearance still get max_brake.
+  comfort_brake: 0.35
+  # Curvature is always clamped to the full-lock curvature
+  # tan(max_wheel_angle) / wheelbase (~0.24 /m, a 4.2 m radius) - in BeamNG a
+  # few-metre path once fitted to 0.4-1.0 /m on a straight road. Below this
+  # reach past the preview point it is also scaled by (reach / this)^2. Keep
+  # it SHORT: the planner legitimately ends the path ~4 m out in a tight bend
+  # (it stops where the road turns past 45 deg), and 5 m here under-steered
+  # every 5 m-radius S-bend in scripts/sbend_sim.py.
+  min_curvature_span_m: 2.0
+  #
+  # ---- Trail centring (all measured in scripts/sbend_sim.py on a 6 m trail;
+  # together with the gains above: mean off-centre 0.66 -> 0.31 m, p95
+  # 1.38 -> 0.75 m, worst 1.84 -> 0.99 m, at ~25% more time).
+  #
+  # Cross-track adaptive lookahead, as a RECOVERY mode: the rejoin distance
+  # is the normal lookahead until the offset exceeds cross_track_recovery_m
+  # past the deadzone, then shrinks as lookahead / (1 + gain * excess).
+  # Shrinking it continuously (from 0 m) destabilised the loop at 3 FPS.
+  cross_track_lookahead_gain: 1.0
+  cross_track_recovery_m: 0.5
+  cross_track_min_lookahead_m: 1.5
+  # Trail edges come from the planner's traversable mask along the car's
+  # predicted arc. "Clearance" = distance to the nearer edge minus the
+  # vehicle half-width (terrain.vehicle_half_width_m). Inside edge_margin_m:
+  #  - the steering reference is pulled toward the centre of the traversable
+  #    run, by edge_centering_gain at the edge (the planner's path is already
+  #    the per-row centre; this bites where the fit leaves it near a side),
+  #  - edge risk rises 0 -> 1 and the target speed is cut by up to
+  #    edge_speed_reduction of cruise.
+  edge_margin_m: 0.75
+  edge_centering_gain: 0.7
+  edge_speed_reduction: 0.6
+  # While |cross-track| is growing, target / (1 + gain * rate[m/s]). The
+  # single most effective centring term in the sim (3 FPS worst case
+  # 1.75 -> 0.98 m) - drift is caught while it is still small.
+  drift_speed_gain: 2.0
+  # Measured lateral acceleration budget: speed^2 x the applied steering's
+  # curvature. Above it, v <= sqrt(budget / curvature). (The planning budget
+  # above, max_lateral_accel_mps2, is for the bends the car SEES coming.)
+  max_measured_lateral_accel_mps2: 0.8
+  # Mild extra gain reduction at speed (full below 3 m/s).
+  steer_full_authority_speed_mps: 3.0
+  steer_speed_falloff: 0.08
+  #
+  # Output smoothing: EMA, then a hard cap on change per control frame.
+  # BeamNG itself slews the Hopper's steering at ~0.9/s (measured: 0 -> 0.6
+  # in ~0.7 s), so the cap only needs to stop jumps, not add smoothing:
+  # 0.3 per frame (~1.2/s at 4 FPS). At 0.12 (~0.5/s) OUR limiter was the
+  # slowest element in the loop and the S-bend reversal came too late.
+  steering_ema_alpha: 0.45
+  max_steering_delta: 0.3
+  # Hopper geometry - ESTIMATES, check against the jbeam. They convert wheel
+  # angles to BeamNG's [-1, 1] input and curvature to required steering.
+  wheelbase_m: 2.6
+  max_wheel_angle_deg: 32.0
+  # Never arrive at the end of the perceived path moving:
+  # v <= sqrt(2 * decel * (path_end - margin)).
+  path_end_margin_m: 1.5
+  path_end_decel_mps2: 2.0
+  # Was 0.45: the Hopper then launches at ~4 m/s^2 and overshoots the
+  # target before the 4 FPS loop can react.
+  max_throttle: 0.3
   max_brake: 0.8
   speed_kp: 0.22
+  clearance_slow_m: 6.0   # start easing off when an obstacle is this close
+  clearance_stop_m: 2.5   # hold at the minimum turn speed by this point
 
 visualization:
   dashboard:
@@ -133,3 +525,23 @@ visualization:
       GOOD: [102, 187, 106]
       WARN: [82, 181, 233]
       BAD: [90, 92, 225]
+
+ui:
+  # No window and no display camera: for containers and machines without a
+  # screen. --headless on the command line does the same.
+  headless: false
+  # With display_async the dashboard is on its own thread and skipping buys
+  # nothing; this only matters when display_async is false.
+  render_every_n: 1
+  # Keeps rendering and GUI time out of the autonomy loop, so "Autonomy FPS"
+  # measures the vehicle rather than the window. false is for debugging only.
+  display_async: true
+  # The autonomy loop is not synchronised to this; lowering it frees GPU/CPU
+  # for perception and nothing else.
+  display_rate_hz: 20.0
+  # Keys 0-9 switch at runtime:
+  #   0 default  1 raw  2 rectified  3 disparity  4 depth  5 stitched
+  #   6 mask  7 fused  8 roi  9 pipeline     T toggles the timing overlay
+  debug_view: default
+  timing_overlay: false
+  log_interval_s: 5.0

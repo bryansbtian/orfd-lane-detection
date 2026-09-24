@@ -1,0 +1,30 @@
+services:
+  autonomy:
+    build:
+      context: .
+      target: runtime
+    image: offroad-autonomy:jetson
+    runtime: nvidia
+    # beamngpy opens a second connection per vehicle on a port BeamNG picks,
+    # so host networking avoids having to predict and publish it.
+    network_mode: host
+    environment:
+      BEAMNG_HOST: ${BEAMNG_HOST:-}
+      BEAMNG_PORT: ${BEAMNG_PORT:-64256}
+    volumes:
+      # Writable: the TensorRT export writes its engine next to the weights.
+      - ./models:/app/models
+      - ./output:/app/output
+      - ./configs:/app/configs:ro
+    # Enough for the SIGTERM handler to park the vehicle and disconnect.
+    stop_grace_period: 15s
+    # A crashed autonomy stack must not re-engage by itself without an operator.
+    restart: "no"
+
+  test:
+    build:
+      context: .
+      target: test
+    image: offroad-autonomy:jetson-test
+    runtime: nvidia
+    profiles: ["test"]

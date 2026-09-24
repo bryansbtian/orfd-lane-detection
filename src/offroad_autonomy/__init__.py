@@ -1,3 +1,3 @@
-"""offroad_autonomy — End-to-end autonomous off-road driving pipeline."""
+"""Autonomous off-road driving for BeamNG.tech."""
 
 __version__ = "0.1.0"
