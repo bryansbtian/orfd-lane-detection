@@ -91,11 +91,12 @@ beamng:
         - pos: [-388.39, 91.28, 120.0]
           rot: [0, 0, 0, 1]
 
-
 perception:
   # 26x costs ~40 ms/frame on an RTX 3060 Laptop even with BeamNG idle - on
   # its own most of the 50 ms budget. 26l is ~25 ms, 26s ~15 ms. See README.
   model_weights: "models/yoloe-26x-seg.pt"
+  # Semantic checkpoints use per-pixel confidence; prompts select fixed road
+  # class names (e.g. "traversable road") and never include background.
   # SEGMENTATION_THRESHOLD: per-instance score the model must reach for an
   # instance to enter the mask. Was 0.25 - measured on BeamNG frames
   # (scripts/diagnose_perception.py) the correct road instance scores
@@ -158,9 +159,9 @@ planning:
   # A frame that fails any check produces NO new path: the last good path is
   # reused for hold_frames at hold_speed_scale x speed, then the car brakes.
   gate:
-    confidence_threshold: 0.18   # accept a connected road at 0.19; matches PipelineConfig
-    min_mask_area: 0.05          # MIN_MASK_AREA: road component / planner ROI
-    hold_frames: 10              # ~0.5 s at 20 Hz
+    confidence_threshold: 0.18 # accept a connected road at 0.19; matches PipelineConfig
+    min_mask_area: 0.05 # MIN_MASK_AREA: road component / planner ROI
+    hold_frames: 10 # ~0.5 s at 20 Hz
     hold_speed_scale: 0.4
   # --- advanced mode only below, except min_road_pixels (also a gate check)
   centerline_samples: 20
@@ -179,7 +180,7 @@ planning:
   kalman_process_noise: 5.0e-4
   kalman_measurement_noise: 1.0e-1
   fallback_after_n_misses: 3
-  min_road_pixels: 2000         # valid traversable pixels inside the ROI
+  min_road_pixels: 2000 # valid traversable pixels inside the ROI
   # --- grid mode only: bird's-eye traversability grid + arc ("tentacle") planner.
   # The road mask is projected onto flat ground, fused over time with the
   # vehicle's motion, and a fan of steerable arcs is scored on it. Cells the
@@ -192,7 +193,7 @@ planning:
     cell_m: 0.10
     # The gate ROI ends ~13.4 m ahead, so 16 m holds every observed cell.
     ahead_m: 16.0
-    # Behind the camera: the rear axle (control.mpc.camera_ahead_of_rear_axle_m)
+    # Behind the camera: the rear axle (control.camera_ahead_of_rear_axle_m)
     # plus the road the vehicle has just driven over.
     behind_m: 4.0
     # Wider than any trail; a full-lock arc (4.2 m radius) stays within 8.4 m sideways.
@@ -231,9 +232,9 @@ planning:
     # Only breaks near-ties; at 0.4 it locked onto the first arc it picked.
     weight_consistency: 0.2
     weight_curvature: 0.1
+    weight_trajectory_distance: 0.35 # penalty per metre from the motion-compensated prior path
 
 control:
-  controller: stanley         # use configs/mpc.yaml for MPC with Stanley fallback
   # Half the vehicle width keeps the road-edge margin outside the bodywork.
   vehicle_half_width_m: 0.95
   # Everything below runs on the ground plane: the path is projected into
@@ -363,6 +364,8 @@ control:
   # Hopper geometry - ESTIMATES, check against the jbeam. They convert wheel
   # angles to BeamNG's [-1, 1] input and curvature to required steering.
   wheelbase_m: 2.6
+  # The grid's arcs start at the rear axle; this offset also anchors the S-bend simulation.
+  camera_ahead_of_rear_axle_m: 1.4
   max_wheel_angle_deg: 32.0
   # Never arrive at the end of the perceived path moving:
   # v <= sqrt(2 * decel * (path_end - margin)).
@@ -373,8 +376,8 @@ control:
   max_throttle: 0.3
   max_brake: 0.8
   speed_kp: 0.22
-  clearance_slow_m: 6.0   # start easing off when an obstacle is this close
-  clearance_stop_m: 2.5   # hold at the minimum turn speed by this point
+  clearance_slow_m: 6.0 # start easing off when an obstacle is this close
+  clearance_stop_m: 2.5 # hold at the minimum turn speed by this point
 
 visualization:
   dashboard:
@@ -386,9 +389,9 @@ visualization:
       CARD_BG: [36, 32, 29]
       CARD_BORDER: [58, 52, 48]
       TEXT_PRIMARY: [255, 255, 255]
-      TEXT_SECONDARY: [180, 172, 166]    # still reads on CARD_BG at small sizes
+      TEXT_SECONDARY: [180, 172, 166] # still reads on CARD_BG at small sizes
       MUTED_LINE: [66, 59, 54]
-      MASK_FILL: [191, 179, 79]          # teal, so it never reads as the green of a healthy value
+      MASK_FILL: [191, 179, 79] # teal, so it never reads as the green of a healthy value
       MASK_EDGE: [240, 235, 189]
       PATH_GLOW: [77, 154, 255]
       PATH_CORE: [26, 122, 255]
@@ -396,11 +399,11 @@ visualization:
       GOOD: [138, 214, 91]
       WARN: [59, 185, 245]
       BAD: [91, 91, 255]
-      EGO_EXCLUDED: [255, 91, 212]       # magenta: distinct from the mask teal and the fault red
+      EGO_EXCLUDED: [255, 91, 212] # magenta: distinct from the mask teal and the fault red
     # The autonomy loop's target rate. Below it the readout turns amber,
     # then red once it falls under fps_warn_fraction of the target.
     target_fps: 7.0
-    fps_warn_fraction: 0.8              # amber from 80% of the target up to the target; a design choice, not measured
+    fps_warn_fraction: 0.8 # amber from 80% of the target up to the target; a design choice, not measured
     # One frame period at target_fps (1000 / 7). Latency past this means the
     # loop cannot hold its target.
     latency_budget_ms: 143.0

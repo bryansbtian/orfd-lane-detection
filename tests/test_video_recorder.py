@@ -120,7 +120,9 @@ _FFMPEG = shutil.which("ffmpeg")
 )
 def test_recording_produces_a_playable_h264_mp4(tmp_path):
     path = tmp_path / "run.mp4"
-    recorder = VideoRecorder(path, 64, 48, fps=20.0, preset="ultrafast")
+    # This test submits ten frames without pacing; leave room for the whole
+    # burst so encoder startup timing cannot drop a frame from the test clip.
+    recorder = VideoRecorder(path, 64, 48, fps=20.0, preset="ultrafast", queue_frames=10)
     rng = np.random.default_rng(0)
 
     for i in range(10):

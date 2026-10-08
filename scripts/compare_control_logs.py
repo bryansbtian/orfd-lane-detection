@@ -35,10 +35,6 @@ def summarize(path):
         "mean_loop_ms": float(col("loop_ms").mean()),
         "p95_loop_ms": float(np.percentile(col("loop_ms"), 95)),
         "mean_control_ms": float(col("control_ms").mean()),
-        "mean_solve_ms": float(col("solve_ms").mean()),
-        "p95_solve_ms": float(np.percentile(col("solve_ms"), 95)),
-        "max_solve_ms": float(col("solve_ms").max()),
-        "fallback_frames": sum(row["fallback"] == "True" for row in rows),
         "gate_rejects": sum(row["gate"] != "ok" for row in rows),
         "route_completion": "not measured: no ground-truth route/finish line",
     }

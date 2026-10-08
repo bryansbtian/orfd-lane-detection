@@ -16,6 +16,25 @@ AUTO = "auto"
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "::1")
 
 
+def saved_windows_beamng_home() -> str:
+    """Read the user setting even when an existing terminal has a stale environment."""
+    if sys.platform != "win32":
+        return ""
+    import winreg
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+            value, kind = winreg.QueryValueEx(key, "BEAMNG_HOME")
+        if kind == winreg.REG_EXPAND_SZ:
+            return winreg.ExpandEnvironmentStrings(value)
+        if kind == winreg.REG_SZ:
+            return value
+    except OSError:
+        # Missing settings or denied registry access leave attach mode available.
+        pass
+    return ""
+
+
 @dataclass(frozen=True)
 class PlatformFacts:
     os_name: str

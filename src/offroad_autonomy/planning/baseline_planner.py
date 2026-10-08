@@ -28,8 +28,8 @@ from offroad_autonomy.types import PipelineConfig
 
 _MAX_GAP_ROWS = 3
 _OUTPUT_POINTS = 24
-#: A drivable road cannot turn more than 45 deg between samples; a bigger
-#: step means the walk hopped to a different patch of road.
+#: Bound the centreline's lateral step. A road widening can move its row
+#: midpoint faster than this even when a continuous path remains inside it.
 _MAX_LATERAL_SLOPE = 1.0
 _SLACK_M = 0.25
 #: Stones and segmentation specks must not split the road and move its
@@ -77,9 +77,31 @@ class BaselinePlanner:
                 accepted = bool(ok[0])
                 if accepted and forward_pts:
                     step_f = float(f[0]) - forward_pts[-1]
-                    accepted = (
-                        abs(float(r[0]) - right_pts[-1]) <= _MAX_LATERAL_SLOPE * step_f + _SLACK_M
-                    )
+                    max_step = _MAX_LATERAL_SLOPE * step_f + _SLACK_M
+                    accepted = abs(float(r[0]) - right_pts[-1]) <= max_step
+                    if not accepted and step_f > 0:
+                        # At a side opening the midpoint can swing across the
+                        # road. Continue only if the previous ground lateral
+                        # position is still visibly inside this same run.
+                        continuation_x = float(
+                            self._camera.ground_to_image(f, [right_pts[-1]])[0, 0]
+                        )
+                        continuation_col = int(round(continuation_x))
+                        if run[0] <= continuation_col <= run[1] and component[y, continuation_col]:
+                            bounded_r = np.clip(
+                                float(r[0]), right_pts[-1] - max_step, right_pts[-1] + max_step
+                            )
+                            x = float(self._camera.ground_to_image(f, [bounded_r])[0, 0])
+                            f, r, ok = self._camera.image_to_ground([[x, y]])
+                            step_f = float(f[0]) - forward_pts[-1]
+                            accepted = (
+                                bool(ok[0])
+                                and step_f > 0
+                                and run[0] <= x <= run[1]
+                                and component[y, int(round(x))]
+                                and abs(float(r[0]) - right_pts[-1])
+                                <= _MAX_LATERAL_SLOPE * step_f + _SLACK_M + 1e-6
+                            )
             if not accepted:
                 gap += 1
                 if forward_pts and gap >= _MAX_GAP_ROWS:

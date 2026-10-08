@@ -21,6 +21,7 @@ from offroad_autonomy.types import (
     PipelineConfig,
     VehicleState,
 )
+from offroad_autonomy.utils.environment import LOCAL_HOSTS
 
 logger = logging.getLogger("offroad_autonomy.simulation")
 
@@ -28,11 +29,15 @@ _PHYSICS_SETTLE_S = 3.0
 _SENSOR_WARMUP_S = 1.0
 
 
+class BeamNGConnectionError(RuntimeError):
+    """Simulator startup failed, with instructions for the configured endpoint."""
+
+
 class BeamNGClient:
     def __init__(self, config: PipelineConfig, orbit: bool = False) -> None:
         self._config = config
         # A flag rather than a config switch: the orbit camera costs capture
-        # time in the loop, so only a run recording a presentation pays it.
+        # time in the loop, so only a run showing or recording a presentation pays it.
         self._orbit = orbit
         self._bng = None
         self._vehicle = None
@@ -48,6 +53,7 @@ class BeamNGClient:
                 "so set BEAMNG_HOST to the address of the Windows machine running it"
             )
         from beamngpy import BeamNGpy, Scenario, Vehicle
+        from beamngpy.logging import BNGDisconnectedError
         from beamngpy.sensors.camera import Camera
 
         cfg = self._config
@@ -62,7 +68,32 @@ class BeamNGClient:
         else:
             logger.info("Connecting to running BeamNG at %s:%d", cfg.beamng_host, cfg.beamng_port)
         self._bng = BeamNGpy(cfg.beamng_host, cfg.beamng_port, home=cfg.beamng_home or None)
-        self._bng.open(launch=cfg.beamng_launch)
+        try:
+            self._bng.open(launch=cfg.beamng_launch)
+        except (BNGDisconnectedError, OSError) as exc:
+            local = cfg.beamng_host in LOCAL_HOSTS
+            listen_ip = "127.0.0.1" if local else "*"
+            remedy = (
+                "Start BeamNG.tech on the simulator machine with "
+                f'-tcom -tport {cfg.beamng_port} -tcom-listen-ip "{listen_ip}". '
+                "Opening the game normally does not enable the BeamNGpy server. "
+            )
+            if cfg.beamng_launch:
+                remedy += (
+                    f"Automatic launch from {cfg.beamng_home!r} failed; "
+                    "check the install path and the simulator startup log."
+                )
+            elif local:
+                remedy += (
+                    "To let this app start the simulator on Windows, set BEAMNG_HOME "
+                    "to its install folder and BEAMNG_LAUNCH=true."
+                )
+            else:
+                remedy += "Check BEAMNG_HOST, BEAMNG_PORT and the simulator host's firewall."
+            raise BeamNGConnectionError(
+                f"Cannot connect to BeamNG.tech at {cfg.beamng_host}:{cfg.beamng_port}. "
+                f"{remedy} Original error: {exc}"
+            ) from exc
 
         spawn_pos, spawn_rot = self._resolve_spawn(cfg)
 
@@ -117,6 +148,7 @@ class BeamNGClient:
             update_priority=1.0,
             is_render_colours=True,
             is_render_annotations=False,
+            is_render_instance=False,
             is_render_depth=False,
             is_using_shared_memory=self._shared_memory,
             is_streaming=self._shared_memory,
@@ -140,7 +172,7 @@ class BeamNGClient:
         return CameraFrame(image=image, timestamp=timestamp, frame_id=self._frame_id, is_new=is_new)
 
     def capture_orbit(self) -> np.ndarray | None:
-        """For the presentation video only; no pipeline stage reads it.
+        """For the presentation view and video; no pipeline stage reads it.
 
         Called from the main loop, never the dashboard thread: the socket
         transport is not thread safe."""

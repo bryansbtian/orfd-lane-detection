@@ -27,6 +27,7 @@ class GridPlannerConfig:
     weight_clearance: float = 1.0
     weight_consistency: float = 0.2
     weight_curvature: float = 0.1
+    weight_trajectory_distance: float = 0.35  # Score penalty per metre of path separation.
 
     def __post_init__(self):
         for f in fields(self):
@@ -63,6 +64,7 @@ class GridPlannerConfig:
             "weight_clearance",
             "weight_consistency",
             "weight_curvature",
+            "weight_trajectory_distance",
         ):
             if getattr(self, name) < 0:
                 raise ValueError(f"planning.grid.{name} must be >= 0")

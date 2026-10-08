@@ -11,7 +11,6 @@ from dataclasses import dataclass, field, replace
 
 import numpy as np
 
-from offroad_autonomy.control.controller_config import MPCConfig
 from offroad_autonomy.planning.grid_config import GridPlannerConfig
 
 DEFAULT_PERCEPTION_PROMPTS = [
@@ -355,14 +354,6 @@ class SteeringDebug:
     lateral_accel_mps2: float = 0.0
     cross_track_rate_mps: float = 0.0
     boundary_px: list = field(default_factory=list)
-    controller: str = "stanley"
-    mpc_solve_ms: float = 0.0
-    mpc_cost: float = 0.0
-    solver_success: bool = False
-    solver_status: str = "not run"
-    controller_fallback: bool = False
-    controller_fallback_reason: str = ""
-    acceleration_mps2: float = 0.0
 
 
 @dataclass
@@ -444,8 +435,6 @@ class PipelineConfig:
     fallback_after_n_misses: int = 3
     min_road_pixels: int = 500
 
-    controller: str = "stanley"
-    mpc: MPCConfig = field(default_factory=MPCConfig)
     grid: GridPlannerConfig = field(default_factory=GridPlannerConfig)
     stanley_gain_k: float = 1.5
     stanley_softening: float = 2.4
@@ -460,6 +449,7 @@ class PipelineConfig:
     steer_full_authority_speed_mps: float = 3.0
     steer_speed_falloff: float = 0.08
     wheelbase_m: float = 2.6
+    camera_ahead_of_rear_axle_m: float = 1.4
     max_wheel_angle_deg: float = 32.0
     path_end_margin_m: float = 1.5
     path_end_decel_mps2: float = 2.0

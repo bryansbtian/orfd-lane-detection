@@ -8,7 +8,6 @@ from pathlib import Path
 
 import yaml
 
-from offroad_autonomy.control.controller_config import MPCConfig
 from offroad_autonomy.planning.grid_config import GridPlannerConfig
 from offroad_autonomy.runtime.video_recorder import X264_PRESETS
 from offroad_autonomy.types import (
@@ -284,6 +283,17 @@ def _resolve_platform_settings(bng: dict, ui: dict) -> tuple[dict, dict]:
     if not environment.needs_detection(bng, ui):
         return bng, ui
     facts = environment.detect_platform()
+    if (
+        facts.os_name == "windows"
+        and bng.get("host") in (environment.AUTO, *environment.LOCAL_HOSTS)
+        and bng.get("launch") == environment.AUTO
+        and not bng.get("home")
+        and "BEAMNG_HOME" not in os.environ
+    ):
+        saved_home = environment.saved_windows_beamng_home()
+        if saved_home:
+            bng = dict(bng, home=saved_home)
+            logger.info("Using saved Windows BEAMNG_HOME: %s", saved_home)
     bng, ui = environment.resolve_auto(bng, ui, facts)
     platform = facts.os_name
     if facts.is_wsl:
@@ -321,9 +331,8 @@ def load_config(path: str | Path) -> PipelineConfig:
     plan = _section(raw, "planning")
     gate = _section(plan, "gate")
     ctrl = _section(raw, "control")
-    controller = str(ctrl.get("controller", "stanley")).lower()
-    if controller not in ("stanley", "mpc"):
-        raise ValueError("control.controller must be stanley or mpc")
+    if "controller" in ctrl:
+        raise ValueError("Remove control.controller: Stanley is the only controller")
     dashboard = _section(_section(raw, "visualization"), "dashboard")
 
     if "segmentation_mode" in perc or "stitching" in raw:
@@ -385,8 +394,6 @@ def load_config(path: str | Path) -> PipelineConfig:
         kalman_measurement_noise=plan.get("kalman_measurement_noise", 1e-1),
         fallback_after_n_misses=plan.get("fallback_after_n_misses", 3),
         min_road_pixels=plan.get("min_road_pixels", 500),
-        controller=controller,
-        mpc=MPCConfig(**_section(ctrl, "mpc")),
         grid=_load_grid(_section(plan, "grid")),
         stanley_gain_k=ctrl.get("stanley_gain_k", 1.5),
         stanley_softening=ctrl.get("stanley_softening", 2.4),
@@ -401,6 +408,7 @@ def load_config(path: str | Path) -> PipelineConfig:
         steer_full_authority_speed_mps=float(ctrl.get("steer_full_authority_speed_mps", 3.0)),
         steer_speed_falloff=float(ctrl.get("steer_speed_falloff", 0.08)),
         wheelbase_m=float(ctrl.get("wheelbase_m", 2.6)),
+        camera_ahead_of_rear_axle_m=float(ctrl.get("camera_ahead_of_rear_axle_m", 1.4)),
         max_wheel_angle_deg=float(ctrl.get("max_wheel_angle_deg", 32.0)),
         path_end_margin_m=float(ctrl.get("path_end_margin_m", 1.5)),
         path_end_decel_mps2=float(ctrl.get("path_end_decel_mps2", 2.0)),

@@ -2,7 +2,7 @@
 
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -42,6 +42,56 @@ def test_windows_attaches_to_localhost_over_shared_memory():
 def test_windows_launches_only_when_home_is_set():
     bng, _ = _resolve(WINDOWS, home="E:\\BeamNG.tech")
     assert bng["launch"] is True
+
+
+def test_existing_windows_terminal_uses_saved_home(monkeypatch):
+    for name in ("BEAMNG_HOME", "BEAMNG_LAUNCH", "BEAMNG_HOST"):
+        monkeypatch.delenv(name, raising=False)
+    with (
+        patch.object(environment, "detect_platform", return_value=WINDOWS),
+        patch.object(environment, "saved_windows_beamng_home", return_value="E:/BeamNG.tech"),
+    ):
+        cfg = load_config(DEFAULT_YAML)
+    assert cfg.beamng_home == "E:/BeamNG.tech"
+    assert cfg.beamng_launch is True
+
+
+@pytest.mark.parametrize(
+    "overrides,facts,env_home",
+    [
+        ({"home": "D:/BeamNG.tech"}, WINDOWS, None),
+        ({"launch": False}, WINDOWS, None),
+        ({"host": "192.168.1.50"}, WINDOWS, None),
+        ({}, WSL_NAT, None),
+        ({}, WINDOWS, ""),
+    ],
+)
+def test_saved_home_does_not_override_explicit_or_remote_settings(
+    monkeypatch, overrides, facts, env_home
+):
+    from offroad_autonomy.utils.config import _resolve_platform_settings
+
+    monkeypatch.delenv("BEAMNG_HOME", raising=False)
+    if env_home is not None:
+        monkeypatch.setenv("BEAMNG_HOME", env_home)
+    with (
+        patch.object(environment, "detect_platform", return_value=facts),
+        patch.object(environment, "saved_windows_beamng_home", side_effect=AssertionError),
+    ):
+        bng, _ = _resolve_platform_settings(dict(AUTO_BNG, **overrides), AUTO_UI)
+    assert bng["home"] == overrides.get("home", "")
+
+
+@pytest.mark.parametrize("missing", [False, True])
+def test_saved_windows_home_reads_user_registry(monkeypatch, missing):
+    registry = MagicMock()
+    registry.QueryValueEx.return_value = ("E:/BeamNG.tech", registry.REG_SZ)
+    if missing:
+        registry.OpenKey.side_effect = FileNotFoundError
+    monkeypatch.setattr(environment.sys, "platform", "win32")
+    with patch.dict("sys.modules", {"winreg": registry}):
+        assert environment.saved_windows_beamng_home() == ("" if missing else "E:/BeamNG.tech")
+    registry.OpenKey.assert_called_once_with(registry.HKEY_CURRENT_USER, "Environment")
 
 
 def test_wsl_nat_attaches_to_the_windows_gateway_over_socket():

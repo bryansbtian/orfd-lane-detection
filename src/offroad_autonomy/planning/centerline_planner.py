@@ -268,8 +268,7 @@ class CenterlinePlanner:
             wheelbase_m=config.wheelbase_m,
             max_wheel_angle_deg=config.max_wheel_angle_deg,
             vehicle_half_width_m=config.vehicle_half_width_m,
-            # The MPC owns this measurement; one value keeps the two from disagreeing.
-            rear_axle_behind_camera_m=config.mpc.camera_ahead_of_rear_axle_m,
+            rear_axle_behind_camera_m=config.camera_ahead_of_rear_axle_m,
         )
         logger.info("Planning mode: %s (advanced backend %s)", self._mode, self._backend.name)
 
@@ -352,12 +351,12 @@ class CenterlinePlanner:
         if not decision.ok:
             return self._hold(decision)
 
-        choice = self._arcs.choose(self._grid)
+        choice = self._arcs.choose(self._grid, ground_pose(vehicle_state, self._camera))
         if choice is None:
             decision.reason = "no drivable arc in the grid"
             return self._hold(decision)
 
-        # Pixels far -> near, the order every planner hands the controllers.
+        # Pixels far -> near, the order Stanley expects from every planner.
         centerline = self._camera.ground_to_image(choice.forward_m, choice.right_m)[::-1].copy()
         plan = PathPlan(
             centerline=centerline,

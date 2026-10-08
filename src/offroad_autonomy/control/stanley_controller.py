@@ -689,18 +689,3 @@ class StanleyController:
         self._prev_time = None
         self._cte_rate = 0.0
         self._edge_state = [None, None]
-
-    def observe_applied_steering(self, steering: float) -> None:
-        """Keep fallback smoothing and trail prediction aligned with applied MPC input."""
-        self._prev_steering = float(steering)
-
-    def tracking_reference(self, plan: PathPlan) -> _GroundPath:
-        """Reuse the metric fit and existing trail-edge correction for MPC."""
-        forward, right, keep = path_to_ground(self._camera, plan.centerline)
-        forward, indices = np.unique(forward[keep], return_index=True)
-        if len(forward) < 2 or np.ptp(forward) < 0.1:
-            raise ValueError("insufficient ground trajectory")
-        path = _GroundPath(forward, right[keep][indices])
-        arc = math.tan(self._prev_steering * self._max_wheel_angle) / self._wheelbase
-        trail = measure_trail(self._camera, plan.planner_mask, arc)
-        return self._centred_reference(path, trail, SteeringDebug())

@@ -56,7 +56,7 @@ def _arcs() -> ArcPlanner:
         wheelbase_m=CONFIG.wheelbase_m,
         max_wheel_angle_deg=CONFIG.max_wheel_angle_deg,
         vehicle_half_width_m=CONFIG.vehicle_half_width_m,
-        rear_axle_behind_camera_m=CONFIG.mpc.camera_ahead_of_rear_axle_m,
+        rear_axle_behind_camera_m=CONFIG.camera_ahead_of_rear_axle_m,
     )
 
 
@@ -247,3 +247,47 @@ def test_a_frame_the_gate_rejects_adds_no_evidence():
     planner.plan(rejected, vehicle_state=state)
 
     assert not planner.grid.logodds.any()
+
+
+def test_simulator_pose_alone_cannot_create_road_evidence():
+    grid, arcs = _grid(), _arcs()
+    for step in range(10):
+        pose = _pose(x=step, y=0.2 * step, heading_rad=0.01 * step)
+        grid.update(None, pose, dt_s=0.1)
+        assert not grid.road().any()
+        assert not grid.logodds.any()
+        assert arcs.choose(grid, pose) is None
+
+
+def test_absolute_world_location_cannot_supply_hidden_map_labels():
+    first, translated = _grid(), _grid()
+    mask = _road_mask(_straight(2.0))
+    for step in range(4):
+        first.update(mask, _pose(x=step * 0.5), dt_s=0.1)
+        translated.update(mask, _pose(x=1000 + step * 0.5, y=-2500), dt_s=0.1)
+        np.testing.assert_allclose(first.logodds, translated.logodds, atol=1e-6)
+
+
+def test_unknown_clearance_is_not_positive_road_evidence():
+    grid = _grid()
+    # Collision clearance deliberately permits unknown ground under the hood,
+    # but this must not invent an observed road or a supported trajectory.
+    assert grid.clearance_m().max() > CONFIG.grid.lookahead_m
+    assert not grid.road().any()
+    assert _arcs().choose(grid, _pose()) is None
+
+
+def test_model_false_positive_can_persist_but_corrected_evidence_clears_it():
+    grid = _grid()
+    wrong_mask = _road_mask(_straight(6.0))
+    correct_mask = _road_mask(_straight(2.0))
+    for _ in range(10):
+        grid.update(wrong_mask, _pose(), dt_s=0.0)
+    assert _cells(grid, 8.0, 4.0) > CONFIG.grid.road_threshold
+    grid.update(correct_mask, _pose(), dt_s=0.0)
+    # The BEV has no oracle that fixes the network's mistaken labels. Its
+    # accumulated evidence can outlive a single corrected observation.
+    assert _cells(grid, 8.0, 4.0) > CONFIG.grid.road_threshold
+    for _ in range(10):
+        grid.update(correct_mask, _pose(), dt_s=0.0)
+    assert _cells(grid, 8.0, 4.0) < CONFIG.grid.blocked_threshold

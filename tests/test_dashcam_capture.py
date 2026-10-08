@@ -6,8 +6,40 @@ from unittest.mock import MagicMock, call, patch
 import numpy as np
 import pytest
 
-from offroad_autonomy.simulation.beamng_client import BeamNGClient
+from offroad_autonomy.simulation.beamng_client import BeamNGClient, BeamNGConnectionError
 from offroad_autonomy.types import PipelineConfig
+
+
+@pytest.mark.parametrize(
+    "host,launch,hint",
+    [
+        ("localhost", False, "BEAMNG_HOME"),
+        ("192.168.1.50", False, "firewall"),
+        ("localhost", True, "Automatic launch"),
+    ],
+)
+@pytest.mark.parametrize("error_type", ["disconnected", "socket"])
+def test_connection_failure_explains_endpoint_and_recovery(host, launch, hint, error_type):
+    from beamngpy.logging import BNGDisconnectedError
+
+    cfg = PipelineConfig(beamng_host=host, beamng_port=65432, beamng_launch=launch)
+    client = BeamNGClient(cfg)
+    error = BNGDisconnectedError("refused") if error_type == "disconnected" else OSError("refused")
+    with patch("beamngpy.BeamNGpy") as bng, patch("beamngpy.Scenario") as scenario:
+        bng.return_value.open.side_effect = error
+        with pytest.raises(BeamNGConnectionError) as caught:
+            client.connect()
+        message = str(caught.value)
+        assert f"{host}:65432" in message
+        assert "-tcom -tport 65432" in message
+        assert hint in message
+        assert caught.value.__cause__ is error
+        scenario.assert_not_called()
+        client.disconnect()
+        if launch:
+            bng.return_value.close.assert_called_once()
+        else:
+            bng.return_value.disconnect.assert_called_once()
 
 
 @pytest.mark.parametrize("headless", [True, False])
@@ -31,6 +63,8 @@ def test_connect_attaches_only_the_dashcam(headless, transport):
         assert args["resolution"] == (960, 620)
         assert args["field_of_view_y"] == pytest.approx(cfg.camera.fov_y_deg)
         assert args["is_render_colours"]
+        assert not args["is_render_annotations"]
+        assert not args["is_render_instance"]
         assert not args["is_render_depth"]
         assert args["is_streaming"] == (transport == "shared_memory")
         assert set(client._cameras) == {"dashcam"}
@@ -78,6 +112,47 @@ def test_missing_or_malformed_dashcam_frame_is_rejected():
     sensor.colour_shmem.read.return_value = b"bad frame"
     client._cameras = {"dashcam": sensor}
     assert client.capture_frame() is None
+
+
+@pytest.mark.parametrize("transport", ["shared_memory", "socket"])
+def test_annotation_depth_and_orbit_buffers_cannot_replace_dashcam_rgb(transport):
+    cfg = PipelineConfig(beamng_camera_transport=transport)
+    cfg.camera = replace(cfg.camera, sensor=replace(cfg.camera.sensor, width=4, height=2))
+    client = BeamNGClient(cfg)
+    sensor, orbit = MagicMock(), MagicMock()
+    rgb = np.full((2, 4, 4), [11, 22, 33, 255], dtype=np.uint8).tobytes()
+    labels = np.full((2, 4, 4), 255, dtype=np.uint8).tobytes()
+    sensor.colour_shmem.read.return_value = rgb
+    sensor.annotation_shmem.read.side_effect = AssertionError("ground-truth annotations read")
+    sensor.instance_shmem.read.side_effect = AssertionError("ground-truth instances read")
+    sensor.depth_shmem.read.side_effect = AssertionError("ground-truth depth read")
+    sensor.poll_raw.return_value = {
+        "colour": rgb,
+        "annotation": labels,
+        "instance": labels,
+        "depth": labels,
+    }
+    client._cameras = {"dashcam": sensor, "orbit": orbit}
+    captured = client.capture_frame()
+    np.testing.assert_array_equal(captured.image, np.full((2, 4, 3), [33, 22, 11], dtype=np.uint8))
+    sensor.colour_shmem.read.return_value = None
+    sensor.poll_raw.return_value.pop("colour")
+    assert client.capture_frame() is None  # No fallback to the available privileged buffers.
+    sensor.annotation_shmem.read.assert_not_called()
+    sensor.instance_shmem.read.assert_not_called()
+    sensor.depth_shmem.read.assert_not_called()
+    assert not orbit.mock_calls
+
+
+def test_presentation_camera_also_disables_ground_truth_render_buffers():
+    client = BeamNGClient(PipelineConfig())
+    camera = MagicMock()
+    client._attach_camera(camera, MagicMock(), client._config.orbit_camera)
+    flags = camera.call_args.kwargs
+    assert flags["is_render_colours"]
+    assert not flags["is_render_annotations"]
+    assert not flags["is_render_instance"]
+    assert not flags["is_render_depth"]
 
 
 @pytest.mark.parametrize("kind,gear", [("manualGearbox", 1), ("automaticGearbox", 2)])
