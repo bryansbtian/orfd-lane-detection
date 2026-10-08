@@ -28,7 +28,7 @@ dev = [
     "pytest-cov>=5.0",
     # Pinned: a new ruff release can enable new default rules and fail CI
     # with no code change. Dependabot proposes upgrades as pull requests.
-    "ruff==0.16.9",
+    "ruff==0.16.10",
 ]
 
 [project.scripts]
