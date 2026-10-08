@@ -27,7 +27,6 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from offroad_autonomy.control.mpc_controller import MPCController
 from offroad_autonomy.control.stanley_controller import StanleyController
 from offroad_autonomy.perception.camera_geometry import CameraModel
 from offroad_autonomy.types import PathPlan, PipelineConfig, VehicleState
@@ -159,8 +158,7 @@ def simulate(
     """
     rng = np.random.default_rng(seed)
     camera = CameraModel(config.camera, config.preprocess_width, config.preprocess_height)
-    cls = MPCController if config.controller == "mpc" else StanleyController
-    controller = cls(config, camera=camera)
+    controller = StanleyController(config, camera=camera)
     road = s_bend(radius)
     tangent = np.gradient(road, axis=0)
     tangent /= np.linalg.norm(tangent, axis=1, keepdims=True)
@@ -169,7 +167,7 @@ def simulate(
     dt = 1.0 / fps
     L = config.wheelbase_m
     max_wheel = math.radians(config.max_wheel_angle_deg)
-    cam_ahead = 1.4  # camera ahead of the rear-axle reference point (m)
+    cam_ahead = config.camera_ahead_of_rear_axle_m
 
     x, y, yaw, v = 0.0, start_lateral_m, start_yaw, start_speed
     # Commands reach the wheel `delay_frames` late (capture -> actuation), then
@@ -213,9 +211,6 @@ def simulate(
                 )
                 plan.roi_top = roi_top
 
-        if isinstance(controller, MPCController):
-            # Simulation time advances even though this loop runs faster than real time.
-            controller.last_time = time.perf_counter() - dt
         control_started = time.perf_counter()
         cmd = controller.compute(plan, VehicleState(speed_mps=v))
         control_ms = (time.perf_counter() - control_started) * 1000
@@ -249,9 +244,6 @@ def simulate(
                 "reason": dbg.speed_reason,
                 "heading_truth": heading_error_now,
                 "control_ms": control_ms,
-                "solve_ms": dbg.mpc_solve_ms,
-                "fallback": dbg.controller_fallback,
-                "solver_success": dbg.solver_success,
             }
         )
     return _finish(log, max_err, lock_frames, False, trail_width)

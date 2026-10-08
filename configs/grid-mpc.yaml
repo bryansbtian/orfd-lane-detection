@@ -1,6 +1,0 @@
-# Opt-in profile: the bird's-eye grid planner feeding the MPC controller.
-# Inherits every MPC setting from mpc.yaml and every grid setting from
-# planning.grid in default.yaml.
-extends: mpc.yaml
-planning:
-  mode: grid

@@ -215,6 +215,69 @@ def test_presentation_alone_does_not_record_the_dashboard():
     assert args.record_video is False
 
 
+@pytest.mark.parametrize("record", [False, True])
+def test_live_presentation_displays_orbit_and_handles_stop_resume_and_close(monkeypatch, record):
+    from unittest.mock import Mock
+
+    import offroad_autonomy.main as app
+    from offroad_autonomy.runtime.timing import RuntimeStats
+    from offroad_autonomy.types import PipelineConfig, VehicleState
+    from tests.test_dashboard import _result as captured_result
+
+    cfg = PipelineConfig(ui_display_async=False)
+    client, pipeline, window, video = Mock(), Mock(), Mock(), Mock()
+    result = captured_result()
+    pipeline.stats = RuntimeStats()
+    pipeline.ego_coverage = 0.0
+    pipeline.step_result.return_value = result
+    client.capture_frame.return_value = result.capture
+    client.capture_orbit.return_value = _orbit()
+    client.get_vehicle_state.return_value = VehicleState()
+    window.backend = "tkinter"
+    window.held_keys = set()
+    canvases = []
+
+    def show(canvas):
+        canvases.append(canvas)
+        window.last_key = [ord("e"), ord("p"), -1][len(canvases) - 1]
+        return len(canvases) < 3
+
+    window.show.side_effect = show
+    client_factory = Mock(return_value=client)
+    open_window = Mock(return_value=window)
+    open_video = Mock(return_value=video)
+    argv = ["offroad-autonomy", "--presentation-view"]
+    if record:
+        argv.append("--presentation")
+    monkeypatch.setattr("sys.argv", argv)
+    monkeypatch.setattr(app, "setup_logger", lambda **kwargs: None)
+    monkeypatch.setattr(app, "load_config", lambda _: cfg)
+    monkeypatch.setattr(app, "BeamNGClient", client_factory)
+    monkeypatch.setattr(app, "AutonomyPipeline", lambda _: pipeline)
+    monkeypatch.setattr(app, "_open_window", open_window)
+    monkeypatch.setattr(app, "_open_video", open_video)
+    monkeypatch.setattr(app, "_build_dashboard_telemetry", lambda *args: _telemetry())
+    monkeypatch.setattr(app.signal, "signal", Mock())
+    app.main()
+
+    client_factory.assert_called_once_with(cfg, orbit=True)
+    open_window.assert_called_once_with(1920, 1080)
+    assert len(canvases) == 3
+    assert all(canvas.shape == (1080, 1920, 3) for canvas in canvases)
+    orbit = _crop(canvases[0], ORBIT_VIEW)
+    assert _count_color(orbit, (200, 200, 200)) > 0.9 * orbit.shape[0] * orbit.shape[1]
+    client.park.assert_called_once()
+    client.release_park.assert_called_once()
+    window.close.assert_called_once()
+    client.disconnect.assert_called_once()
+    if record:
+        open_video.assert_called_once()
+        assert video.write.call_count == 3
+        video.close.assert_called_once()
+    else:
+        open_video.assert_not_called()
+
+
 def test_one_path_for_both_recordings_is_refused(tmp_path):
     out = str(tmp_path / "run.mp4")
     args = build_parser().parse_args(

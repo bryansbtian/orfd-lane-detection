@@ -8,7 +8,7 @@ arc is judged on the whole corridor at once.
 
 Arcs start at the rear axle, because that is the point a bicycle-model
 vehicle turns about, and are expressed in the camera's ground frame that the
-grid and the controllers use. No packaged library scores arcs on a custom
+grid and Stanley use. No packaged library scores arcs on a custom
 grid, so this part is written for this stack.
 """
 
@@ -21,6 +21,7 @@ import numpy as np
 
 from offroad_autonomy.planning.bev_grid import TraversabilityGrid
 from offroad_autonomy.planning.grid_config import GridPlannerConfig
+from offroad_autonomy.planning.trajectory_continuity import trajectory_distance, transform_path
 
 
 @dataclass
@@ -31,6 +32,7 @@ class ArcChoice:
     length_m: float
     min_clearance_m: float
     score: float
+    continuity_distance_m: float = 0.0
 
 
 class ArcPlanner:
@@ -57,11 +59,19 @@ class ArcPlanner:
         self._forward = forward
         self._right = right
         self._previous: float | None = None
+        self._previous_path: np.ndarray | None = None
+        self._previous_pose = None
+        self.branch_count = 0
+        self.branch_locked = False
 
     def reset(self) -> None:
         self._previous = None
+        self._previous_path = None
+        self._previous_pose = None
+        self.branch_count = 0
+        self.branch_locked = False
 
-    def choose(self, grid: TraversabilityGrid) -> ArcChoice | None:
+    def choose(self, grid: TraversabilityGrid, pose=None) -> ArcChoice | None:
         cfg = self.config
         clearance = grid.clearance_m()
         road = grid.road()
@@ -73,16 +83,114 @@ class ArcPlanner:
         arc_road = inside & road[r, c]
         ahead = self._forward >= cfg.start_m
 
-        best: ArcChoice | None = None
+        candidates = []
+        reference = self._previous_path
+        if reference is not None:
+            if pose is not None and self._previous_pose is not None:
+                reference = transform_path(reference, self._previous_pose, pose)
+            else:
+                # Without registration, do not pretend old ego-frame points
+                # are still where the vehicle saw them.
+                reference = None
+                self.branch_locked = False
         for i, curvature in enumerate(self.curvatures):
             candidate = self._score(
                 i, float(curvature), arc_clearance[i], arc_road[i], ahead[i], inside[i]
             )
-            if candidate is not None and (best is None or candidate.score > best.score):
-                best = candidate
+            if candidate is not None and reference is not None:
+                candidate.continuity_distance_m = trajectory_distance(
+                    np.column_stack((candidate.forward_m, candidate.right_m)), reference
+                )
+                candidate.score -= cfg.weight_trajectory_distance * candidate.continuity_distance_m
+            if candidate is not None:
+                candidates.append(candidate)
+        candidates = self._keep_branch(candidates, grid, road, clearance, reference)
+        best = max(candidates, key=lambda candidate: candidate.score, default=None)
         if best is not None:
             self._previous = best.curvature
+            self._previous_path = np.column_stack((best.forward_m, best.right_m))
+            self._previous_pose = pose
+        else:
+            self.reset()
         return best
+
+    def _split_options(self, candidates, grid, road, clearance):
+        """Find distinct vehicle-width corridors reached by valid arcs.
+
+        A fan of arcs on one wide road is one option, not dozens of branches.
+        Arcs ending in the common trunk before the split cannot vote for a branch.
+        """
+        if len(candidates) < 2:
+            return None
+        best = None
+        most = 1
+        paths = []
+        for candidate in candidates:
+            forward, indices = np.unique(candidate.forward_m, return_index=True)
+            paths.append((candidate, forward, candidate.right_m[indices]))
+        for distance in np.arange(self.config.start_m, self.config.lookahead_m, self.config.step_m):
+            row, _ = grid.to_cell(np.asarray(distance), np.asarray(0.0))
+            if not 0 <= row < grid.rows:
+                continue
+            # Unseen ground (especially the hood exclusion) is not a divider.
+            # Only a known obstacle/boundary can separate two road branches.
+            safe = clearance[row] >= self._required_clearance
+            starts = safe & ~np.r_[False, safe[:-1]]
+            if np.count_nonzero(starts) < 2:
+                continue
+            labels = np.where(safe, np.cumsum(starts), 0)
+            groups = {}
+            for candidate, forward, right in paths:
+                if not forward[0] <= distance <= forward[-1]:
+                    continue
+                lateral = np.interp(distance, forward, right)
+                _, col = grid.to_cell(np.asarray(distance), np.asarray(lateral))
+                if 0 <= col < grid.cols and labels[col] != 0 and road[row, col]:
+                    groups.setdefault(int(labels[col]), []).append(candidate)
+            if len(groups) > most:
+                most = len(groups)
+                best = distance, labels, groups
+        return best
+
+    def _keep_branch(self, candidates, grid, road, clearance, reference):
+        split = self._split_options(candidates, grid, road, clearance)
+        if split is None:
+            self.branch_count = int(bool(candidates))
+            self.branch_locked = False
+            return candidates
+
+        distance, labels, groups = split
+        self.branch_count = len(groups)
+        selected = None
+        if self.branch_locked and reference is not None:
+            forward, indices = np.unique(reference[:, 0], return_index=True)
+            if forward[0] <= distance <= forward[-1]:
+                lateral = np.interp(distance, forward, reference[indices, 1])
+                _, col = grid.to_cell(np.asarray(distance), np.asarray(lateral))
+                if 0 <= col < grid.cols:
+                    # Match corridor membership, not its changing list index or
+                    # score. Losing another branch must not change our branch.
+                    selected = groups.get(int(labels[col]))
+
+        if selected is None:
+            # First split (or the chosen branch no longer has a safe candidate):
+            # choose the closest branch before considering arc-quality scores.
+            target = reference
+            if target is None or np.max(target[:, 0]) <= self.config.start_m:
+                target = np.array([[0.0, 0.0], [self.config.lookahead_m, 0.0]])
+
+            def nearest(group):
+                separation = min(
+                    trajectory_distance(
+                        np.column_stack((candidate.forward_m, candidate.right_m)), target
+                    )
+                    for candidate in group
+                )
+                return separation, -max(candidate.score for candidate in group)
+
+            selected = min(groups.values(), key=nearest)
+        self.branch_locked = True
+        return selected
 
     def _score(
         self,

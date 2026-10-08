@@ -19,7 +19,7 @@ from offroad_autonomy.runtime.benchmark import BenchmarkRecorder
 from offroad_autonomy.runtime.display_worker import DisplayState, DisplayWorker
 from offroad_autonomy.runtime.timing import DISPLAY_STAGES, MAIN_STAGES
 from offroad_autonomy.runtime.video_recorder import VideoRecorder, default_video_path
-from offroad_autonomy.simulation.beamng_client import BeamNGClient
+from offroad_autonomy.simulation.beamng_client import BeamNGClient, BeamNGConnectionError
 from offroad_autonomy.types import (
     DEBUG_VIEW_KEYS,
     ControlCommand,
@@ -129,6 +129,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--presentation-view",
+        action="store_true",
+        help=(
+            "Show the orbit camera, dashcam overlay and stats in the live window. "
+            "Add --presentation to also record this view."
+        ),
+    )
+    parser.add_argument(
         "--presentation-out",
         default="",
         help=f"Presentation path (default: {_PRESENTATION_DIR}/<label>_<timestamp>.mp4).",
@@ -235,8 +243,6 @@ def _build_dashboard_telemetry(
             fallback.append("GATE STOP")
     if kalman:
         fallback.append("KALMAN")
-    if command.debug is not None and command.debug.controller_fallback:
-        fallback.append("MPC FALLBACK")
     fallback_state = "NONE"
     if fallback:
         fallback_state = " + ".join(fallback)
@@ -395,7 +401,9 @@ def main() -> None:
     signal.signal(signal.SIGINT, _signal_handler)
     signal.signal(signal.SIGTERM, _signal_handler)
 
-    client = BeamNGClient(config, orbit=args.presentation)
+    show_presentation = args.presentation_view and not config.ui_headless
+    use_presentation = args.presentation or show_presentation
+    client = BeamNGClient(config, orbit=use_presentation)
     pipeline = AutonomyPipeline(config)
     dashboard_window: DashboardWindow | None = None
     display: DisplayWorker | None = None
@@ -447,7 +455,8 @@ def main() -> None:
         if record_dashboard:
             record = video.write
 
-        if not config.ui_headless or record_dashboard:
+        show_dashboard = not config.ui_headless and not show_presentation
+        if show_dashboard or record_dashboard:
             dashboard = AutonomyDashboard(
                 width=_DASHBOARD_WIDTH,
                 height=_DASHBOARD_HEIGHT,
@@ -455,7 +464,7 @@ def main() -> None:
                 sensor=config.camera.sensor,
                 thresholds=config.dashboard_thresholds,
             )
-            if not config.ui_headless:
+            if show_dashboard:
                 dashboard_window = _open_window(dashboard.width, dashboard.height)
 
             def _render(state: DisplayState) -> np.ndarray:
@@ -504,10 +513,10 @@ def main() -> None:
             )
             display.start()
             logger.info("No window: dashboard drawn off screen for the recording only")
-        else:
+        elif not show_presentation:
             logger.info("Headless: no dashboard; manual control is unavailable")
 
-        if args.presentation:
+        if use_presentation:
             presentation = PresentationRenderer(
                 colors=config.dashboard_colors,
                 sensor=config.camera.sensor,
@@ -523,18 +532,28 @@ def main() -> None:
                     state.valid_roi,
                 )
 
-            # Always on its own thread, even when the window's dashboard has
-            # to run inline, so the larger frame never adds to the loop period.
+            presentation_window = None
+            if show_presentation:
+                presentation_window = _open_window(PRESENTATION_WIDTH, PRESENTATION_HEIGHT)
+                dashboard_window = presentation_window
+            # Record-only rendering runs off-thread. A live Tkinter window
+            # must render on the main thread, just like the operator dashboard.
             presentation_display = DisplayWorker(
                 render=_render_presentation,
-                show=lambda canvas: True,
-                read_key=lambda: -1,
-                record=presentation_video.write,
+                show=presentation_window.show if presentation_window else lambda canvas: True,
+                read_key=lambda: presentation_window.last_key if presentation_window else -1,
+                record=presentation_video.write if presentation_video else None,
                 rate_hz=config.ui_display_rate_hz,
-                asynchronous=True,
+                asynchronous=(
+                    not presentation_window
+                    or (config.ui_display_async and presentation_window.backend == "opencv")
+                ),
             )
             presentation_display.start()
-            logger.info("Presentation video drawn off screen for the recording only")
+            if presentation_window:
+                logger.info("Live presentation view: E safe stop, P resume, Q quit")
+            elif presentation_video:
+                logger.info("Presentation video drawn off screen for the recording only")
 
         logger.info(
             "Perception on the '%s' camera; ego-vehicle exclusion %.1f%% of that view",
@@ -543,33 +562,20 @@ def main() -> None:
         )
         logger.info("Entering main loop - Ctrl+C or SIGTERM to stop")
         t_start = time.perf_counter()
-        last_fresh_capture = t_start
         orbit_image: np.ndarray | None = None
 
         while not _shutdown:
             t_iter = time.perf_counter()
             with stats.time("capture"):
                 capture = client.capture_frame()
-            stale_mpc_frame = (
-                config.controller == "mpc" and capture is not None and not capture.is_new
-            )
-            if capture is None or not pipeline.has_input(capture) or stale_mpc_frame:
-                if (
-                    config.controller == "mpc"
-                    and autopilot_active
-                    and time.perf_counter() - last_fresh_capture > config.safety_no_road_time_s
-                ):
-                    client.park()
-                    autopilot_active = False
-                    logger.warning("MPC camera watchdog: no fresh trajectory input, parked")
+            if capture is None or not pipeline.has_input(capture):
                 time.sleep(0.005)
                 continue
-            last_fresh_capture = time.perf_counter()
 
             # Polled here, not on the dashboard thread, because the socket
             # transport is not thread safe. A missed read keeps the last
             # image so the video does not flash the placeholder.
-            if args.presentation:
+            if use_presentation:
                 with stats.time("orbit_capture"):
                     latest_orbit = client.capture_orbit()
                 if latest_orbit is not None:
@@ -638,10 +644,11 @@ def main() -> None:
                 for worker in workers:
                     worker.publish(snapshot)
 
-            if display is not None:
-                if display.closed:
+            active_display = presentation_display if show_presentation else display
+            if active_display is not None:
+                if active_display.closed:
                     _shutdown = True
-                for key in display.drain_keys():
+                for key in active_display.drain_keys():
                     if key in (ord("t"), ord("T")):
                         timing_overlay = not timing_overlay
                     elif ord("0") <= key <= ord("9") and key - ord("0") in DEBUG_VIEW_KEYS:
@@ -675,6 +682,9 @@ def main() -> None:
                 logger.info("Benchmark duration reached")
                 break
 
+    except BeamNGConnectionError as exc:
+        logger.error("%s", exc)
+        raise SystemExit(1) from None
     except KeyboardInterrupt:
         logger.info("Interrupted by user")
     finally:
@@ -691,7 +701,7 @@ def main() -> None:
             dashboard_window.close()
         client.disconnect()
         elapsed = time.perf_counter() - t_start
-        logger.info("Session complete - %d frames in %.1f s", frame_count, elapsed)
+        logger.info("Session ended - %d frames in %.1f s", frame_count, elapsed)
         _log_runtime(pipeline, display, presentation_display)
         if recorder is not None:
             report = recorder.report(stats)

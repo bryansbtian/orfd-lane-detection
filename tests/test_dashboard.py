@@ -193,7 +193,7 @@ def test_long_reason_and_chained_state_stay_inside_the_perception_card():
     loud = dashboard.render(
         result,
         _telemetry(
-            fallback_state="SAFE STOP + GATE HOLD + KALMAN + MPC FALLBACK",
+            fallback_state="SAFE STOP + GATE HOLD + KALMAN",
             fallback_reason="word " * 200,
         ),
     )
@@ -227,10 +227,9 @@ def test_ego_exclusion_colour_is_distinct_from_mask_and_fault_colours():
 def test_pipeline_readout_lists_controller_numbers_as_rows():
     dashboard = AutonomyDashboard()
     result = _result()
-    result.command.debug = SteeringDebug(cross_track_m=0.25, controller="mpc")
+    result.command.debug = SteeringDebug(cross_track_m=0.25)
 
     rows = dict(dashboard._pipeline_readout(result))
 
     assert rows["Cross-Track"].startswith("+0.25 m")
-    assert "MPC Solve" in rows
     assert rows["Controller"] is None

@@ -7,6 +7,7 @@ held path runs out the controller must brake.
 """
 
 import numpy as np
+import pytest
 
 from offroad_autonomy.control.stanley_controller import StanleyController
 from offroad_autonomy.planning.centerline_planner import CenterlinePlanner
@@ -146,6 +147,63 @@ def test_path_stops_where_the_road_jumps_sideways():
     plan = CenterlinePlanner(_config()).plan(_stabilized(mask))
     assert not plan.fallback_active, plan.fallback_reason
     assert np.all(np.abs(plan.centerline[:, 0] - W / 2) < 40)
+
+
+@pytest.mark.parametrize("mirror", [False, True])
+def test_widening_road_above_hood_keeps_a_continuous_drivable_path(mirror):
+    """A side opening moves the row midpoint abruptly while the road continues.
+
+    The old midpoint-only walk accepted one point then rejected the next three,
+    reporting 'centerline too short' despite a large connected road mask.
+    """
+    from pathlib import Path
+
+    from offroad_autonomy.perception.ego_mask import EgoMask
+    from offroad_autonomy.utils.config import load_config
+
+    config = load_config(Path(__file__).resolve().parents[1] / "configs/default.yaml")
+    valid = EgoMask(config.camera.ego_mask).valid_roi((H, W))
+    mask = np.zeros((H, W), dtype=bool)
+    for y in range(232, H):
+        right = int(np.interp(y, [232, 279, 290, 302, 316, H - 1], [440, 516, 557, 598, 696, W]))
+        mask[y, :right] = True
+    if mirror:
+        mask = mask[:, ::-1].copy()
+    mask &= valid
+    stabilized = _stabilized(mask)
+    stabilized.valid_roi = valid
+    planner = CenterlinePlanner(config)
+    assert planner._gate.evaluate(stabilized).ok
+    plan = planner.plan(stabilized)
+    assert not plan.fallback_active, plan.fallback_reason
+    assert len(plan.centerline) >= 10
+    assert np.all(np.diff(plan.centerline[:, 1]) > 0)
+    assert planner._baseline._on_road_fraction(mask, plan.centerline) >= 0.9
+    assert valid[
+        np.round(plan.centerline[:, 1]).astype(int), np.round(plan.centerline[:, 0]).astype(int)
+    ].all()
+    command = StanleyController(config).compute(plan, VehicleState())
+    assert command.throttle > 0 and command.brake == 0
+
+
+def test_sideways_patch_without_visible_continuation_still_stops():
+    from pathlib import Path
+
+    from offroad_autonomy.perception.ego_mask import EgoMask
+    from offroad_autonomy.utils.config import load_config
+
+    config = load_config(Path(__file__).resolve().parents[1] / "configs/default.yaml")
+    valid = EgoMask(config.camera.ego_mask).valid_roi((H, W))
+    mask = np.zeros((H, W), dtype=bool)
+    mask[310:, 280:440] = True
+    mask[232:310, :140] = True
+    mask[308:310, :440] = True  # Connected laterally; no forward continuation.
+    mask &= valid
+    stabilized = _stabilized(mask)
+    stabilized.valid_roi = valid
+    plan = CenterlinePlanner(config).plan(stabilized)
+    assert plan.fallback_active and plan.speed_scale == 0
+    assert len(plan.centerline) == 0
 
 
 def test_failed_gate_holds_last_path_then_stops():

@@ -1,7 +1,7 @@
 """The 1920 x 1080 presentation video frame: orbit view, dashcam overlay, stats.
 
-Recorded only with ``--presentation``. The operator dashboard is unchanged,
-and the dashcam overlay comes from it, so both always draw the same thing.
+Shown live with ``--presentation-view`` or recorded with ``--presentation``.
+The dashcam overlay comes from the operator dashboard, so both draw the same thing.
 """
 
 from __future__ import annotations

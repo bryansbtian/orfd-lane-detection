@@ -1,4 +1,4 @@
-"""Per-run benchmark recording for the A-E experiment configurations.
+"""Per-run recording of pipeline timing and image-space tracking proxies.
 
 Everything here is measured from the live loop, not estimated. Two metrics
 are proxies and are labelled as such in the report:

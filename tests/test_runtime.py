@@ -9,6 +9,31 @@ from offroad_autonomy.simulation.beamng_client import frame_signature
 from offroad_autonomy.types import PathPlan
 
 
+def test_connection_failure_exits_cleanly_and_disconnects(monkeypatch):
+    from unittest.mock import Mock
+
+    import offroad_autonomy.main as app
+    from offroad_autonomy.simulation.beamng_client import BeamNGConnectionError
+    from offroad_autonomy.types import PipelineConfig
+
+    client, pipeline = Mock(), Mock()
+    client.connect.side_effect = BeamNGConnectionError("Set BEAMNG_HOME to start BeamNG")
+    pipeline.stats = RuntimeStats()
+    monkeypatch.setattr("sys.argv", ["offroad-autonomy", "--headless"])
+    monkeypatch.setattr(app, "setup_logger", lambda **kwargs: None)
+    error_log = Mock()
+    monkeypatch.setattr(app.logger, "error", error_log)
+    monkeypatch.setattr(app, "load_config", lambda path: PipelineConfig(ui_headless=True))
+    monkeypatch.setattr(app, "BeamNGClient", lambda *args, **kwargs: client)
+    monkeypatch.setattr(app, "AutonomyPipeline", lambda config: pipeline)
+    with pytest.raises(SystemExit) as caught:
+        app.main()
+    assert caught.value.code == 1
+    assert "Set BEAMNG_HOME" in str(error_log.call_args.args[1])
+    client.disconnect.assert_called_once()
+    pipeline.step_result.assert_not_called()
+
+
 def test_automatic_stop_does_not_resend_the_previous_throttle(monkeypatch):
     from unittest.mock import Mock
 

@@ -7,7 +7,6 @@ import time
 
 import numpy as np
 
-from offroad_autonomy.control.mpc_controller import MPCController
 from offroad_autonomy.control.stanley_controller import StanleyController
 from offroad_autonomy.perception.perception_view import PerceptionView
 from offroad_autonomy.perception.road_segmenter import RoadSegmenter
@@ -37,10 +36,7 @@ class AutonomyPipeline:
         self.segmenter = RoadSegmenter(config)
         self.stabilizer = TemporalStabilizer(config)
         self.planner = CenterlinePlanner(config, camera=self.view.camera)
-        if config.controller not in ("stanley", "mpc"):
-            raise ValueError("controller must be stanley or mpc")
-        controller_cls = MPCController if config.controller == "mpc" else StanleyController
-        self.controller = controller_cls(config, camera=self.view.camera)
+        self.controller = StanleyController(config, camera=self.view.camera)
 
     @property
     def ego_coverage(self) -> float:

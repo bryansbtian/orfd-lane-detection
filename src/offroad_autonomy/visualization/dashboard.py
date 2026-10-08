@@ -989,15 +989,6 @@ class AutonomyDashboard:
             ("Lookahead", lookahead),
             ("Rejoin", f"{dbg.rejoin_m:.1f} m"),
         ]
-        if dbg.controller == "mpc":
-            rows += [
-                ("MPC Solve", f"{dbg.mpc_solve_ms:.1f} ms (ok {dbg.solver_success})"),
-                ("MPC Cost", f"{dbg.mpc_cost:.2f}"),
-                (
-                    "Controller Fallback",
-                    f"{dbg.controller_fallback}: {dbg.controller_fallback_reason}",
-                ),
-            ]
         return rows
 
     def _draw_pipeline_view(

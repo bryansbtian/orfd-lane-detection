@@ -55,6 +55,24 @@ def test_vehicle_width_is_configured_with_control(tmp_path):
     assert load_config(path).vehicle_half_width_m == pytest.approx(1.2)
 
 
+def test_camera_offset_is_shared_vehicle_geometry(tmp_path):
+    path = tmp_path / "geometry.yaml"
+    path.write_text("control:\n  camera_ahead_of_rear_axle_m: 1.8\n", encoding="utf-8")
+
+    assert load_config(path).camera_ahead_of_rear_axle_m == pytest.approx(1.8)
+    assert load_config(DEFAULT_YAML).camera_ahead_of_rear_axle_m == pytest.approx(
+        PipelineConfig().camera_ahead_of_rear_axle_m
+    )
+
+
+def test_controller_selection_settings_are_refused(tmp_path):
+    path = tmp_path / "controller.yaml"
+    path.write_text("control:\n  controller: stanley\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Remove control.controller"):
+        load_config(path)
+
+
 def test_invalid_segmentation_mode_is_refused(tmp_path):
     config_path = tmp_path / "bad.yaml"
     config_path.write_text("perception:\n  segmentation_mode: center\n", encoding="utf-8")
@@ -199,15 +217,6 @@ def test_invalid_grid_settings_are_refused(tmp_path, block, match):
 
     with pytest.raises(ValueError, match=match):
         load_config(config_path)
-
-
-def test_grid_mpc_profile_combines_the_grid_planner_with_mpc():
-    config = load_config(REPO / "configs" / "grid-mpc.yaml")
-    mpc_only = load_config(REPO / "configs" / "mpc.yaml")
-
-    assert config.planner_mode == "grid"
-    assert config.controller == "mpc"
-    assert config.mpc == mpc_only.mpc
 
 
 def test_orbit_camera_defaults_match_the_shipped_config():

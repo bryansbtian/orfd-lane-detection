@@ -87,6 +87,19 @@ def _pipeline(stack, config):
     return AutonomyPipeline(config), mocks, outputs
 
 
+def test_pipeline_uses_stanley_with_the_perception_camera():
+    from offroad_autonomy.control.stanley_controller import StanleyController
+    from offroad_autonomy.pipeline import AutonomyPipeline
+
+    with ExitStack() as stack:
+        for target in _STAGE_PATCHES[:-1]:
+            stack.enter_context(patch(target))
+        pipeline = AutonomyPipeline(_make_config())
+
+    assert isinstance(pipeline.controller, StanleyController)
+    assert pipeline.controller._camera is pipeline.view.camera
+
+
 def test_pipeline_step_produces_control_command():
     with ExitStack() as stack:
         pipeline, mocks, _ = _pipeline(stack, _make_config())

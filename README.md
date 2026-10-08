@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Off-Road Autonomy drives a vehicle along unmarked dirt trails in BeamNG.tech using one dashcam. It segments the drivable trail with a YOLOE-26 model, plans a centreline and steers with configurable Stanley or MPC control.
+Off-Road Autonomy drives a vehicle along unmarked dirt trails in BeamNG.tech using one dashcam. It segments the drivable trail with a YOLOE-26 model, plans a centreline and steers with Stanley control.
 
 Perception uses RGB segmentation only. There is no depth estimation, terrain fusion or depth-based obstacle veto. One GMSL2 dashcam with 120° horizontal FOV supplies segmentation, planning, control and the dashboard. It retains the previous dashcam mount: height 1.85 m, forward offset -0.30 m, pitch -8°. Capture is 960x620 at 30 FPS, processed at 720x465. The dashboard draws the same captured frame and its results; it does not poll another camera. Debug views are `0` path, `1` raw dashcam, `6` mask and `9` pipeline. Configure the sensor, mount and hood exclusion under `beamng.camera`. Ground distances still use a flat-ground assumption. Old `beamng.cameras`, `segmentation_mode` and `stitching` settings must be removed.
 
@@ -22,16 +22,47 @@ pip install -e ".[dev]"
 
 Put the model weights in `models/`: `yoloe-26x-seg.pt` (default config), `yoloe-26s-seg.pt` (Jetson) and `mobileclip2_b.ts` (the YOLOE text encoder).
 
+### Custom Semantic Weights
+
+Custom semantic segmentation checkpoints such as `models/weights.pt` require
+Ultralytics 8.4.55 or newer (`pip install -e ".[dev]"`). Set `perception.model_weights`
+to the checkpoint and include its road class name in `perception.prompts`.
+For semantic models these names select fixed classes; other classes are excluded.
+The confidence readout is the mean predicted probability over accepted road pixels
+outside the ego mask. YOLOE instance segmentation weights remain supported.
+
 ### Connect To BeamNG
 
 BeamNG.tech runs only on Windows. The Windows machine running it is the BeamNG host. The stack runs either on the BeamNG host or on another machine that connects to it.
 
 | Stack Runs On                | What To Set                                                  | How To Start BeamNG      |
 | ---------------------------- | ------------------------------------------------------------ | ------------------------ |
-| Windows, on the BeamNG host  | Nothing. Optional: `BEAMNG_HOME` lets the stack start BeamNG | Normally                 |
+| Windows, on the BeamNG host  | `BEAMNG_HOME` to launch automatically, or start the server below | BeamNGpy server enabled |
 | WSL2, on the BeamNG host     | Nothing                                                      | Listening on the network |
 | macOS                        | `BEAMNG_HOST` (the BeamNG host's address)                    | Listening on the network |
 | Jetson                       | `BEAMNG_HOST` (the BeamNG host's address)                    | Listening on the network |
+
+For automatic launch on Windows, set the install folder in the same PowerShell session:
+
+```powershell
+$env:BEAMNG_HOME = "<your BeamNG.tech folder>"
+$env:BEAMNG_LAUNCH = "true"
+offroad-autonomy
+```
+
+The folder must contain `Bin64\BeamNG.tech.x64.exe`. To retain the path for future
+terminals, use `[Environment]::SetEnvironmentVariable("BEAMNG_HOME", $env:BEAMNG_HOME, "User")`.
+For local Windows connections with `launch: auto`, the app also reads that saved
+user setting when neither the current environment nor YAML supplies an install
+folder. Existing terminals can therefore use it without restarting VS Code.
+
+With no install folder configured, the app only attaches to an existing server.
+Opening BeamNG normally does not enable that server. Start it manually with:
+
+```powershell
+cd "<your BeamNG.tech folder>"
+.\Bin64\BeamNG.tech.x64.exe -nosteam -tcom -tport 64256 -tcom-listen-ip "127.0.0.1"
+```
 
 For WSL2, macOS and Jetson, BeamNG must listen on the network. Start it from PowerShell on the BeamNG host:
 
@@ -43,6 +74,9 @@ cd "<your BeamNG.tech folder>"
 If the connection is refused, allow TCP port 64256 through the Windows firewall. For macOS and Jetson, find the BeamNG host's address with `ipconfig`.
 
 The first log line shows the address the stack connects to. `BEAMNG_HOST` overrides it on any machine.
+The app uses port **64256**; BeamNG's `-tcom` default is **25252**, so include
+`-tport 64256` or set `BEAMNG_PORT` to the server's actual port. See the
+[BeamNG connection arguments](https://documentation.beamng.com/beamng_tech/arguments_and_settings/).
 
 ## Run
 
@@ -50,12 +84,17 @@ The first log line shows the address the stack connects to. `BEAMNG_HOST` overri
 offroad-autonomy
 ```
 
-For MPC with Stanley fallback, run `offroad-autonomy --config configs/mpc.yaml`.
-Select `control.controller: stanley` or `mpc` in YAML. Stanley remains the default
-baseline while MPC is evaluated.
+The pipeline uses Stanley steering with curvature feedforward and speed planning. Tune it
+under `control` in `configs/default.yaml`. Remove the former `control.controller` key
+and `--controller` flag from custom configurations and launch commands.
 
 For the bird's-eye grid planner, run `offroad-autonomy --config configs/grid.yaml`.
-To pair it with MPC, run `offroad-autonomy --config configs/grid-mpc.yaml`.
+At a split, the grid planner chooses the traversable branch closest to the current
+trajectory and locks onto it while multiple branches remain. A change in branch scores
+does not switch branches; the lock releases when only one option remains or the chosen
+branch is no longer safe. Arcs within a branch still use the existing quality scores and
+motion-compensated RMS trajectory-distance penalty. `planning.grid.weight_trajectory_distance`
+sets that penalty per metre (default `0.35`, `0` disables the soft penalty, not branch locking).
 
 ### Grid Planner
 
@@ -77,6 +116,22 @@ whose hood hides the first ~3 m of ground and whose image edges cut wide trails:
 Settings, with reasons, are in `planning.grid` in `configs/default.yaml`. The baseline planner
 stays the default until the grid planner has been compared on several maps.
 
+The grid's road evidence comes only from the learned dashcam mask. BeamNG annotation,
+instance-label and depth buffers are explicitly disabled; the optional orbit RGB camera
+is display-only. `semantic_mask` in the model wrapper means a neural-network prediction,
+not a simulator annotation. The grid does use BeamNG's true vehicle position and direction
+to register its memory, and Stanley uses simulator velocity/speed. This is vision-based
+traversability with simulator-provided localization, so it does not measure performance
+with noisy estimated odometry. The synthetic S-bend and planner tests use idealized masks
+to test mechanics and are not evidence of real perception accuracy.
+
+False positives remain possible: a mistaken road mask can accumulate in grid memory,
+and flat-ground projection can misplace terrain on slopes. Unknown cells are not labeled
+as observed road, but the clearance calculation treats them optimistically so unseen
+ground under the hood does not block all motion. Neither that clearance nor a large
+positive road score guarantees that the physical terrain is safe. Ground-truth road
+labels would need to remain in a separate evaluator when measuring perception accuracy.
+
 The BeamNG client selects realistic shifting and forward drive on startup and
 resume, so holding the brake cannot engage arcade reverse. Manual gearboxes use
 first gear for low-speed off-road operation; automatics select Drive. Gate holds
@@ -88,8 +143,20 @@ to reproduce the former reversal and verify the brake-hold/forward-restart fix.
 - Starts BeamNG.tech when `BEAMNG_HOME` is set and it is not already running, then spawns the vehicle and opens the dashboard
 - `E` safe stop, `P` resume, `0`, `1`, `6`, `9` debug views, `T` timing overlay, `Q` quit
 - `--headless` runs without a window
+- `--presentation-view` shows the orbit camera, dashcam overlay and stats together live
 - `--record-video` saves the dashboard to an mp4 (see Record The Dashboard below)
 - `--presentation` saves a 1920 x 1080 video for an audience outside the team (see Record A Presentation below)
+
+### Live Presentation View
+
+```powershell
+offroad-autonomy --presentation-view
+```
+
+Opens the split view with the orbit camera on the left and dashcam overlay and
+telemetry on the right. No video is recorded and ffmpeg is not required. Use
+`E` to stop, `P` to resume and `Q` to quit. Add `--presentation` to record this
+view too. `--headless` suppresses the live window.
 
 ### Record The Dashboard
 
@@ -137,7 +204,7 @@ unchanged.
 - **Safe stop:** the header chip turns solid red, the orbit view gets a red wash and border, and no
   path is drawn on the dashcam image.
 
-The orbit camera is attached only with this flag, and no pipeline stage reads it. Its pose,
+The orbit camera is attached when recording or showing a presentation, and no pipeline stage reads it. Its pose,
 resolution and field of view are in the `presentation` section of `configs/default.yaml`. The main
 loop polls it right after each dashcam frame, because the socket transport cannot be read from the
 dashboard thread. That poll is logged as the `orbit_capture` stage and is part of the measured
@@ -145,9 +212,9 @@ primary loop, so the Autonomy FPS in the video is the real rate of the loop with
 attached. It has not yet been measured against BeamNG, so expect a lower FPS than without the flag
 until it has.
 
-The presentation frame is drawn on a thread of its own, separate from the window's, so it never
-adds to the loop period, even when the window has to be drawn inline. Its render time is in the
-periodic runtime log line.
+Recording-only presentation frames are drawn on their own thread. The live presentation
+uses the configured display threading mode; Tkinter requires drawing on the main thread.
+Its render time is in the periodic runtime log line.
 
 ### Dashboard
 

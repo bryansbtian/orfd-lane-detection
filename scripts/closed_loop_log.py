@@ -47,13 +47,6 @@ _DEBUG_FIELDS = (
     ("clearance", "edge_clearance_m", 3),
     ("lat_acc", "lateral_accel_mps2", 3),
     ("rejoin", "rejoin_m", 2),
-    ("controller", "controller", None),
-    ("solve_ms", "mpc_solve_ms", 3),
-    ("cost", "mpc_cost", 4),
-    ("solver_success", "solver_success", None),
-    ("solver_status", "solver_status", None),
-    ("fallback", "controller_fallback", None),
-    ("fallback_reason", "controller_fallback_reason", None),
 )
 
 
@@ -117,15 +110,12 @@ def main() -> None:
     )
     parser.add_argument("--config", default=str(ROOT / "configs/default.yaml"))
     parser.add_argument("--seconds", type=float, default=90.0)
-    parser.add_argument("--controller", choices=("stanley", "mpc"))
     parser.add_argument("--out", default=str(ROOT / "output/diagnostics/closed_loop.csv"))
     parser.add_argument("--snap-from", type=float, default=None)
     parser.add_argument("--summary", action="store_true")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
-    if args.controller:
-        cfg.controller = args.controller
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     dash = snap_dir = None
