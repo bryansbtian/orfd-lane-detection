@@ -89,12 +89,16 @@ under `control` in `configs/default.yaml`. Remove the former `control.controller
 and `--controller` flag from custom configurations and launch commands.
 
 For the bird's-eye grid planner, run `offroad-autonomy --config configs/grid.yaml`.
-At a split, the grid planner chooses the traversable branch closest to the current
-trajectory and locks onto it while multiple branches remain. A change in branch scores
+At a split, the grid planner measures how far each branch's drivable road continues through
+the grid (out to `planning.grid.max_range_m`) and drops branches more than
+`planning.grid.branch_depth_margin_m` shorter than the deepest, so a spur or dead end is not
+taken; of the rest it chooses the one closest to the current trajectory and locks onto it
+while multiple branches remain. A change in branch scores
 does not switch branches; the lock releases when only one option remains or the chosen
 branch is no longer safe. Arcs within a branch still use the existing quality scores and
 motion-compensated RMS trajectory-distance penalty. `planning.grid.weight_trajectory_distance`
-sets that penalty per metre (default `0.35`, `0` disables the soft penalty, not branch locking).
+sets that penalty per metre (default `0.10`, `0` disables the soft penalty, not branch locking;
+at `0.35` it held the path straight while the road bent).
 
 ### Grid Planner
 
@@ -105,8 +109,8 @@ whose hood hides the first ~3 m of ground and whose image edges cut wide trails:
 
 - Ground the camera cannot see is unknown, never "not road", so a trail running off the side of
   the image does not pull the path toward the visible part.
-- Memory carries the road the hood now hides, using the simulator's direction vector to follow
-  the vehicle's motion. Without a valid pose the grid forgets rather than smearing.
+- Memory carries the road the hood now hides, using wheel-speed/yaw-rate dead reckoning
+  to follow the vehicle's motion. Without a valid estimate the grid forgets rather than smearing.
 - Frames the perception gate rejects move the grid with the vehicle but add no evidence.
 - Arcs end where the vehicle's body would leave the road, and the path only extends as far as
   the grid has seen road, so the path-end speed law still applies.
@@ -119,10 +123,18 @@ stays the default until the grid planner has been compared on several maps.
 The grid's road evidence comes only from the learned dashcam mask. BeamNG annotation,
 instance-label and depth buffers are explicitly disabled; the optional orbit RGB camera
 is display-only. `semantic_mask` in the model wrapper means a neural-network prediction,
-not a simulator annotation. The grid does use BeamNG's true vehicle position and direction
-to register its memory, and Stanley uses simulator velocity/speed. This is vision-based
-traversability with simulator-provided localization, so it does not measure performance
-with noisy estimated odometry. The synthetic S-bend and planner tests use idealized masks
+not a simulator annotation. The grid now uses a local pose integrated from signed wheel
+speed and body yaw rate, starting at (0, 0) with heading zero. It never reads the vehicle's
+global position, absolute heading, or world velocity. Stanley uses wheel speed too.
+The adapter requests only simulation time, wheel speed (signed by wheel rotation), and
+body yaw rate via vehicle Lua. The yaw channel is an ideal simulated gyro-equivalent
+reading (`-obj:getYawAngularVelocity()`), not an AdvancedIMU or a noise-calibrated device.
+Wheel slip, lateral sliding, slopes, integration error, and gyro bias in a real deployment
+can make this planar estimate drift; no GPS or simulator-pose correction is applied.
+Missing, nonfinite, repeated/backward-time readings or gaps over 1 second invalidate
+odometry and park autonomy until the operator resumes. A new estimate starts locally;
+the grid discards memory on invalid samples. Map coordinates are used only to set up
+the scenario's spawn, never as localization inputs. The synthetic S-bend and planner tests use idealized masks
 to test mechanics and are not evidence of real perception accuracy.
 
 False positives remain possible: a mistaken road mask can accumulate in grid memory,
@@ -146,6 +158,27 @@ to reproduce the former reversal and verify the brake-hold/forward-restart fix.
 - `--presentation-view` shows the orbit camera, dashcam overlay and stats together live
 - `--record-video` saves the dashboard to an mp4 (see Record The Dashboard below)
 - `--presentation` saves a 1920 x 1080 video for an audience outside the team (see Record A Presentation below)
+
+### Steering Controllers
+
+`control.mode` selects the steering controller; speed, the speed cap and every stop always come
+from the Stanley speed law, so modes differ in steering only.
+
+```bash
+offroad-autonomy --config configs/grid.yaml       # stanley (default)
+offroad-autonomy --config configs/grid_mppi.yaml  # smooth MPPI
+offroad-autonomy --config configs/grid_mpc.yaml   # delay-aware tracking MPC
+```
+
+Both predictive modes follow the grid planner's metric path with a kinematic model that first
+replays the commands already in flight (`control.control_latency_s`) and limits steering slew
+as BeamNG does (`control/predictive.py`; settings under `control.predictive`). `mppi` samples
+changes in the command rather than commands, which keeps plain MPPI from chattering on slow,
+delayed steering, and also scores the BEV grid's clearance, so it can leave a path that runs
+into non-road. `mpc` solves the tracking problem by Gauss-Newton and does not read the grid.
+Without a metric path (other planner modes, or a stop) Stanley steers. On one 90 s route,
+against Stanley: MPPI centred best (0.21 vs 0.25 m) with the smallest steering steps and no
+full-lock frames; MPC had the lowest steering jerk (0.33 vs 0.73).
 
 ### Live Presentation View
 

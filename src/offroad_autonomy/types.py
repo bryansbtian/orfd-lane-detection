@@ -11,6 +11,7 @@ from dataclasses import dataclass, field, replace
 
 import numpy as np
 
+from offroad_autonomy.control.predictive_config import PredictiveConfig
 from offroad_autonomy.planning.grid_config import GridPlannerConfig
 
 DEFAULT_PERCEPTION_PROMPTS = [
@@ -68,10 +69,11 @@ DEBUG_VIEWS = (
     "raw",
     "mask",
     "pipeline",
+    "bev",
 )
 
 #: Keep the existing keys when depth-specific views are removed.
-DEBUG_VIEW_KEYS = {0: "default", 1: "raw", 6: "mask", 9: "pipeline"}
+DEBUG_VIEW_KEYS = {0: "default", 1: "raw", 2: "bev", 6: "mask", 9: "pipeline"}
 
 #: ``shared_memory`` only works when BeamNG runs on the same machine; a
 #: remote client (e.g. a Jetson) has to pull frames over the socket.
@@ -298,18 +300,27 @@ class PathPlan:
     speed_scale: float = 1.0
     planner_mask: np.ndarray | None = None
     roi_top: int = 0
+    #: Grid mode only: the planned path in camera-ground metres, rows of
+    #: (forward, right) from near to far, and its curvature at each point
+    #: (positive turns right). The controller follows these as planned.
+    ground_path: np.ndarray | None = None
+    ground_curvature: np.ndarray | None = None
 
 
 @dataclass
 class VehicleState:
+    """Runtime motion estimate in a local frame, initialized at zero.
+
+    Production uses wheel/gyro dead reckoning; these are not map coordinates.
+    """
+
     position: tuple[float, float, float] = (0.0, 0.0, 0.0)
     rotation: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 1.0)
     velocity: tuple[float, float, float] = (0.0, 0.0, 0.0)
     speed_mps: float = 0.0
     heading_rad: float = 0.0
     valid: bool = True
-    #: World-frame forward vector from the simulator. Kept separate from the
-    #: quaternion so frame-to-frame motion never depends on its convention.
+    #: Forward vector in the local odometry frame, integrated from yaw rate.
     direction: tuple[float, float, float] | None = None
 
 
@@ -356,6 +367,26 @@ class SteeringDebug:
     boundary_px: list = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class BEVSnapshot:
+    road: np.ndarray
+    blocked: np.ndarray
+    visible: np.ndarray
+    cell_m: float
+    ahead_m: float
+    half_width_m: float
+    path: np.ndarray | None = None  # forward, right metres
+    candidates: tuple[np.ndarray, ...] = ()
+    branch_count: int = 0
+    branch_locked: bool = False
+    #: Vehicle heading relative to its heading when the run started, radians,
+    #: positive turned left. ``None`` when the pose is unknown.
+    heading_rad: float | None = None
+    #: How sure the grid is of each cell, 0 (no evidence) to 1 (at the
+    #: log-odds limit). ``None`` draws every labelled cell at full strength.
+    confidence: np.ndarray | None = None
+
+
 @dataclass
 class PipelineStepResult:
     frame: FramePacket
@@ -365,6 +396,7 @@ class PipelineStepResult:
     command: ControlCommand
     capture: CameraFrame | None = None
     timings_ms: dict[str, float] = field(default_factory=dict)
+    bev: BEVSnapshot | None = None
 
 
 @dataclass
@@ -436,6 +468,9 @@ class PipelineConfig:
     min_road_pixels: int = 500
 
     grid: GridPlannerConfig = field(default_factory=GridPlannerConfig)
+    #: Steering controller: stanley | mppi | mpc (control.mode).
+    control_mode: str = "stanley"
+    predictive: PredictiveConfig = field(default_factory=PredictiveConfig)
     stanley_gain_k: float = 1.5
     stanley_softening: float = 2.4
     stanley_heading_gain: float = 0.85
@@ -465,6 +500,7 @@ class PipelineConfig:
     steer_cap_at_high_speed: float = 0.6
     max_target_speed_increase_mps: float = 0.1
     comfort_brake: float = 0.35
+    comfort_brake_deadband_mps: float = 0.0
     min_curvature_span_m: float = 2.0
     cross_track_soft_deadzone: bool = True
     latency_pose_prediction: bool = True

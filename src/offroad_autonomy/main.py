@@ -75,6 +75,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--config", default="configs/default.yaml", help="YAML configuration file.")
     parser.add_argument(
+        "--weights",
+        help="Override model weights for this run: a path or filename in models/ or its parent folder.",
+    )
+    parser.add_argument(
+        "--road-class",
+        action="append",
+        help="Road class name or prompt for this run; repeat to select multiple classes.",
+    )
+    parser.add_argument(
         "--log-level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
@@ -142,6 +151,20 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Presentation path (default: {_PRESENTATION_DIR}/<label>_<timestamp>.mp4).",
     )
     return parser
+
+
+def resolve_weights(value: str) -> Path:
+    """Find local weights without silently downloading a misspelled filename."""
+    path = Path(value).expanduser()
+    candidates = [path]
+    if not path.is_absolute() and path.parent == Path("."):
+        project = Path(__file__).resolve().parents[2]
+        candidates.extend([project / "models" / path, project.parent / path])
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    searched = ", ".join(str(candidate.resolve()) for candidate in candidates)
+    raise FileNotFoundError(f"Weights file not found: {value}. Searched: {searched}")
 
 
 def _open_video(path: str | Path, width: int, height: int, config: PipelineConfig) -> VideoRecorder:
@@ -392,6 +415,13 @@ def main() -> None:
         sys.exit(f"Configuration file not found: {config_path}")
 
     config = load_config(config_path)
+    if args.weights:
+        try:
+            config.model_weights = str(resolve_weights(args.weights))
+        except FileNotFoundError as exc:
+            sys.exit(str(exc))
+    if args.road_class:
+        config.perception_prompts = args.road_class
     if args.headless:
         config.ui_headless = True
     logger.info("Configuration loaded from %s", config_path)
@@ -483,6 +513,8 @@ def main() -> None:
             # window, so only the OpenCV backend can be driven off-thread.
             display = DisplayWorker(
                 render=_render,
+                open_window=window.open,
+                close_window=window.close,
                 show=window.show,
                 read_key=lambda: window.last_key,
                 record=record,
@@ -540,6 +572,8 @@ def main() -> None:
             # must render on the main thread, just like the operator dashboard.
             presentation_display = DisplayWorker(
                 render=_render_presentation,
+                open_window=presentation_window.open if presentation_window else None,
+                close_window=presentation_window.close if presentation_window else None,
                 show=presentation_window.show if presentation_window else lambda canvas: True,
                 read_key=lambda: presentation_window.last_key if presentation_window else -1,
                 record=presentation_video.write if presentation_video else None,
@@ -591,12 +625,15 @@ def main() -> None:
 
             if autopilot_active:
                 command = result.command
-                triggered, reason = stuck_detector.update(
-                    now=t_iter,
-                    road_fraction=result.stabilized.road_fraction,
-                    speed_mps=state.speed_mps,
-                    throttle=command.throttle,
-                )
+                if not state.valid:
+                    triggered, reason = True, "wheel/gyro motion readings unavailable or stale"
+                else:
+                    triggered, reason = stuck_detector.update(
+                        now=t_iter,
+                        road_fraction=result.stabilized.road_fraction,
+                        speed_mps=state.speed_mps,
+                        throttle=command.throttle,
+                    )
                 if triggered:
                     autopilot_active = False
                     client.park()
@@ -697,8 +734,6 @@ def main() -> None:
             if recording is not None:
                 recording.close()
                 _log_video(recording)
-        if dashboard_window is not None:
-            dashboard_window.close()
         client.disconnect()
         elapsed = time.perf_counter() - t_start
         logger.info("Session ended - %d frames in %.1f s", frame_count, elapsed)

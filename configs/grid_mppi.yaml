@@ -1,0 +1,34 @@
+# Grid planner + smooth MPPI steering (control/mppi_controller.py).
+#
+#   .\run-orfd.cmd --config configs/grid_mppi.yaml
+#
+# Samples steering-change sequences over a 3 s horizon through the same
+# delay- and slew-aware model as MPC, scores them on tracking the planned path
+# and on the BEV grid's clearance, and averages them by exp(-cost/temperature).
+# Speed is the Stanley speed law, unchanged. Everything else is grid.yaml's.
+extends: grid.yaml
+
+control:
+  mode: mppi
+  predictive:
+    dt_s: 0.1
+    horizon_steps: 30
+    steer_slew_per_s: 0.9
+    weight_lateral: 1.0
+    weight_heading: 2.0
+    # Live on the usual 90 s route (same planner, all runs clean), 4.0 with
+    # rate_noise 0.08 and 512 samples chattered: steering jerk 1.04 against
+    # Stanley's 0.73. 8.0, 0.04 and 1024 gave jerk 0.46, largest step per
+    # frame 0.025 (Stanley 0.099), no frames at full lock (Stanley 13) and
+    # the best centring (0.21 m vs 0.25 m), for 5 ms per frame.
+    weight_steer_rate: 8.0
+    samples: 1024
+    iterations: 1
+    temperature: 0.5
+    # Noise on each step's command change: smooth MPPI samples changes, not
+    # commands, which is what keeps plain MPPI's chatter away.
+    rate_noise: 0.04
+    # Paid per metre the camera point's clearance to non-road falls short of
+    # half the vehicle width plus this margin.
+    weight_offroad: 20.0
+    offroad_margin_m: 0.2

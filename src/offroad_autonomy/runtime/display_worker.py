@@ -49,8 +49,14 @@ class DisplayWorker:
         rate_hz: float = 20.0,
         asynchronous: bool = True,
         stats: RuntimeStats | None = None,
+        open_window: Callable[[], None] | None = None,
+        close_window: Callable[[], None] | None = None,
     ) -> None:
         self._render = render
+        self._open_window = open_window
+        self._close_window = close_window
+        self._window_open = False
+        self._unavailable = False
         self._show = show
         self._read_key = read_key
         self._record = record
@@ -84,11 +90,19 @@ class DisplayWorker:
         with self._lock:
             return self._closed
 
+    @property
+    def unavailable(self) -> bool:
+        with self._lock:
+            return self._unavailable
+
     def fps(self) -> float:
         return self.stats.fps()
 
     def start(self) -> None:
-        if not self._async or self._thread is not None:
+        if not self._async:
+            self._open()
+            return
+        if self._thread is not None:
             return
         self._stop = False
         self._thread = threading.Thread(target=self._run, name="display-worker", daemon=True)
@@ -96,16 +110,24 @@ class DisplayWorker:
         logger.info("Dashboard worker started (period %.3f s, 0 = unthrottled)", self._period)
 
     def stop(self, timeout: float = 2.0) -> None:
+        if not self._async:
+            self._close()
+            return
         with self._cond:
             self._stop = True
             self._cond.notify_all()
         if self._thread is not None:
             self._thread.join(timeout)
+            if self._thread.is_alive():
+                logger.warning("Dashboard worker did not stop within %.1f s", timeout)
+                return
             self._thread = None
 
     def publish(self, state: DisplayState) -> None:
         """Overwrites rather than queues, so a slow dashboard goes stale
         instead of building latency."""
+        if self.unavailable:
+            return
         if not self._async:
             self._draw(state)
             return
@@ -121,7 +143,37 @@ class DisplayWorker:
             self._keys.clear()
         return keys
 
+    def _open(self) -> bool:
+        if self._open_window is None:
+            return True
+        try:
+            self._open_window()
+        except Exception:
+            logger.exception("Dashboard window could not be opened - continuing without it")
+            with self._lock:
+                self._unavailable = True
+            return False
+        self._window_open = True
+        return True
+
+    def _close(self) -> None:
+        if not self._window_open or self._close_window is None:
+            return
+        self._window_open = False
+        try:
+            self._close_window()
+        except Exception:
+            logger.exception("Dashboard window did not close cleanly")
+
     def _run(self) -> None:
+        if not self._open():
+            return
+        try:
+            self._loop()
+        finally:
+            self._close()
+
+    def _loop(self) -> None:
         while True:
             with self._cond:
                 while self._pending is None and not self._stop:

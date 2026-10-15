@@ -34,8 +34,7 @@ from offroad_autonomy.types import VehicleState
 
 @dataclass(frozen=True)
 class GroundPose:
-    """Where the camera's ground point is in the world, and which way the
-    vehicle faces, on the horizontal plane."""
+    """Estimated camera ground point and direction in the local odometry frame."""
 
     x: float
     y: float
@@ -97,8 +96,8 @@ class TraversabilityGrid:
         in_image = (
             (forward > 0.1) & (ui >= 0) & (ui < camera.width) & (vi >= 0) & (vi < camera.height)
         )
-        # The gate's ROI already keeps sky and tree line out of planning; the
-        # grid observes the same rows so the two never disagree on range.
+        # Rows above ``roi_top`` are sky, tree line or ground too far away to
+        # place; the planner sets it from planning.grid.max_range_m.
         in_image &= vi >= roi_top
         if valid_roi is not None and valid_roi.shape == (camera.height, camera.width):
             in_image[in_image] &= valid_roi[vi[in_image], ui[in_image]]
@@ -133,6 +132,11 @@ class TraversabilityGrid:
         """Move the grid with the vehicle, let old evidence fade, then add
         this frame's mask. ``road_mask`` is ``None`` when the frame is not
         trusted, so the grid still tracks the vehicle but learns nothing."""
+        self._advance(pose, dt_s)
+        if road_mask is not None:
+            self._observe(road_mask)
+
+    def _advance(self, pose: GroundPose | None, dt_s: float) -> None:
         if pose is None or self._pose is None:
             self.logodds.fill(0.0)
         else:
@@ -142,8 +146,7 @@ class TraversabilityGrid:
         if dt_s > 0.0:
             self.logodds *= np.float32(math.exp(-dt_s / self._decay_s))
 
-        if road_mask is None:
-            return
+    def _observe(self, road_mask: np.ndarray) -> None:
         observed = cv2.remap(
             road_mask.astype(np.uint8),
             self._map_x,

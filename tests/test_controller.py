@@ -388,3 +388,43 @@ def test_rejoin_distance_shortens_only_in_recovery():
     normal = StanleyController(config).lookahead_distance(3.0)
     assert small.rejoin_m == pytest.approx(normal, rel=1e-6)
     assert large.rejoin_m < normal
+
+
+def _metric_arc_plan(config, curvature: float, length_m: float = 14.0) -> PathPlan:
+    """A planner-made path on the ground, as grid mode hands it over."""
+    s = np.arange(0.0, length_m, 0.25)
+    forward = np.sin(curvature * s) / curvature + 1.0
+    right = (1.0 - np.cos(curvature * s)) / curvature
+    pixels = _camera(config).ground_to_image(forward, right)[::-1]
+    return PathPlan(
+        centerline=pixels,
+        ground_path=np.column_stack((forward, right)),
+        ground_curvature=np.full(len(s), curvature),
+    )
+
+
+def test_a_tight_planned_bend_is_followed_as_planned():
+    """Through pixels and a quadratic fit, a 6.7 m radius bend comes back
+    metres off; the metric path keeps its exact curvature."""
+    config = _config()
+    controller = StanleyController(config, camera=_camera(config))
+    plan = _metric_arc_plan(config, 0.15)
+
+    command = controller.compute(plan, VehicleState(speed_mps=2.0))
+
+    assert command.debug.curvature == pytest.approx(0.15, rel=0.05)
+    assert command.steering > 0.0
+
+
+def test_a_metric_path_is_not_recentred_on_image_edges():
+    config = _config()
+    controller = StanleyController(config, camera=_camera(config))
+    plan = _metric_arc_plan(config, 0.0001)
+    # A mask hugging the right side would shift a pixel-route path right.
+    mask = np.zeros((config.preprocess_height, config.preprocess_width), dtype=bool)
+    mask[:, config.preprocess_width // 2 - 20 :] = True
+    plan.planner_mask = mask
+
+    command = controller.compute(plan, VehicleState(speed_mps=2.0))
+
+    assert command.debug.centering_shift_m == 0.0

@@ -132,6 +132,61 @@ class _GroundPath:
         return np.clip(self.raw_curvature(f), -max_curvature, max_curvature) * trust
 
 
+#: A planned path is only usable as right(forward) while it keeps heading
+#: forward; past this angle a tight bend curls sideways and is cut off.
+_MAX_SAMPLED_HEADING_RAD = math.radians(70.0)
+
+
+class _SampledPath:
+    """The grid planner's metric path, followed as planned.
+
+    The image route projects a path to pixels, back to the ground and fits a
+    quadratic, which is lossless on gentle roads but metres off in a bend
+    tighter than ~10 m radius, where right(forward) stops being quadratic.
+    Here the points and the planner's exact curvature are interpolated
+    directly, so a bend stays the bend that was planned. Same interface as
+    ``_GroundPath``.
+    """
+
+    def __init__(self, forward: np.ndarray, right: np.ndarray, curvature: np.ndarray) -> None:
+        forward = np.asarray(forward, dtype=np.float64)
+        right = np.asarray(right, dtype=np.float64)
+        curvature = np.asarray(curvature, dtype=np.float64)
+        # Keep the leading stretch that still runs forward and has not turned
+        # past the limit; right(forward) is undefined beyond it.
+        keep = len(forward)
+        steps = np.diff(forward)
+        turned = np.abs(np.arctan2(np.diff(right), steps)) > _MAX_SAMPLED_HEADING_RAD
+        stop = np.flatnonzero((steps <= 1e-6) | turned)
+        if len(stop):
+            keep = int(stop[0]) + 1
+        self._f = forward[:keep]
+        self._r = right[:keep]
+        self._k = curvature[:keep]
+        self._slope = np.gradient(self._r, self._f) if keep >= 2 else np.zeros(keep)
+        self.start = float(self._f[0])
+        self.end = float(self._f[-1])
+
+    @property
+    def forward(self) -> np.ndarray:
+        return self._f
+
+    def right(self, f):
+        return np.interp(f, self._f, self._r)
+
+    def slope(self, f):
+        return np.interp(f, self._f, self._slope)
+
+    def raw_curvature(self, f):
+        return np.interp(f, self._f, self._k)
+
+    def curvature(self, f, max_curvature: float = np.inf, trust: float = 1.0):
+        """``trust`` damps a fitted path's noisy second derivative; the
+        planner's curvature is exact, so it is not scaled."""
+        del trust
+        return np.clip(self.raw_curvature(f), -max_curvature, max_curvature)
+
+
 @dataclass
 class TrailBoundaries:
     """Trail edges along the vehicle's predicted arc; lateral is + right."""
@@ -271,6 +326,7 @@ class StanleyController:
         self._prev_steering = 0.0
         self._prev_target: float | None = None
         self._comfort_brake = float(np.clip(config.comfort_brake, 0.0, config.max_brake))
+        self._comfort_deadband = max(0.0, config.comfort_brake_deadband_mps)
         self._min_curvature_span = float(max(config.min_curvature_span_m, 0.5))
         self._max_curvature = math.tan(self._max_wheel_angle) / self._wheelbase
         self._target_ramp = float(max(config.max_target_speed_increase_mps, 0.0))
@@ -343,13 +399,23 @@ class StanleyController:
         if len(plan.centerline) < 2:
             return debug, None
 
-        forward, right, keep = path_to_ground(self._camera, plan.centerline)
-        if int(keep.sum()) < 2:
-            return debug, None
-        order = np.argsort(forward[keep])
-        fwd = forward[keep][order]
-        px = np.asarray(plan.centerline, dtype=np.float64)[keep][order]
-        path = _GroundPath(fwd, right[keep][order])
+        sampled = plan.ground_path is not None and plan.ground_curvature is not None
+        if sampled:
+            path = _SampledPath(
+                plan.ground_path[:, 0], plan.ground_path[:, 1], plan.ground_curvature
+            )
+            if len(path.forward) < 2:
+                return debug, None
+            fwd = path.forward
+            px = self._camera.ground_to_image(fwd, path.right(fwd)).astype(np.float64)
+        else:
+            forward, right, keep = path_to_ground(self._camera, plan.centerline)
+            if int(keep.sum()) < 2:
+                return debug, None
+            order = np.argsort(forward[keep])
+            fwd = forward[keep][order]
+            px = np.asarray(plan.centerline, dtype=np.float64)[keep][order]
+            path = _GroundPath(fwd, right[keep][order])
 
         # Every term is read where the car will be when the command lands.
         f0 = min(speed * self._latency, path.end)
@@ -366,7 +432,12 @@ class StanleyController:
         # it near one side.
         arc = math.tan(self._prev_steering * self._max_wheel_angle) / self._wheelbase
         trail = measure_trail(self._camera, plan.planner_mask, arc)
-        ref = self._centred_reference(path, trail, debug)
+        # A grid path is already centred on the BEV, where both edges and
+        # memory are known; re-centring it on single image rows would be a
+        # second, disagreeing centring. Edges still feed the speed limits.
+        ref = path
+        if not sampled:
+            ref = self._centred_reference(path, trail, debug)
 
         # Reading the offset at the bumper "now" left ~0.8 s of loop delay
         # uncompensated and the car weaved +-1 m with a ~5 s period
@@ -623,11 +694,19 @@ class StanleyController:
             # Well over target (a descent, or a limit that dropped suddenly)
             # is not routine either: comfort braking could not hold the Hopper
             # on a slope in BeamNG, where it ran at 5.7 m/s against 1.3.
-            hard = reason in ("path end", "clearance") or -speed_err > _OVERSPEED_HARD_BRAKE_MPS
+            hard = (
+                reason in ("path end", "clearance", "gate hold")
+                or -speed_err > _OVERSPEED_HARD_BRAKE_MPS
+            )
             ceiling = self._comfort_brake
             if hard:
                 ceiling = self._max_brake
-            brake = min(self._speed_kp * abs(speed_err), ceiling)
+            # Coast through small routine speed errors; hard limits and the
+            # absolute speed-cap branch above never use this deadband.
+            excess = max(0.0, abs(speed_err) - self._comfort_deadband)
+            if hard:
+                excess = abs(speed_err)
+            brake = min(self._speed_kp * excess, ceiling)
         return throttle, brake
 
     def _update_cte_rate(self, abs_cte: float) -> None:

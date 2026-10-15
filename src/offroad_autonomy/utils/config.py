@@ -8,6 +8,7 @@ from pathlib import Path
 
 import yaml
 
+from offroad_autonomy.control.predictive_config import CONTROL_MODES, PredictiveConfig
 from offroad_autonomy.planning.grid_config import GridPlannerConfig
 from offroad_autonomy.runtime.video_recorder import X264_PRESETS
 from offroad_autonomy.types import (
@@ -254,6 +255,20 @@ def _load_recording(raw: dict) -> dict:
     }
 
 
+def _control_mode(value) -> str:
+    mode = str(value).lower()
+    if mode not in CONTROL_MODES:
+        raise ValueError(f"control.mode must be one of {CONTROL_MODES}, got {value!r}")
+    return mode
+
+
+def _load_predictive(raw: dict) -> PredictiveConfig:
+    try:
+        return PredictiveConfig(**raw)
+    except TypeError as exc:
+        raise ValueError(f"control.predictive: {exc}") from exc
+
+
 def _load_grid(raw: dict) -> GridPlannerConfig:
     try:
         return GridPlannerConfig(**raw)
@@ -395,6 +410,8 @@ def load_config(path: str | Path) -> PipelineConfig:
         fallback_after_n_misses=plan.get("fallback_after_n_misses", 3),
         min_road_pixels=plan.get("min_road_pixels", 500),
         grid=_load_grid(_section(plan, "grid")),
+        control_mode=_control_mode(ctrl.get("mode", "stanley")),
+        predictive=_load_predictive(_section(ctrl, "predictive")),
         stanley_gain_k=ctrl.get("stanley_gain_k", 1.5),
         stanley_softening=ctrl.get("stanley_softening", 2.4),
         stanley_heading_gain=ctrl.get("stanley_heading_gain", 0.85),
@@ -424,6 +441,7 @@ def load_config(path: str | Path) -> PipelineConfig:
         steer_cap_at_high_speed=float(ctrl.get("steer_cap_at_high_speed", 0.6)),
         max_target_speed_increase_mps=float(ctrl.get("max_target_speed_increase_mps", 0.1)),
         comfort_brake=float(ctrl.get("comfort_brake", 0.35)),
+        comfort_brake_deadband_mps=float(ctrl.get("comfort_brake_deadband_mps", 0.0)),
         min_curvature_span_m=float(ctrl.get("min_curvature_span_m", 2.0)),
         cross_track_soft_deadzone=bool(ctrl.get("cross_track_soft_deadzone", True)),
         latency_pose_prediction=bool(ctrl.get("latency_pose_prediction", True)),

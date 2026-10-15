@@ -20,6 +20,7 @@ from offroad_autonomy.types import (
     PipelineStepResult,
 )
 from offroad_autonomy.visualization import bands
+from offroad_autonomy.visualization.bev import render_bev
 from offroad_autonomy.visualization.layout import Rect, build_layout
 from offroad_autonomy.visualization.text import (
     BODY,
@@ -57,6 +58,7 @@ _VIEW_TITLES = {
     "raw": "Raw Dashcam",
     "mask": "Segmentation Mask",
     "pipeline": "Pipeline Debug",
+    "bev": "Dashcam + BEV",
 }
 
 _ALL_STYLES: tuple[TextStyle, ...] = (
@@ -203,7 +205,20 @@ class AutonomyDashboard:
         viewport = self._layout.viewport
         has_ego = valid_roi is not None and not bool(valid_roi.all())
         self._ego_label_px = None
-        if debug_view == "pipeline":
+        if debug_view == "bev":
+            split = viewport.w // 2
+            camera_rect = Rect(viewport.x, viewport.y, split - 6, viewport.h)
+            image = self._main_view("default", result, plan, valid_roi)
+            blit_cover(canvas, image, camera_rect)
+            bev = render_bev(
+                result.bev,
+                viewport.w - split - 6,
+                viewport.h,
+                show_path=plan is not None and telemetry.autopilot_active,
+            )
+            x = viewport.x + split + 6
+            canvas[viewport.y : viewport.bottom, x : viewport.right] = bev
+        elif debug_view == "pipeline":
             self._draw_pipeline_view(canvas, viewport, result)
         else:
             image = self._main_view(debug_view, result, plan, valid_roi)

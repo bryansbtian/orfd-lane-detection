@@ -19,6 +19,7 @@ from offroad_autonomy.planning.baseline_planner import BaselinePlanner
 from offroad_autonomy.planning.bev_grid import TraversabilityGrid, ground_pose
 from offroad_autonomy.planning.perception_gate import GateDecision, PerceptionGate
 from offroad_autonomy.types import (
+    BEVSnapshot,
     PathPlan,
     PipelineConfig,
     StabilizedResult,
@@ -262,6 +263,10 @@ class CenterlinePlanner:
         # Built on the first frame, once the mask size and ego exclusion are known.
         self._grid: TraversabilityGrid | None = None
         self._grid_time: float | None = None
+        self._grid_path = None
+        # Heading at the first known pose; the BEV view keeps it pointing up.
+        self._heading_origin: float | None = None
+        self._heading: float | None = None
         self._direction_warned = False
         self._arcs = ArcPlanner(
             config.grid,
@@ -328,13 +333,14 @@ class CenterlinePlanner:
         """The grid keeps tracking the vehicle on every frame, but only a
         frame that passed the gate adds evidence: a rejected mask must not
         teach the grid road that perception itself did not trust."""
+        self._grid_path = None
         mask = stabilized.mask.astype(bool)
         if self._grid is None:
             self._grid = TraversabilityGrid(
                 self._grid_config,
                 self._camera,
                 stabilized.valid_roi,
-                self._gate.roi_top(mask.shape[0]),
+                self._grid_top_row(),
             )
         now = time.perf_counter()
         dt = 0.0
@@ -346,16 +352,22 @@ class CenterlinePlanner:
         observation = None
         if decision.ok:
             observation = mask
-        self._grid.update(observation, ground_pose(vehicle_state, self._camera), dt)
+        pose = ground_pose(vehicle_state, self._camera)
+        self._track_heading(pose)
+        self._grid.update(observation, pose, dt)
 
         if not decision.ok:
             return self._hold(decision)
 
-        choice = self._arcs.choose(self._grid, ground_pose(vehicle_state, self._camera))
+        choice = self._arcs.choose(self._grid, pose)
         if choice is None:
             decision.reason = "no drivable arc in the grid"
             return self._hold(decision)
 
+        self._grid_path = np.column_stack((choice.forward_m, choice.right_m)).copy()
+        curvature = choice.curvature_profile
+        if curvature is None:
+            curvature = np.full(len(choice.forward_m), choice.curvature)
         # Pixels far -> near, the order Stanley expects from every planner.
         centerline = self._camera.ground_to_image(choice.forward_m, choice.right_m)[::-1].copy()
         plan = PathPlan(
@@ -366,12 +378,58 @@ class CenterlinePlanner:
         )
         plan.planner_mask = decision.component
         plan.roi_top = decision.roi_top
+        plan.ground_path = self._grid_path.copy()
+        plan.ground_curvature = np.asarray(curvature, dtype=np.float64).copy()
         self._last_good = plan
         self._held = 0
         return plan
 
+    def _grid_top_row(self) -> int:
+        """Highest image row the grid reads: where flat ground ``max_range_m``
+        ahead appears. The gate's ROI stops nearer (~15 m); past ~25 m one
+        row spans metres of ground and a small pitch moves it by metres more."""
+        far = self._camera.ground_to_image(
+            np.array([self._grid_config.max_range_m]), np.array([0.0])
+        )[0][1]
+        return max(0, int(math.ceil(float(far))))
+
+    def _track_heading(self, pose) -> None:
+        if pose is None:
+            self._heading = None
+            return
+        heading = math.atan2(pose.forward_y, pose.forward_x)
+        if self._heading_origin is None:
+            self._heading_origin = heading
+        self._heading = math.remainder(heading - self._heading_origin, 2.0 * math.pi)
+
+    def bev_snapshot(self) -> BEVSnapshot | None:
+        """Copy grid evidence so rendering cannot race the next planner update."""
+        grid = self._grid
+        if grid is None:
+            return None
+        arcs = self._arcs
+        path = None
+        if self._grid_path is not None:
+            path = self._grid_path.copy()
+        return BEVSnapshot(
+            road=grid.road().copy(),
+            blocked=grid.blocked().copy(),
+            visible=grid.in_view.copy(),
+            cell_m=grid.cell_m,
+            ahead_m=self._grid_config.ahead_m,
+            half_width_m=self._grid_config.half_width_m,
+            path=path,
+            candidates=arcs.preview_arcs(),
+            branch_count=arcs.branch_count,
+            branch_locked=arcs.branch_locked,
+            heading_rad=self._heading,
+            confidence=np.clip(
+                np.abs(grid.logodds) / self._grid_config.logodds_limit, 0.0, 1.0
+            ).astype(np.float32),
+        )
+
     def _check_direction(self, vehicle_state: VehicleState | None) -> None:
-        """Driving forward, velocity and the simulator's direction vector must
+        """Driving forward, estimated velocity and the local direction vector must
         agree; if they do not, the grid would shift its memory the wrong way."""
         if self._direction_warned or vehicle_state is None or vehicle_state.direction is None:
             return
@@ -717,4 +775,6 @@ class CenterlinePlanner:
         if self._grid is not None:
             self._grid.reset()
         self._grid_time = None
+        self._heading_origin = None
+        self._heading = None
         self._arcs.reset()

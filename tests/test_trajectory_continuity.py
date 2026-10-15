@@ -35,9 +35,7 @@ def test_closest_valid_candidate_wins_over_small_quality_fluctuations():
     switch = ArcChoice(-0.02, f, f * 0 - 1.0, 9, 2, 1.1)
     arcs._previous_path = np.column_stack((f, f * 0 + 0.2))
     arcs._previous_pose = _pose()
-    with patch.object(
-        arcs, "_score", side_effect=[same, switch] + [None] * (len(arcs.curvatures) - 2)
-    ):
+    with patch.object(arcs, "_score", side_effect=[same, switch] + [None] * (len(arcs._first) - 2)):
         choice = arcs.choose(grid, _pose())
     assert choice is same
     assert same.continuity_distance_m == pytest.approx(0)
@@ -50,7 +48,8 @@ def test_unsafe_previous_path_never_overrides_current_clearance():
     f = np.linspace(1, 12, 24)
     arcs._previous_path = np.column_stack((f, f * 0 + 6))
     arcs._previous_pose = _pose()
-    grid.update(_road_mask(_straight(2)), _pose(), dt_s=0)
+    for _ in range(4):
+        grid.update(_road_mask(_straight(2)), _pose(), dt_s=0)
     choice = arcs.choose(grid, _pose())
     assert choice is not None
     assert choice.min_clearance_m >= arcs._required_clearance
@@ -62,7 +61,8 @@ def test_unsafe_previous_path_never_overrides_current_clearance():
 
 def test_missing_pose_and_reset_discard_geometric_preference():
     arcs, grid = _arcs(), _grid()
-    grid.update(_road_mask(_straight(2)), _pose(), dt_s=0)
+    for _ in range(4):
+        grid.update(_road_mask(_straight(2)), _pose(), dt_s=0)
     arcs.choose(grid, _pose())
     assert arcs._previous_path is not None
     assert arcs.choose(grid).continuity_distance_m == 0

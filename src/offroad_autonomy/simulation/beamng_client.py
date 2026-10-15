@@ -6,6 +6,7 @@ can be tested and run without a simulator.
 
 from __future__ import annotations
 
+import json
 import logging
 import math
 import time
@@ -14,6 +15,7 @@ import zlib
 import cv2
 import numpy as np
 
+from offroad_autonomy.simulation.odometry import WheelGyroOdometry
 from offroad_autonomy.types import (
     CameraFrame,
     CameraSpec,
@@ -27,6 +29,19 @@ logger = logging.getLogger("offroad_autonomy.simulation")
 
 _PHYSICS_SETTLE_S = 3.0
 _SENSOR_WARMUP_S = 1.0
+
+# Sensor-equivalent channels only. No State sensor, position, orientation,
+# world velocity or road geometry. These are ideal simulated readings, not
+# a calibrated/noisy physical IMU model. BeamNG ESC defines positive-left
+# yaw rate as -getYawAngularVelocity(); wheelspeed is unsigned, so use the
+# wheel encoder's rotation sign (not selected gear) to recover reverse motion.
+_ODOMETRY_SAMPLE = """
+local e = electrics.values
+if e.wheelspeed == nil or e.avgWheelAV == nil then return nil end
+return jsonEncode({time = obj:getSimTime(),
+        wheel_speed = e.wheelspeed * (e.avgWheelAV < 0 and -1 or 1),
+        yaw_rate = -obj:getYawAngularVelocity()})
+"""
 
 
 class BeamNGConnectionError(RuntimeError):
@@ -42,6 +57,8 @@ class BeamNGClient:
         self._bng = None
         self._vehicle = None
         self._cameras: dict[str, object] = {}
+        self._odometry = WheelGyroOdometry()
+        self._last_odometry_warning = float("-inf")
         self._frame_id = 0
         self._last_signature: int | None = None
         self._shared_memory = config.beamng_camera_transport == "shared_memory"
@@ -57,6 +74,7 @@ class BeamNGClient:
         from beamngpy.sensors.camera import Camera
 
         cfg = self._config
+        self._odometry.reset()
 
         if cfg.beamng_launch:
             logger.info(
@@ -127,6 +145,7 @@ class BeamNGClient:
         time.sleep(_SENSOR_WARMUP_S)
 
         self.release_park()
+        logger.info("Motion source: wheel speed + body yaw-rate dead reckoning; no global pose")
         logger.info("BeamNG session ready")
 
     def _attach_camera(self, camera_cls, vehicle, spec: CameraSpec):
@@ -215,29 +234,21 @@ class BeamNGClient:
             return VehicleState(valid=False)
 
         try:
-            self._vehicle.sensors.poll()
-            st = self._vehicle.state
-            if not all(key in st for key in ("pos", "vel", "rotation")):
-                return VehicleState(valid=False)
-            pos = tuple(st.get("pos", (0, 0, 0)))
-            rot = tuple(st.get("rotation", (0, 0, 0, 1)))
-            vel = tuple(st.get("vel", (0, 0, 0)))
-            speed = math.sqrt(sum(v**2 for v in vel))
-            _, _, yaw = self._quat_to_euler(rot)
-            direction = None
-            if "dir" in st:
-                direction = tuple(st["dir"])
-            return VehicleState(
-                position=pos,
-                rotation=rot,
-                velocity=vel,
-                speed_mps=speed,
-                heading_rad=yaw,
-                direction=direction,
+            sample = self._vehicle.queue_lua_command(_ODOMETRY_SAMPLE, response=True)
+            # BeamNG's Lua command endpoint stringifies return values.
+            if isinstance(sample, str):
+                sample = json.loads(sample)
+            if not isinstance(sample, dict):
+                raise TypeError("Wheel/gyro sample unavailable")
+            return self._odometry.update(
+                float(sample["time"]), float(sample["wheel_speed"]), float(sample["yaw_rate"])
             )
         except Exception as exc:
-            # Do not let a failed poll masquerade as a stationary vehicle.
-            logger.debug("State poll failed: %s", exc)
+            self._odometry.reset()
+            now = time.perf_counter()
+            if now - self._last_odometry_warning > 5.0:
+                logger.warning("Wheel/gyro odometry unavailable: %s", exc)
+                self._last_odometry_warning = now
             return VehicleState(valid=False)
 
     def send_controls(self, cmd: ControlCommand) -> None:

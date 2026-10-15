@@ -8,7 +8,7 @@ import pytest
 
 from offroad_autonomy.control.stanley_controller import StanleyController, path_to_ground
 from offroad_autonomy.perception.perception_view import PerceptionView
-from offroad_autonomy.planning.arc_planner import ArcPlanner
+from offroad_autonomy.planning.arc_planner import ArcPlanner, road_centre_offset
 from offroad_autonomy.planning.bev_grid import GroundPose, TraversabilityGrid, ground_pose
 from offroad_autonomy.planning.centerline_planner import CenterlinePlanner
 from offroad_autonomy.planning.grid_config import GridPlannerConfig
@@ -19,6 +19,8 @@ VIEW = PerceptionView(CONFIG)
 CAMERA = VIEW.camera
 VALID = VIEW.valid_roi
 ROI_TOP = int(round(CAMERA.height * (1.0 - CONFIG.planner_roi_height)))
+#: Frames a test scene is observed for before planning on it.
+SETTLE_FRAMES = 4
 
 
 def _road_mask(is_road) -> np.ndarray:
@@ -50,6 +52,20 @@ def _cells(grid, forward_m, right_m):
     return grid.logodds[row, col]
 
 
+def _settle(grid, mask, pose, frames=SETTLE_FRAMES):
+    """Observe one scene for a few frames, as the car does live: near ground
+    is marked after two frames and far ground, weighted less, after more."""
+    for _ in range(frames):
+        grid.update(mask, pose, dt_s=0.0)
+
+
+def _plan_settled(planner, stabilized, state, frames=SETTLE_FRAMES):
+    plan = None
+    for _ in range(frames):
+        plan = planner.plan(stabilized, vehicle_state=state)
+    return plan
+
+
 def _arcs() -> ArcPlanner:
     return ArcPlanner(
         CONFIG.grid,
@@ -79,7 +95,7 @@ def test_ground_the_camera_cannot_see_stays_unknown():
 
 def test_memory_carries_road_into_the_ground_the_hood_now_hides():
     grid = _grid()
-    grid.update(_road_mask(_straight(2.0)), _pose(), dt_s=0.0)
+    _settle(grid, _road_mask(_straight(2.0)), _pose())
 
     # 3 m forward with no new frame: the road seen at 4.5 m is now at 1.5 m.
     grid.update(None, _pose(x=3.0), dt_s=0.0)
@@ -144,7 +160,7 @@ def test_ground_pose_uses_the_simulator_direction_vector():
 
 def _choose(is_road, arcs=None):
     grid = _grid()
-    grid.update(_road_mask(is_road), _pose(), dt_s=0.0)
+    _settle(grid, _road_mask(is_road), _pose())
     return (arcs or _arcs()).choose(grid)
 
 
@@ -175,6 +191,69 @@ def test_a_road_wider_than_the_view_is_still_driven_straight():
     assert abs(choice.curvature) <= 2 * step + 1e-9
 
 
+def test_centre_offset_is_zero_mid_road_and_unmeasured_at_an_unseen_edge():
+    road = np.zeros((2, 11), dtype=bool)
+    road[:, 3:8] = True  # five road cells, centre column 5
+    blocked = ~road
+    blocked[1, :3] = False  # row 1: the left edge was never seen
+
+    offset = road_centre_offset(road, blocked)
+
+    assert offset[0, 5] == pytest.approx(0.0)
+    assert offset[0, 3] > offset[0, 4] > offset[0, 5]
+    assert offset[0, 3] == pytest.approx(offset[0, 7])
+    assert np.isnan(offset[0, 0])
+    assert np.isnan(offset[1, 5])
+
+
+@pytest.mark.parametrize(
+    "centering, continuity, turns_back",
+    [(2.0, CONFIG.grid.weight_trajectory_distance, True), (2.0, 0.35, True), (0.0, 0.35, False)],
+)
+def test_a_car_that_drifted_off_centre_is_steered_back(centering, continuity, turns_back):
+    """Driving straight down the middle, then finding the road centre 1.2 m
+    to the left. A strong continuity term (0.35, the old weight) alone holds
+    the old straight path; the centring term turns the car back even then."""
+    arcs = _arcs_with(weight_centering=centering, weight_trajectory_distance=continuity)
+    pose = _pose()
+    centred = _grid()
+    _settle(centred, _road_mask(_straight(3.0)), pose)
+    assert arcs.choose(centred, pose).curvature == pytest.approx(0.0)
+
+    drifted = _grid()
+    _settle(drifted, _road_mask(lambda f, r: np.abs(r + 1.2) < 3.0), pose)
+    choice = arcs.choose(drifted, pose)
+
+    assert (choice.curvature < 0.0) == turns_back
+
+
+def test_centring_sits_out_at_a_fork():
+    """A strip of road spanning two branches has its middle between them, so
+    at a detected split the branch logic alone decides the path."""
+
+    def fork(f, r):
+        branches = (np.abs(r + 3.4) < 1.8) | (np.abs(r - 3.4) < 1.8)
+        return np.where(f < 5.0, np.abs(r) < 3.8, branches)
+
+    plain_arcs = _arcs_with(weight_centering=0.0)
+    plain = _choose(fork, plain_arcs)
+    centring_arcs = _arcs_with(weight_centering=2.0)
+    centring = _choose(fork, centring_arcs)
+
+    assert plain_arcs.branch_count == centring_arcs.branch_count == 2
+    assert centring.curvature == plain.curvature
+
+
+def _arcs_with(**grid_overrides) -> ArcPlanner:
+    return ArcPlanner(
+        replace(CONFIG.grid, **grid_overrides),
+        wheelbase_m=CONFIG.wheelbase_m,
+        max_wheel_angle_deg=CONFIG.max_wheel_angle_deg,
+        vehicle_half_width_m=CONFIG.vehicle_half_width_m,
+        rear_axle_behind_camera_m=CONFIG.camera_ahead_of_rear_axle_m,
+    )
+
+
 def test_the_path_ends_where_the_road_does():
     choice = _choose(lambda f, r: (np.abs(r) < 2.0) & (f < 7.0))
 
@@ -202,7 +281,7 @@ def test_grid_mode_hands_the_controller_a_usable_path():
     planner = CenterlinePlanner(CONFIG, camera=CAMERA)
     state = VehicleState(direction=(1.0, 0.0, 0.0), speed_mps=3.0, velocity=(3.0, 0.0, 0.0))
 
-    plan = planner.plan(_stabilized(_road_mask(_straight(2.0))), vehicle_state=state)
+    plan = _plan_settled(planner, _stabilized(_road_mask(_straight(2.0))), state)
 
     assert not plan.fallback_active
     forward, right, keep = path_to_ground(CAMERA, plan.centerline)
@@ -291,3 +370,60 @@ def test_model_false_positive_can_persist_but_corrected_evidence_clears_it():
     for _ in range(10):
         grid.update(correct_mask, _pose(), dt_s=0.0)
     assert _cells(grid, 8.0, 4.0) < CONFIG.grid.blocked_threshold
+
+
+def test_grid_mode_hands_the_controller_its_metric_path_and_sees_past_the_gate_roi():
+    planner = CenterlinePlanner(CONFIG, camera=CAMERA)
+    state = VehicleState(direction=(1.0, 0.0, 0.0), speed_mps=3.0, velocity=(3.0, 0.0, 0.0))
+
+    plan = _plan_settled(planner, _stabilized(_road_mask(_straight(2.0))), state)
+
+    assert plan.ground_path is not None
+    assert plan.ground_curvature.shape == (len(plan.ground_path),)
+    assert np.all(np.diff(plan.ground_path[:, 0]) > 0)
+    # The gate ROI ends ~15 m ahead; the grid now observes to max_range_m.
+    forward, _ = planner._grid.cell_centres()
+    assert forward[planner._grid.in_view].max() > 20.0
+
+
+def test_a_road_that_turns_ahead_gets_a_path_that_turns_there():
+    """Straight for 6 m, then bending right: a two-part candidate can follow
+    that shape, where any single arc either cuts in early or runs wide."""
+
+    def straight_then_right(f, r):
+        centre = np.where(f < 6.0, 0.0, 0.5 * 0.08 * np.square(f - 6.0))
+        return np.abs(r - centre) < 2.5
+
+    arcs = _arcs()
+    choice = _choose(straight_then_right, arcs)
+
+    step = arcs.curvatures[1] - arcs.curvatures[0]
+    assert abs(choice.curvature) <= 2 * step + 1e-9
+    assert choice.curvature_profile[-1] > 0.03
+
+
+def _grid_with_range(max_range_m: float) -> TraversabilityGrid:
+    """A grid that reads the image out to ``max_range_m``, as grid mode does."""
+    far = CAMERA.ground_to_image(np.array([max_range_m]), np.array([0.0]))[0][1]
+    return TraversabilityGrid(CONFIG.grid, CAMERA, VALID, int(math.ceil(float(far))))
+
+
+@pytest.mark.parametrize("margin, takes_continuing", [(3.0, True), (1000.0, False)])
+def test_at_a_fork_the_branch_that_goes_further_is_taken(margin, takes_continuing):
+    """The left branch is nearer straight ahead but ends 10 m out; the right
+    one continues past the planning look-ahead. Ignoring depth (a huge
+    margin) the nearer dead end wins; by depth the continuing branch does."""
+
+    def fork(f, r):
+        dead_end = (np.abs(r + 2.6) < 1.7) & (f < 10.0)
+        continuing = np.abs(r - 3.8) < 1.7
+        return np.where(f < 5.0, np.abs(r) < 4.5, dead_end | continuing)
+
+    grid = _grid_with_range(24.0)
+    _settle(grid, _road_mask(fork), _pose())
+    arcs = _arcs_with(branch_depth_margin_m=margin)
+
+    choice = arcs.choose(grid, _pose())
+
+    assert arcs.branch_count == 2
+    assert (choice.right_m[-1] > 0.0) == takes_continuing

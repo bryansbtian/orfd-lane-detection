@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import threading
 
 import cv2
 import numpy as np
@@ -28,7 +29,40 @@ def _async_held_keys() -> set[str]:
         return set()
 
 
+def _opencv_gui_available() -> bool:
+    """Read from the build rather than by opening a probe window: a probe
+    would belong to whichever thread made it, and only the drawing thread
+    may own the dashboard window."""
+    for line in cv2.getBuildInformation().splitlines():
+        stripped = line.strip()
+        if stripped.startswith("GUI:"):
+            value = stripped.split(":", 1)[1].strip().upper()
+            return value not in ("", "NONE")
+    return False
+
+
+def _tkinter_available() -> bool:
+    try:
+        import tkinter  # noqa: F401
+
+        from PIL import ImageTk  # noqa: F401
+    except Exception as exc:
+        logger.warning("Tkinter window backend unavailable: %s", exc)
+        return False
+    return True
+
+
 class DashboardWindow:
+    """One OS window, owned by exactly one thread.
+
+    Win32 delivers a window's messages only to the thread that created it,
+    so a window created on one thread and pumped from another never repaints
+    and Windows marks it Not Responding. Construction therefore only picks a
+    backend. :meth:`open`, :meth:`show` and :meth:`close` must all run on the
+    same thread - the display worker's - and :meth:`close` refuses to run
+    anywhere else.
+    """
+
     def __init__(self, title: str, width: int, height: int) -> None:
         self.title = title
         self.width = width
@@ -37,6 +71,7 @@ class DashboardWindow:
         self._held: set[str] = set()
         self._backend = ""
         self._closed = False
+        self._owner: int | None = None
         self._root = None
         self._label = None
         self._photo = None
@@ -44,12 +79,13 @@ class DashboardWindow:
         self._image_tk = None
         self._background = (17, 22, 26)
 
-        if self._try_opencv():
-            return
-        if self._try_tkinter():
-            return
-
-        raise RuntimeError("No supported GUI backend is available for the dashboard window.")
+        if _opencv_gui_available():
+            self._backend = "opencv"
+        elif _tkinter_available():
+            self._backend = "tkinter"
+        else:
+            raise RuntimeError("No supported GUI backend is available for the dashboard window.")
+        logger.info("Dashboard window backend: %s", self._backend)
 
     @property
     def backend(self) -> str:
@@ -58,34 +94,39 @@ class DashboardWindow:
         return self._backend
 
     @property
+    def is_open(self) -> bool:
+        return self._owner is not None
+
+    @property
     def held_keys(self) -> set[str]:
         if self._backend == "opencv":
             return _async_held_keys()
         return set(self._held)
 
-    def _try_opencv(self) -> bool:
+    def open(self) -> None:
+        """Creates the window on the calling thread, which becomes its owner."""
+        if self._owner is not None:
+            raise RuntimeError("Dashboard window is already open")
+        if self._backend == "opencv":
+            self._open_opencv()
+        else:
+            self._open_tkinter()
+        self._owner = threading.get_ident()
+
+    def _open_opencv(self) -> None:
+        flags = cv2.WINDOW_NORMAL
+        if hasattr(cv2, "WINDOW_FREERATIO"):
+            flags |= cv2.WINDOW_FREERATIO
         try:
-            flags = cv2.WINDOW_NORMAL
-            if hasattr(cv2, "WINDOW_FREERATIO"):
-                flags |= cv2.WINDOW_FREERATIO
             cv2.namedWindow(self.title, flags)
             cv2.resizeWindow(self.title, self.width, self.height)
         except cv2.error as exc:
-            logger.warning("OpenCV window backend unavailable: %s", exc)
-            return False
+            raise RuntimeError(f"OpenCV could not open the dashboard window: {exc}") from exc
 
-        self._backend = "opencv"
-        logger.info("Dashboard window backend: OpenCV")
-        return True
+    def _open_tkinter(self) -> None:
+        import tkinter as tk
 
-    def _try_tkinter(self) -> bool:
-        try:
-            import tkinter as tk
-
-            from PIL import ImageTk
-        except Exception as exc:
-            logger.warning("Tkinter window backend unavailable: %s", exc)
-            return False
+        from PIL import ImageTk
 
         try:
             root = tk.Tk()
@@ -101,16 +142,12 @@ class DashboardWindow:
             label.pack(fill="both", expand=True)
             root.update_idletasks()
         except Exception as exc:
-            logger.warning("Failed to initialise Tkinter dashboard window: %s", exc)
-            return False
+            raise RuntimeError(f"Tkinter could not open the dashboard window: {exc}") from exc
 
-        self._backend = "tkinter"
         self._root = root
         self._label = label
         self._tk = tk
         self._image_tk = ImageTk
-        logger.info("Dashboard window backend: Tkinter")
-        return True
 
     def _on_key_press(self, event) -> None:
         sym = event.keysym.lower()
@@ -136,6 +173,7 @@ class DashboardWindow:
         """False once the window has been closed."""
         if self._closed:
             return False
+        self._require_owner("show")
         self.last_key = -1
 
         if self._backend == "opencv":
@@ -230,8 +268,22 @@ class DashboardWindow:
     def _request_close(self) -> None:
         self._closed = True
 
+    def _require_owner(self, action: str) -> None:
+        if self._owner is None:
+            raise RuntimeError(f"Dashboard window {action}() before open()")
+        if threading.get_ident() != self._owner:
+            raise RuntimeError(
+                f"Dashboard window {action}() called off its owning thread; "
+                "Win32 would leave the window unresponsive"
+            )
+
     def close(self) -> None:
+        """Destroys the window. Must run on the thread that opened it."""
         self._closed = True
+        if self._owner is None:
+            return
+        self._require_owner("close")
+        self._owner = None
 
         if self._backend == "opencv":
             try:

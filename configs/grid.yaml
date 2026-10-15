@@ -3,3 +3,6 @@
 extends: default.yaml
 planning:
   mode: grid
+ui:
+  headless: false
+  debug_view: bev

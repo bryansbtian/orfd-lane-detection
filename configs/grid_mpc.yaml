@@ -1,0 +1,27 @@
+# Grid planner + delay-aware tracking MPC steering (control/mpc_controller.py).
+#
+#   .\run-orfd.cmd --config configs/grid_mpc.yaml
+#
+# Steering is chosen over a 3 s horizon through a kinematic model that replays
+# the commands already in flight (control.control_latency_s) and limits the
+# steering slew as BeamNG does; speed is the Stanley speed law, unchanged.
+# Everything else is grid.yaml's.
+#
+# Live on the usual 90 s route (all runs clean): steering jerk 0.33 against
+# Stanley's 0.73, largest step per frame 0.068 (0.099), 3 frames at full lock
+# (13), centring 0.24 m (0.25 m), 2 ms per frame.
+extends: grid.yaml
+
+control:
+  mode: mpc
+  predictive:
+    dt_s: 0.1
+    horizon_steps: 30
+    # BeamNG's steering slew on the Hopper (scripts/sbend_sim.py uses the same).
+    steer_slew_per_s: 0.9
+    # Lateral and heading error of the camera point to the planned path, and
+    # the size of each command change (what keeps the steering calm).
+    weight_lateral: 1.0
+    weight_heading: 2.0
+    weight_steer_rate: 4.0
+    gauss_newton_iterations: 2

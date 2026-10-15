@@ -7,6 +7,7 @@ import time
 
 import numpy as np
 
+from offroad_autonomy.control.factory import build_controller
 from offroad_autonomy.control.stanley_controller import StanleyController
 from offroad_autonomy.perception.perception_view import PerceptionView
 from offroad_autonomy.perception.road_segmenter import RoadSegmenter
@@ -36,7 +37,12 @@ class AutonomyPipeline:
         self.segmenter = RoadSegmenter(config)
         self.stabilizer = TemporalStabilizer(config)
         self.planner = CenterlinePlanner(config, camera=self.view.camera)
-        self.controller = StanleyController(config, camera=self.view.camera)
+        if config.control_mode == "stanley":
+            self.controller = StanleyController(config, camera=self.view.camera)
+        else:
+            self.controller = build_controller(
+                config, camera=self.view.camera, grid_source=lambda: self.planner.grid
+            )
 
     @property
     def ego_coverage(self) -> float:
@@ -112,6 +118,7 @@ class AutonomyPipeline:
             command=command,
             capture=capture,
             timings_ms=timings,
+            bev=self.planner.bev_snapshot(),
         )
 
     def _as_capture(self, frames: CameraFrame | np.ndarray) -> CameraFrame:

@@ -92,9 +92,8 @@ beamng:
           rot: [0, 0, 0, 1]
 
 perception:
-  # 26x costs ~40 ms/frame on an RTX 3060 Laptop even with BeamNG idle - on
-  # its own most of the 50 ms budget. 26l is ~25 ms, 26s ~15 ms. See README.
-  model_weights: "models/yoloe-26x-seg.pt"
+  # Local fine-tuned BeamNG semantic road segmentation checkpoint.
+  model_weights: "models/beam_fine_tunned.pt"
   # Semantic checkpoints use per-pixel confidence; prompts select fixed road
   # class names (e.g. "traversable road") and never include background.
   # SEGMENTATION_THRESHOLD: per-instance score the model must reach for an
@@ -103,13 +102,9 @@ perception:
   # 0.11-0.78 and often 0.24-0.33, so 0.25 dropped whole frames at random.
   # Frame-level trust is decided by planning.gate.confidence_threshold.
   segmentation_threshold: 0.15
-  input_size: 640
+  input_size: 1024
   prompts:
     - "traversable road"
-    - "dirt road"
-    - "off-road trail"
-    - "drivable terrain"
-    - "gravel path"
 
 # When the stack decides it can no longer see a road. The fraction is measured
 # over VALID pixels only (ego mask excluded), so bodywork in frame cannot trip
@@ -123,7 +118,8 @@ preprocessing:
   # segmentation mask, planner and dashboard overlays share one grid.
   target_width: 720
   target_height: 465
-  enable_clahe: true
+  # Match the semantic checkpoint's training images (no contrast equalisation).
+  enable_clahe: false
   clahe_clip_limit: 2.0
   clahe_grid_size: 8
 
@@ -189,10 +185,22 @@ planning:
   # were checked on one recorded run only; judge them on a multi-map set.
   grid:
     # 0.1 m cells: a 1.9 m wide vehicle spans 19 cells. A 200 x 200 grid
-    # planned in about 3 ms per frame on an i9-12900K in an offline replay.
+    # planned in about 3 ms per frame on an i9-12900K in an offline replay;
+    # 195 one- and two-part candidates take ~9 ms on this laptop.
     cell_m: 0.10
-    # The gate ROI ends ~13.4 m ahead, so 16 m holds every observed cell.
-    ahead_m: 16.0
+    # Holds everything observed out to max_range_m below, with room to spare.
+    ahead_m: 26.0
+    # The grid reads ground out to this range, past the gate ROI (~15 m). At
+    # 24 m one image row already spans ~1.5 m of ground and a small pitch
+    # shifts it by metres more, so further would add mostly noise. Planning
+    # still uses lookahead_m; the extra range is memory and the BEV view.
+    max_range_m: 24.0
+    # At a split the planner takes the branch whose road (where the vehicle
+    # fits) continues furthest through the grid, out to max_range_m, so a
+    # spur or dead end is not taken because it was nearer. Branches within
+    # this of the deepest count as equal; the closest of those wins, which
+    # keeps it from switching between two branches that both go on.
+    branch_depth_margin_m: 3.0
     # Behind the camera: the rear axle (control.camera_ahead_of_rear_axle_m)
     # plus the road the vehicle has just driven over.
     behind_m: 4.0
@@ -200,11 +208,19 @@ planning:
     half_width_m: 10.0
     # Evidence fades with this time constant. At 4 m/s the 3 m hidden by the
     # hood was in view 0.75 s earlier, well inside the memory.
-    memory_s: 2.0
-    # Log-odds added per frame for road / not road. One frame is enough to
-    # mark a cell; the stabilizer's EMA has already smoothed the mask.
-    road_logodds: 0.85
-    offroad_logodds: -0.85
+    memory_s: 4.0
+    # Log-odds added per frame for road / not road: a cell is marked after two
+    # consistent frames, so one odd frame cannot repaint it. Measured live on
+    # the usual 90 s route by following fixed patches of ground: ~11% of
+    # patches labelled at 15-24 m get the other label once within 8 m whatever
+    # these are - the far view is wrong that often (one image row spans
+    # ~1.5 m there) and memory cannot fix a wrong observation, only stop it
+    # churning. 0.85 per frame with 2 s memory changed each patch's label
+    # 1.04 times over its life; 0.5 with 4 s, 0.95 times, tracking unchanged
+    # in both of its runs. Weighting far evidence down as well (0.3 at 24 m)
+    # cut that to 0.88 but two of its three runs overshot a bend; removed.
+    road_logodds: 0.5
+    offroad_logodds: -0.5
     logodds_limit: 4.0
     # A cell is road above road_threshold and an obstacle below
     # blocked_threshold; between them it is unknown.
@@ -214,7 +230,19 @@ planning:
     # 0.012 /m curvature step, ~0.5 m sideways at 8 m; finer sets flipped
     # between near-equal arcs more often on the recorded run.
     arc_count: 41
+    # Path length planned. Seeing 24 m but planning 14 changed nothing in the
+    # offline closed loop below; planning 17-22 m was no better or worse,
+    # because the far part of a long path dominates its score and cuts bends.
     lookahead_m: 14.0
+    # Two-part candidates: each arc may switch to another curvature this far
+    # ahead, by +/- count steps of second_curvature_step. In an offline closed
+    # loop (6 m road, dashcam-like view, start 1.2 m off centre) they cut the
+    # mean offset from centre on an S-bend 0.85 -> 0.40 m and the p95 on a
+    # 90 deg turn 1.11 -> 0.58 m, with steadier steering. Switching at 3 m
+    # doubled steering changes; at 6-8 m it was worse.
+    switch_m: 4.0
+    second_curvature_step: 0.04
+    second_curvature_count: 2
     # Under a third of the vehicle width, so an arc cannot step over an edge.
     step_m: 0.25
     # The path starts 1 m ahead of the camera; nearer points are under the car.
@@ -226,13 +254,30 @@ planning:
     # Clearance counts up to half a wide trail. A 2 m cap saturated on wide
     # roads and the planner stopped centring.
     clearance_cap_m: 4.0
-    # Score = length seen as road + clearance - change from last arc - bend.
+    # Score = progress ahead on seen road + clearance - change from last path
+    # - bend - distance from the road's middle - distance from the last path.
     weight_length: 1.0
     weight_clearance: 1.0
     # Only breaks near-ties; at 0.4 it locked onto the first arc it picked.
     weight_consistency: 0.2
     weight_curvature: 0.1
-    weight_trajectory_distance: 0.35 # penalty per metre from the motion-compensated prior path
+    # Penalty for the arc's mean distance from the middle of the road, 0 at
+    # the centre line and 1 at an edge, measured only where both edges have
+    # been seen. Clearance alone does not centre: unseen ground counts as
+    # open. In an offline closed loop (6 m road, straight then an S-bend,
+    # dashcam-like view), 2.0 cut the mean offset from centre 0.94 -> 0.53 m
+    # and the worst 2.27 -> 1.22 m from left, centre and right starts alike;
+    # 3.0 was no better.
+    weight_centering: 2.0
+    # Penalty per metre of RMS separation from the last path (motion
+    # compensated), so near-equal paths do not flicker. At 0.35 it held the
+    # path straight when a bend came into view: replaying 246 recorded frames,
+    # following the road lost ~0.36 here against +0.12 for centring, and 54
+    # frames pointed >8 deg off the road (worst 28 deg). Live on the usual
+    # route, 0.10 cut that to 14 of 281 (worst 14 deg), the path's distance
+    # from the road centre at 8 m from 0.71 to 0.16 m, and the car's offset
+    # from the middle from 0.48 to 0.26 m, with smaller steering changes.
+    weight_trajectory_distance: 0.10
 
 control:
   # Half the vehicle width keeps the road-edge margin outside the bodywork.
@@ -277,9 +322,9 @@ control:
   lookahead_curvature_gain: 2.0
   #
   # ---- Speed: min of cruise, curve profile, path end, saturation.
-  # Straights run at this (was 8 mph; bends now slow themselves down).
-  target_speed_mph: 10.0
-  speed_limit_mph: 15.0
+  # Demo maximum is 6 mph. Cruise below it to leave room for tracking error.
+  target_speed_mph: 5.5
+  speed_limit_mph: 6.0
   # Curve speed v = sqrt(a_lat / |kappa|): 10 m radius -> 2.2 m/s, 5 m radius
   # -> crawl. Low on purpose: at ~4 FPS the loop's latency is the limit, and
   # slower bends were what kept the S-bend sim stable at 3 FPS (10/12 runs vs
@@ -311,6 +356,12 @@ control:
   # braking pitched the camera and shook the path. Path end and
   # clearance still get max_brake.
   comfort_brake: 0.35
+  # Coast through routine speed errors this small before braking (the cap,
+  # gate stops, path end and clearance never coast). Off: at the 6 mph cap a
+  # 90 s grid run (output/demo_6mph) braked only 9% of the time, mean 0.06,
+  # and 0.15 m/s with comfort_brake 0.18 cut that by under 10% while letting
+  # descents carry the car to 6.6 mph, over the cap, for 64 frames.
+  comfort_brake_deadband_mps: 0.0
   # Curvature is always clamped to the full-lock curvature
   # tan(max_wheel_angle) / wheelbase (~0.24 /m, a 4.2 m radius) - in BeamNG a
   # few-metre path once fitted to 0.4-1.0 /m on a straight road. Below this
@@ -372,7 +423,9 @@ control:
   path_end_margin_m: 1.5
   path_end_decel_mps2: 2.0
   # Was 0.45: the Hopper then launches at ~4 m/s^2 and overshoots the
-  # target before the 4 FPS loop can react.
+  # target before the 4 FPS loop can react. 0.22 at the 6 mph cap braked more
+  # (11.7 s vs 8.9 s in 90 s) and tracked worse (cross-track p95 0.57 m vs
+  # 0.18 m) than 0.3 (output/demo_6mph).
   max_throttle: 0.3
   max_brake: 0.8
   speed_kp: 0.22

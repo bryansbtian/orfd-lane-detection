@@ -34,7 +34,8 @@ def test_connection_failure_exits_cleanly_and_disconnects(monkeypatch):
     pipeline.step_result.assert_not_called()
 
 
-def test_automatic_stop_does_not_resend_the_previous_throttle(monkeypatch):
+@pytest.mark.parametrize("valid_motion", [True, False])
+def test_automatic_stop_does_not_resend_the_previous_throttle(monkeypatch, valid_motion):
     from unittest.mock import Mock
 
     import offroad_autonomy.main as app
@@ -49,7 +50,12 @@ def test_automatic_stop_does_not_resend_the_previous_throttle(monkeypatch):
     pipeline.ego_coverage = 0.0
     pipeline.step_result.return_value = result
     client.capture_frame.return_value = result.capture
-    client.get_vehicle_state.return_value = VehicleState()
+    client.get_vehicle_state.return_value = VehicleState(valid=valid_motion)
+
+    def end_after_actuation(command):
+        app._shutdown = True
+
+    client.send_controls.side_effect = end_after_actuation
 
     def stop(**kwargs):
         app._shutdown = True
