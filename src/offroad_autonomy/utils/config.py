@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 from pathlib import Path
 
@@ -31,6 +32,20 @@ from offroad_autonomy.utils import environment
 logger = logging.getLogger("offroad_autonomy.config")
 
 _TRUE_STRINGS = ("1", "true", "yes", "on")
+
+
+def _nonnegative(raw: dict, key: str, default: float) -> float:
+    value = float(raw.get(key, default))
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"{key} must be finite and >= 0")
+    return value
+
+
+def _positive(raw: dict, key: str, default: float) -> float:
+    value = _nonnegative(raw, key, default)
+    if value == 0:
+        raise ValueError(f"{key} must be > 0")
+    return value
 
 
 def _parse_color(raw: object, default: tuple[int, int, int]) -> tuple[int, int, int]:
@@ -153,6 +168,11 @@ def _load_camera(raw: dict) -> CameraSpec:
         float(raw.get("forward_offset_m", default.pos[1])),
         float(raw.get("height_m", default.pos[2])),
     )
+    intrinsics = raw.get("intrinsics")
+    if intrinsics is not None:
+        if not isinstance(intrinsics, (list, tuple)) or len(intrinsics) != 4:
+            raise ValueError("camera.intrinsics must contain native-resolution fx, fy, cx, cy")
+        intrinsics = tuple(float(value) for value in intrinsics)
     return CameraSpec(
         name=str(raw.get("name", default.name)),
         pos=_parse_vec3(raw.get("pos"), pos),
@@ -160,6 +180,7 @@ def _load_camera(raw: dict) -> CameraSpec:
         up=_parse_vec3(raw.get("up"), up),
         sensor=_load_sensor(raw.get("sensor")),
         ego_mask=_load_ego_mask(raw.get("ego_mask"), default.ego_mask),
+        intrinsics=intrinsics,
     )
 
 
@@ -338,7 +359,10 @@ def load_config(path: str | Path) -> PipelineConfig:
         raise ValueError(
             "Replace beamng.cameras with the single beamng.camera dashcam configuration"
         )
-    camera = _load_camera(_section(bng, "camera"))
+    camera_raw = _section(bng, "camera")
+    if "camera" in raw:
+        camera_raw = _deep_merge(camera_raw, _section(raw, "camera"))
+    camera = _load_camera(camera_raw)
     perc = _section(raw, "perception")
     safety = _section(raw, "safety")
     pre = _section(raw, "preprocessing")
@@ -371,6 +395,7 @@ def load_config(path: str | Path) -> PipelineConfig:
         model_weights=perc.get("model_weights", "models/yoloe-26x-seg.pt"),
         confidence_threshold=perc.get("segmentation_threshold", 0.25),
         perception_input_size=perc.get("input_size", 640),
+        perception_half=bool(perc.get("half", False)),
         perception_prompts=perc.get("prompts", DEFAULT_PERCEPTION_PROMPTS.copy()),
         preprocess_width=pre.get("target_width", 720),
         preprocess_height=pre.get("target_height", 465),
@@ -388,6 +413,16 @@ def load_config(path: str | Path) -> PipelineConfig:
         planner_roi_height=float(plan.get("roi_height", 0.50)),
         baseline_temporal_blend=float(plan.get("baseline_temporal_blend", 0.0)),
         baseline_max_shift_m=float(plan.get("baseline_max_shift_m", 0.5)),
+        validate_path_corridor=bool(plan.get("validate_path_corridor", True)),
+        path_min_clearance_px=_nonnegative(plan, "path_min_clearance_px", 1.0),
+        path_half_width_m=_nonnegative(plan, "path_half_width_m", 0.0),
+        path_boundary_margin_m=_nonnegative(plan, "path_boundary_margin_m", 0.0),
+        projection_max_range_m=_positive(plan, "projection_max_range_m", 30.0),
+        projection_pitch_uncertainty_deg=_nonnegative(
+            plan, "projection_pitch_uncertainty_deg", 1.0
+        ),
+        projection_max_relative_error=_positive(plan, "projection_max_relative_error", 0.3),
+        max_frame_age_ms=_nonnegative(_section(raw, "runtime"), "max_frame_age_ms", 200.0),
         gate_min_confidence=float(gate.get("confidence_threshold", 0.18)),
         gate_min_mask_area=float(gate.get("min_mask_area", 0.05)),
         gate_hold_frames=int(gate.get("hold_frames", 10)),

@@ -25,6 +25,8 @@ MAIN_STAGES = (
     "segmentation",
     "postprocess",
     "planning",
+    "perception_planning",
+    "frame_age",
     "control",
     "actuation",
     "primary_loop",

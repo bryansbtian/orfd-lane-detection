@@ -93,9 +93,9 @@ beamng:
 
 perception:
   # Local fine-tuned BeamNG semantic road segmentation checkpoint.
-  model_weights: "models/beam_fine_tunned.pt"
+  model_weights: "models/weights.pt"
   # Semantic checkpoints use per-pixel confidence; prompts select fixed road
-  # class names (e.g. "traversable road") and never include background.
+  # class names; spaces and underscores are equivalent. Exclude background.
   # SEGMENTATION_THRESHOLD: per-instance score the model must reach for an
   # instance to enter the mask. Was 0.25 - measured on BeamNG frames
   # (scripts/diagnose_perception.py) the correct road instance scores
@@ -103,6 +103,9 @@ perception:
   # Frame-level trust is decided by planning.gate.confidence_threshold.
   segmentation_threshold: 0.15
   input_size: 1024
+  # Same-resolution FP16 on CUDA; CPU inference automatically stays FP32.
+  # Compared against FP32 on 200 labeled RGB frames; see docs/fps_optimization.md.
+  half: true
   prompts:
     - "traversable road"
 
@@ -112,6 +115,11 @@ perception:
 safety:
   min_road_fraction: 0.015
   no_road_time_s: 2.0
+
+runtime:
+  # Capture timestamps must use the host monotonic clock. Zero disables
+  # rejection for deliberate offline replay; unknown age is reported as null.
+  max_frame_age_ms: 200.0
 
 preprocessing:
   # Exactly 3/4 of the 960x620 capture (1/4 of the 2880x1860 imager), so the
@@ -152,6 +160,19 @@ planning:
   # Keeps the road's curvature, removes frame-to-frame jumps.
   baseline_temporal_blend: 0.4
   baseline_max_shift_m: 0.5
+  # Check between waypoints after smoothing: a fit can cross mask holes.
+  validate_path_corridor: true
+  path_min_clearance_px: 1.0
+  # Enable the swept-width check only with validated mount and vehicle
+  # dimensions. Zero preserves the baseline; vehicle_width_validated is false.
+  # A positive value is measured half-width in metres, e.g. 0.95 for 1.9 m.
+  path_half_width_m: 0.0
+  path_boundary_margin_m: 0.0
+  # Sensitivity bounds for flat-ground projection, not terrain estimates.
+  # Recalibrate for the physical mount and ground-relative pitch envelope.
+  projection_max_range_m: 30.0
+  projection_pitch_uncertainty_deg: 1.0
+  projection_max_relative_error: 0.3
   # A frame that fails any check produces NO new path: the last good path is
   # reused for hold_frames at hold_speed_scale x speed, then the car brakes.
   gate:
@@ -455,11 +476,10 @@ visualization:
       EGO_EXCLUDED: [255, 91, 212] # magenta: distinct from the mask teal and the fault red
     # The autonomy loop's target rate. Below it the readout turns amber,
     # then red once it falls under fps_warn_fraction of the target.
-    target_fps: 7.0
+    target_fps: 20.0
     fps_warn_fraction: 0.8 # amber from 80% of the target up to the target; a design choice, not measured
-    # One frame period at target_fps (1000 / 7). Latency past this means the
-    # loop cannot hold its target.
-    latency_budget_ms: 143.0
+    # Engineering target, not a claim about measured runtime performance.
+    latency_budget_ms: 50.0
     # Segmentation confidence is red below planning.gate.confidence_threshold
     # (the gate rejects the frame there), amber up to this value, green above.
     confidence_good: 0.5

@@ -8,9 +8,12 @@ show and close all on the worker thread, close in the worker's ``finally``,
 and never a window on any other thread.
 """
 
+import os
 import sys
 import threading
 import time
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -177,6 +180,95 @@ def test_show_before_open_is_refused(fake_highgui):
 
     with pytest.raises(RuntimeError, match="before open"):
         window.show(np.zeros((4, 4, 3), dtype=np.uint8))
+
+
+@pytest.mark.parametrize("threaded", [False, True])
+def test_tk_async_requires_supported_threaded_runtime(monkeypatch, threaded):
+    monkeypatch.setattr(window_module, "_opencv_gui_available", lambda: False)
+    monkeypatch.setattr(window_module, "_tkinter_available", lambda: True)
+    monkeypatch.setattr(window_module, "_threaded_tk_available", lambda: threaded)
+    window = DashboardWindow("test", 64, 48)
+    assert window.supports_async is threaded
+
+
+@pytest.mark.parametrize("size", [(1600, 900), (1896, 990), (200, 400), (1, 1), (401, 199)])
+def test_display_padding_matches_reference_pixels(size):
+    cv2 = window_module.cv2
+    frame = np.random.default_rng(0).integers(0, 256, (90, 160, 3), dtype=np.uint8)
+    tw, th = size
+    scale = min(tw / 160, th / 90)
+    nw, nh = max(1, round(160 * scale)), max(1, round(90 * scale))
+    reference = np.full((th, tw, 3), (17, 22, 26), np.uint8)
+    ox, oy = (tw - nw) // 2, (th - nh) // 2
+    reference[oy : oy + nh, ox : ox + nw] = cv2.resize(frame, (nw, nh))
+    actual = DashboardWindow._prepare_frame_for_display(frame, tw, th, (17, 22, 26))
+    np.testing.assert_array_equal(actual, reference)
+
+
+def test_tk_reuses_photo_until_resize_and_releases_references_on_close(monkeypatch):
+    monkeypatch.setattr(window_module, "_opencv_gui_available", lambda: False)
+    monkeypatch.setattr(window_module, "_tkinter_available", lambda: True)
+    window = DashboardWindow("test", 64, 48)
+    root, label, image_tk = Mock(), Mock(), Mock()
+    label.winfo_width.return_value = 64
+    label.winfo_height.return_value = 48
+    photo = Mock()
+    photo.width.return_value = 64
+    photo.height.return_value = 48
+    image_tk.PhotoImage.return_value = photo
+    window._root, window._label, window._image_tk = root, label, image_tk
+    window._tk = SimpleNamespace(TclError=RuntimeError)
+    window._owner = threading.get_ident()
+    frame = np.zeros((48, 64, 3), dtype=np.uint8)
+    assert window.show(frame)
+    assert window.show(frame)
+    image_tk.PhotoImage.assert_called_once()
+    assert image_tk.PhotoImage.call_args.kwargs["master"] is root
+    photo.paste.assert_called_once()
+    label.winfo_width.return_value = 80
+    assert window.show(frame)
+    assert image_tk.PhotoImage.call_count == 2
+    window._on_key_press(SimpleNamespace(keysym="W"))
+    assert window.held_keys == {"w"}
+    window._on_key_release(SimpleNamespace(keysym="W"))
+    assert window.held_keys == set()
+    window.close()
+    root.destroy.assert_called_once()
+    assert window._photo is None
+    assert window._label is None
+    assert window._root is None
+    assert window._tk is None
+    assert window._image_tk is None
+
+
+def test_real_tk_window_round_trip_on_worker_thread(monkeypatch):
+    if os.environ.get("OFFROAD_TEST_TK_GUI") != "1":
+        pytest.skip("set OFFROAD_TEST_TK_GUI=1 for real GUI lifecycle validation")
+    if not window_module._threaded_tk_available():
+        pytest.skip("needs Windows threaded Tcl")
+    monkeypatch.setattr(window_module, "_opencv_gui_available", lambda: False)
+    window = DashboardWindow("orfd Tk worker test", 160, 90)
+    worker = DisplayWorker(
+        render=lambda state: np.full((90, 160, 3), 40, dtype=np.uint8),
+        show=window.show,
+        read_key=lambda: window.last_key,
+        rate_hz=0,
+        asynchronous=window.supports_async,
+        open_window=window.open,
+        close_window=window.close,
+    )
+    worker.start()
+    deadline = time.monotonic() + 10
+    while worker.rendered < 20 and time.monotonic() < deadline:
+        worker.publish(_state())
+        time.sleep(0.01)
+    worker.stop(timeout=5)
+    assert worker.rendered >= 20
+    assert worker.failed == 0
+    assert worker._thread is None
+    assert not window.is_open
+    assert window._root is None
+    assert window._photo is None
 
 
 def test_real_window_round_trip_on_the_worker_thread():

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import torch
 from ultralytics import YOLO
 
 from offroad_autonomy.perception.ego_mask import (
@@ -25,11 +26,17 @@ from offroad_autonomy.types import FramePacket, PerceptionResult, PipelineConfig
 logger = logging.getLogger("offroad_autonomy.perception")
 
 
+def _semantic_class_name(name: str) -> str:
+    """Treat spaces and underscores as equivalent class-name separators."""
+    return " ".join(name.replace("_", " ").casefold().split())
+
+
 class RoadSegmenter:
     def __init__(self, config: PipelineConfig) -> None:
         weights = config.model_weights
         self._conf = config.confidence_threshold
         self._imgsz = int(config.perception_input_size)
+        self._half = bool(config.perception_half and torch.cuda.is_available())
 
         logger.info("Loading model weights: %s", weights)
         self._model = YOLO(weights, task="segment")
@@ -43,9 +50,9 @@ class RoadSegmenter:
 
             self._predictor = RoadSemanticPredictor
             names = self._model.names
-            selected = {name.strip().casefold() for name in prompts}
+            selected = {_semantic_class_name(name) for name in prompts}
             self._road_ids = [
-                int(idx) for idx, name in names.items() if name.strip().casefold() in selected
+                int(idx) for idx, name in names.items() if _semantic_class_name(name) in selected
             ]
             if not self._road_ids:
                 raise ValueError(
@@ -80,9 +87,17 @@ class RoadSegmenter:
         t0 = time.perf_counter()
         # Without retina_masks the masks come back at the padded network
         # resolution, and a plain resize shifts them against the frame.
-        kwargs = {"predictor": self._predictor} if self._semantic else {}
+        kwargs = {}
+        if self._semantic:
+            kwargs["predictor"] = self._predictor
         results = self._model.predict(
-            img, conf=self._conf, imgsz=self._imgsz, verbose=False, retina_masks=True, **kwargs
+            img,
+            conf=self._conf,
+            imgsz=self._imgsz,
+            half=self._half,
+            verbose=False,
+            retina_masks=True,
+            **kwargs,
         )
         t_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -95,7 +110,9 @@ class RoadSegmenter:
             valid_roi = None
 
         if self._semantic:
-            return self._semantic_result(result, h, w, valid_roi, t_ms)
+            perception = self._semantic_result(result, h, w, valid_roi, t_ms)
+            perception.inference_time_ms = (time.perf_counter() - t0) * 1000.0
+            return perception
         instances, raw_confs = self._extract_masks(result, h, w)
 
         combined = np.zeros((h, w), dtype=bool)
@@ -104,19 +121,25 @@ class RoadSegmenter:
 
         mask = apply_roi(combined, valid_roi)
         confs = weighted_confidence(instances, raw_confs, valid_roi)
+        confidence_map = np.zeros((h, w), dtype=np.float32)
+        for instance, score in zip(instances, raw_confs):
+            np.maximum(confidence_map, score, out=confidence_map, where=instance)
+        confidence_map[~mask] = 0.0
 
         return PerceptionResult(
             mask=mask,
             confidences=confs,
             num_detections=len(confs),
-            inference_time_ms=t_ms,
+            inference_time_ms=(time.perf_counter() - t0) * 1000.0,
             valid_roi=valid_roi,
             road_fraction=road_fraction(mask, valid_roi),
+            confidence_map=confidence_map,
         )
 
     def _semantic_result(self, result, h, w, valid_roi, t_ms) -> PerceptionResult:
         mask = np.zeros((h, w), dtype=bool)
         confs = []
+        confidence_map = np.zeros((h, w), dtype=np.float32)
         if result is not None and result.semantic_mask is not None:
             labels = result.semantic_mask.data.cpu().numpy()
             confidence = result.semantic_confidence.cpu().numpy()
@@ -124,6 +147,7 @@ class RoadSegmenter:
                 raise ValueError("Semantic prediction is not aligned with the camera frame")
             mask = np.isin(labels, self._road_ids) & (confidence >= self._conf)
             mask = apply_roi(mask, valid_roi)
+            confidence_map[mask] = confidence[mask]
             if mask.any():
                 confs = [float(confidence[mask].mean())]
         return PerceptionResult(
@@ -133,6 +157,7 @@ class RoadSegmenter:
             inference_time_ms=t_ms,
             valid_roi=valid_roi,
             road_fraction=road_fraction(mask, valid_roi),
+            confidence_map=confidence_map,
         )
 
     @staticmethod

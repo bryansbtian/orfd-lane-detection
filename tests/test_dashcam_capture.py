@@ -24,7 +24,9 @@ def test_connection_failure_explains_endpoint_and_recovery(host, launch, hint, e
 
     cfg = PipelineConfig(beamng_host=host, beamng_port=65432, beamng_launch=launch)
     client = BeamNGClient(cfg)
-    error = BNGDisconnectedError("refused") if error_type == "disconnected" else OSError("refused")
+    error = OSError("refused")
+    if error_type == "disconnected":
+        error = BNGDisconnectedError("refused")
     with patch("beamngpy.BeamNGpy") as bng, patch("beamngpy.Scenario") as scenario:
         bng.return_value.open.side_effect = error
         with pytest.raises(BeamNGConnectionError) as caught:
@@ -90,10 +92,14 @@ def test_capture_reads_one_sensor_and_owns_its_pixels(transport):
     first = client.capture_frame()
     assert first.is_new
     assert first.image[0, 0].tolist() == [33, 22, 11]
-    assert not client.capture_frame().is_new
+    repeated = client.capture_frame()
+    assert not repeated.is_new
+    assert repeated.timestamp >= first.timestamp
+    assert repeated.timestamp_source == "host_receive"
     buffer[0] = 99
     third = client.capture_frame()
     assert third.is_new
+    assert third.timestamp >= first.timestamp
     assert third.frame_id == first.frame_id + 2
     assert first.image[0, 0].tolist() == [33, 22, 11]
     assert third.image[0, 0].tolist() == [33, 22, 99]

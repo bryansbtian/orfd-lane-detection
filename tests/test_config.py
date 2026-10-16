@@ -49,6 +49,13 @@ def test_legacy_depth_settings_cannot_enable_depth(tmp_path):
     assert not hasattr(config, "depth_fusion_weight")
 
 
+def test_half_precision_can_be_configured_and_defaults_to_full_precision(tmp_path):
+    path = tmp_path / "precision.yaml"
+    path.write_text("perception:\n  half: true\n", encoding="utf-8")
+    assert load_config(path).perception_half is True
+    assert PipelineConfig().perception_half is False
+
+
 def test_vehicle_width_is_configured_with_control(tmp_path):
     path = tmp_path / "width.yaml"
     path.write_text("control:\n  vehicle_half_width_m: 1.2\n", encoding="utf-8")

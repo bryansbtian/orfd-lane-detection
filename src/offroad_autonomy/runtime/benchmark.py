@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 
 from offroad_autonomy.runtime.timing import MAIN_STAGES, RuntimeStats
-from offroad_autonomy.types import PathPlan
+from offroad_autonomy.types import CameraFrame, PathPlan
 
 
 def footprint_strip(
@@ -76,6 +76,10 @@ class BenchmarkRecorder:
         self._full_ms: list[float] = []
         self._confidence: list[float] = []
         self._targets: list[float] = []
+        self._new_captures = 0
+        self._duplicate_polls = 0
+        self._first_new_capture: float | None = None
+        self._last_new_capture: float | None = None
 
     def add(
         self,
@@ -85,6 +89,7 @@ class BenchmarkRecorder:
         confidence: float,
         mask: np.ndarray,
         plan: PathPlan | None,
+        capture: CameraFrame | None = None,
     ) -> None:
         if self._t_origin is None:
             self._t_origin = now
@@ -94,6 +99,14 @@ class BenchmarkRecorder:
             self._t_first = now
         self._t_last = now
         self.frames += 1
+        if capture is not None:
+            if capture.is_new:
+                self._new_captures += 1
+                if self._first_new_capture is None:
+                    self._first_new_capture = now
+                self._last_new_capture = now
+            else:
+                self._duplicate_polls += 1
 
         self._primary_ms.append(primary_ms)
         self._full_ms.append(full_ms)
@@ -128,21 +141,32 @@ class BenchmarkRecorder:
             jitter = float(np.std(np.diff(np.asarray(self._targets))) * 100.0)
 
         main_fps = None
+        frame_rate = 0.0
         if duration > 0:
-            main_fps = round(self.frames / duration, 2)
+            frame_rate = max(0, self.frames - 1) / duration
+            main_fps = round(frame_rate, 2)
         primary_mean = self._stat(self._primary_ms, np.mean)
         primary_p95 = self._stat(self._primary_ms, lambda a: np.percentile(a, 95))
+        observed_capture_fps = None
+        if self._first_new_capture is not None and self._last_new_capture is not None:
+            span = self._last_new_capture - self._first_new_capture
+            if span > 0:
+                observed_capture_fps = (self._new_captures - 1) / span
         return {
             "label": self.label,
             "config": self.config_path,
             "duration_s": round(duration, 1),
             "frames": self.frames,
             "main_fps": main_fps,
+            "observed_changed_rgb_fps": _round(observed_capture_fps),
+            "processed_changed_rgb_frames": self._new_captures,
+            "processed_unchanged_rgb_polls": self._duplicate_polls,
+            "capture_note": "Synchronous polling: is_new detects changed pixels, not exposure IDs. Frames produced between polls are unknown. Hardware ingestion and exposure age are not certified.",
             "primary_latency_mean_ms": _round(primary_mean),
             "primary_latency_p95_ms": _round(primary_p95),
             "full_loop_mean_ms": _round(self._stat(self._full_ms, np.mean)),
             "full_loop_p95_ms": _round(self._stat(self._full_ms, lambda a: np.percentile(a, 95))),
-            "meets_20fps": bool(duration > 0 and self.frames / duration >= 20.0),
+            "meets_20fps": bool(duration > 0 and frame_rate >= 20.0),
             "meets_50ms": bool(primary_p95 is not None and primary_p95 <= 50.0),
             "segmentation_confidence_mean": _round(self._stat(self._confidence, np.mean), 3),
             "path_jitter_pct": _round(jitter, 3),

@@ -34,7 +34,12 @@ def main() -> None:
     model = YOLO(args.weights)
     # An engine cannot be re-prompted at runtime, so the classes must be set
     # before export or the engine segments the checkpoint's default classes.
-    model.set_classes(list(config.perception_prompts))
+    if model.task != "semantic":
+        try:
+            model.set_classes(list(config.perception_prompts))
+        except (TypeError, AssertionError, AttributeError):
+            # Fixed-class checkpoints already contain their road vocabulary.
+            pass
     engine = model.export(
         format="engine",
         imgsz=config.perception_input_size,

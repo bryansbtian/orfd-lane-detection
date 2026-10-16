@@ -509,8 +509,7 @@ def main() -> None:
 
         if dashboard_window is not None:
             window = dashboard_window
-            # Tkinter's event loop belongs to the thread that built the root
-            # window, so only the OpenCV backend can be driven off-thread.
+            # Windows stays responsive only when the drawing thread owns the window.
             display = DisplayWorker(
                 render=_render,
                 open_window=window.open,
@@ -519,7 +518,7 @@ def main() -> None:
                 read_key=lambda: window.last_key,
                 record=record,
                 rate_hz=config.ui_display_rate_hz,
-                asynchronous=config.ui_display_async and window.backend == "opencv",
+                asynchronous=config.ui_display_async and window.supports_async,
             )
             if config.ui_display_async and not display.asynchronous:
                 logger.warning(
@@ -565,23 +564,39 @@ def main() -> None:
                 )
 
             presentation_window = None
+
+            def _show_presentation_frame(canvas):
+                if presentation_window is not None:
+                    return presentation_window.show(canvas)
+                return True
+
+            def _read_presentation_key():
+                if presentation_window is not None:
+                    return presentation_window.last_key
+                return -1
+
+            presentation_open = None
+            presentation_close = None
+            presentation_record = None
+            presentation_async = True
             if show_presentation:
                 presentation_window = _open_window(PRESENTATION_WIDTH, PRESENTATION_HEIGHT)
                 dashboard_window = presentation_window
-            # Record-only rendering runs off-thread. A live Tkinter window
-            # must render on the main thread, just like the operator dashboard.
+                presentation_open = presentation_window.open
+                presentation_close = presentation_window.close
+                presentation_async = config.ui_display_async and presentation_window.supports_async
+            if presentation_video is not None:
+                presentation_record = presentation_video.write
+            # Unsupported GUI platforms retain their main-thread event loop.
             presentation_display = DisplayWorker(
                 render=_render_presentation,
-                open_window=presentation_window.open if presentation_window else None,
-                close_window=presentation_window.close if presentation_window else None,
-                show=presentation_window.show if presentation_window else lambda canvas: True,
-                read_key=lambda: presentation_window.last_key if presentation_window else -1,
-                record=presentation_video.write if presentation_video else None,
+                open_window=presentation_open,
+                close_window=presentation_close,
+                show=_show_presentation_frame,
+                read_key=_read_presentation_key,
+                record=presentation_record,
                 rate_hz=config.ui_display_rate_hz,
-                asynchronous=(
-                    not presentation_window
-                    or (config.ui_display_async and presentation_window.backend == "opencv")
-                ),
+                asynchronous=presentation_async,
             )
             presentation_display.start()
             if presentation_window:
@@ -681,7 +696,9 @@ def main() -> None:
                 for worker in workers:
                     worker.publish(snapshot)
 
-            active_display = presentation_display if show_presentation else display
+            active_display = display
+            if show_presentation:
+                active_display = presentation_display
             if active_display is not None:
                 if active_display.closed:
                     _shutdown = True
@@ -709,6 +726,7 @@ def main() -> None:
                     confidence=_mean_confidence(result.perception.confidences),
                     mask=result.stabilized.mask,
                     plan=result.plan,
+                    capture=capture,
                 )
 
             now = time.perf_counter()
@@ -740,6 +758,18 @@ def main() -> None:
         _log_runtime(pipeline, display, presentation_display)
         if recorder is not None:
             report = recorder.report(stats)
+            if display is not None:
+                report["dashboard"] = {
+                    "asynchronous": display.asynchronous,
+                    "fps": round(display.fps(), 2),
+                    "rendered": display.rendered,
+                    "superseded_snapshots": display.dropped,
+                    "failed": display.failed,
+                    "stages_ms": {
+                        name: {"mean_ms": stage.mean_ms, "p95_ms": stage.p95_ms}
+                        for name, stage in display.stats.summary(DISPLAY_STAGES).items()
+                    },
+                }
             out = args.benchmark_out or f"output/benchmarks/{recorder.label}.json"
             path = recorder.save(out, report)
             logger.info("Benchmark report written to %s", path)

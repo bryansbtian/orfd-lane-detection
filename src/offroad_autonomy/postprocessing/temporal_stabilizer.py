@@ -33,17 +33,18 @@ class TemporalStabilizer:
         self._prev_mask: np.ndarray | None = None
 
     def stabilize(self, result: PerceptionResult) -> StabilizedResult:
-        mask_f = result.mask.astype(np.float32)
-
-        if not self._use_ema or self._accum is None or self._accum.shape != mask_f.shape:
-            self._accum = mask_f.copy()
-        else:
-            # With alpha > 0.5 a single empty frame drops every pixel below
-            # 0.5, so EMA does not bridge a one-frame dropout; the perception
-            # gate's path hold does that instead.
-            self._accum = self._alpha * mask_f + (1.0 - self._alpha) * self._accum
-
-        smoothed = (self._accum > 0.5).astype(np.uint8)
+        smoothed = result.mask.astype(np.uint8)
+        if self._use_ema:
+            mask_f = result.mask.astype(np.float32)
+            if self._accum is None or self._accum.shape != mask_f.shape:
+                self._accum = mask_f
+            else:
+                # With alpha > 0.5 a single empty frame drops every pixel below
+                # 0.5, so EMA does not bridge a one-frame dropout; the perception
+                # gate's path hold does that instead.
+                self._accum *= 1.0 - self._alpha
+                self._accum += self._alpha * mask_f
+            smoothed = (self._accum > 0.5).astype(np.uint8)
 
         if self._use_morphology:
             smoothed = cv2.morphologyEx(smoothed, cv2.MORPH_CLOSE, self._kernel)
@@ -76,6 +77,8 @@ class TemporalStabilizer:
 
     def _temporal_iou(self, mask: np.ndarray) -> float:
         if self._prev_mask is None:
+            return 1.0
+        if self._prev_mask.shape != mask.shape:
             return 1.0
         inter = int((mask & self._prev_mask).sum())
         union = int((mask | self._prev_mask).sum())

@@ -163,9 +163,9 @@ def test_runtime_tile_border_follows_the_fps_band():
     tile = dashboard._layout.autonomy_fps
     probe = (tile.y, tile.x + 40)
 
-    on_target = dashboard.render(result, _telemetry(fps=7.0))
-    amber = dashboard.render(result, _telemetry(fps=6.0))
-    red = dashboard.render(result, _telemetry(fps=3.0))
+    on_target = dashboard.render(result, _telemetry(fps=20.0))
+    amber = dashboard.render(result, _telemetry(fps=18.0))
+    red = dashboard.render(result, _telemetry(fps=15.0))
 
     assert tuple(on_target[probe]) == DEFAULT_DASHBOARD_COLORS["CARD_BORDER"]
     assert tuple(amber[probe]) == DEFAULT_DASHBOARD_COLORS["WARN"]

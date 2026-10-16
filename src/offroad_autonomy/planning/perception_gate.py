@@ -53,8 +53,34 @@ class PerceptionGate:
     def roi_top(self, height: int) -> int:
         return int(round(height * (1.0 - self._roi_height)))
 
+    def current_evidence(self, stabilized: StabilizedResult) -> np.ndarray:
+        mask = stabilized.mask.astype(bool, copy=True)
+        valid = stabilized.valid_roi
+        if valid is not None and valid.shape == mask.shape:
+            mask &= valid
+        raw = stabilized.raw_result
+        if raw is not None:
+            # Old EMA evidence cannot connect road that this frame cannot see.
+            if raw.mask is None:
+                mask[:] = False
+            else:
+                mask &= raw.mask
+            confidence_map = raw.confidence_map
+            if confidence_map is not None:
+                if confidence_map.shape != mask.shape:
+                    raise ValueError("Road confidence map is not aligned with the mask")
+                mask &= np.isfinite(confidence_map) & (confidence_map >= self._min_confidence)
+        return mask
+
+    def connected_evidence(self, stabilized: StabilizedResult, component: np.ndarray) -> np.ndarray:
+        """Keep the chosen corridor's trusted continuation beyond the gate ROI."""
+        mask = self.current_evidence(stabilized)
+        _, labels = cv2.connectedComponents(mask.astype(np.uint8), connectivity=8)
+        seeds = np.unique(labels[component])
+        return np.isin(labels, seeds[seeds > 0])
+
     def evaluate(self, stabilized: StabilizedResult) -> GateDecision:
-        mask = stabilized.mask.astype(bool)
+        mask = self.current_evidence(stabilized)
         h, w = mask.shape[:2]
         top = self.roi_top(h)
 
@@ -74,10 +100,14 @@ class PerceptionGate:
         confidence = float(max(confidences, default=0.0))
         road_pixels = int(band.sum())
         component = self._vehicle_component(band, top, valid)
+        if raw is not None and raw.confidence_map is not None:
+            confidence = 0.0
+            if component.any():
+                confidence = float(raw.confidence_map[component].mean())
         area = float(component.sum()) / max(roi_pixels, 1)
 
         reason = ""
-        if confidence < self._min_confidence:
+        if not np.isfinite(confidence) or confidence < self._min_confidence:
             reason = f"low confidence {confidence:.2f}<{self._min_confidence:.2f}"
         elif road_pixels < self._min_pixels:
             reason = f"too few road pixels ({road_pixels})"

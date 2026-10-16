@@ -214,12 +214,16 @@ def test_failed_gate_holds_last_path_then_stops():
     held = [planner.plan(empty) for _ in range(2)]
     for plan in held:
         assert plan.fallback_active
+        assert not plan.valid
+        assert plan.status == "held"
         assert plan.speed_scale == 0.4
         np.testing.assert_array_equal(plan.centerline, good.centerline)
 
     stopped = planner.plan(empty)
     assert stopped.fallback_active
     assert stopped.speed_scale == 0.0
+    assert not stopped.valid
+    assert stopped.status == "unavailable"
     assert len(stopped.centerline) == 0
 
     # And perception coming back resumes planning immediately.

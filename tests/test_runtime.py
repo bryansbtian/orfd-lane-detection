@@ -145,3 +145,25 @@ def test_benchmark_counts_departures_and_reports_targets():
     assert "stereo" not in report
     assert "depth_coverage_pct_mean" not in report
     assert report["path_jitter_pct"] == pytest.approx(0.0)
+
+
+def test_benchmark_distinguishes_processing_from_changed_rgb_rate():
+    from offroad_autonomy.types import CameraFrame
+
+    mask = np.ones((100, 160), bool)
+    recorder = BenchmarkRecorder("rgb", "cfg.yaml", mask, warmup_s=0)
+    for index in range(31):
+        recorder.add(
+            now=index * 0.05,
+            primary_ms=30,
+            full_ms=40,
+            confidence=0.9,
+            mask=mask,
+            plan=None,
+            capture=CameraFrame(None, is_new=index % 2 == 0),
+        )
+    report = recorder.report(RuntimeStats())
+    assert report["main_fps"] == pytest.approx(20)
+    assert report["observed_changed_rgb_fps"] == pytest.approx(10)
+    assert report["processed_changed_rgb_frames"] == 16
+    assert report["processed_unchanged_rgb_polls"] == 15

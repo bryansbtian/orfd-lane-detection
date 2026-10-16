@@ -7,7 +7,6 @@ import sys
 import threading
 
 import cv2
-import numpy as np
 
 logger = logging.getLogger("offroad_autonomy.visualization")
 
@@ -52,6 +51,20 @@ def _tkinter_available() -> bool:
     return True
 
 
+def _threaded_tk_available() -> bool:
+    # Cocoa requires the main thread. Windows can own a threaded Tcl
+    # interpreter entirely on the display worker, including its destruction.
+    if not _WINDOWS:
+        return False
+    try:
+        import tkinter as tk
+
+        interpreter = tk.Tcl()
+        return bool(int(interpreter.call("set", "tcl_platform(threaded)")))
+    except Exception:
+        return False
+
+
 class DashboardWindow:
     """One OS window, owned by exactly one thread.
 
@@ -69,6 +82,7 @@ class DashboardWindow:
         self.height = height
         self.last_key: int = -1
         self._held: set[str] = set()
+        self._held_lock = threading.Lock()
         self._backend = ""
         self._closed = False
         self._owner: int | None = None
@@ -88,9 +102,14 @@ class DashboardWindow:
         logger.info("Dashboard window backend: %s", self._backend)
 
     @property
+    def supports_async(self) -> bool:
+        if self._backend == "opencv":
+            return True
+        return _threaded_tk_available()
+
+    @property
     def backend(self) -> str:
-        """Matters for threading: HighGUI can live on one non-main thread,
-        while Tkinter's event loop is tied to the thread that created it."""
+        """The selected GUI backend; its lifecycle stays on its owner thread."""
         return self._backend
 
     @property
@@ -101,7 +120,8 @@ class DashboardWindow:
     def held_keys(self) -> set[str]:
         if self._backend == "opencv":
             return _async_held_keys()
-        return set(self._held)
+        with self._held_lock:
+            return set(self._held)
 
     def open(self) -> None:
         """Creates the window on the calling thread, which becomes its owner."""
@@ -152,9 +172,11 @@ class DashboardWindow:
     def _on_key_press(self, event) -> None:
         sym = event.keysym.lower()
         if sym in ("w", "a", "s", "d"):
-            self._held.add(sym)
+            with self._held_lock:
+                self._held.add(sym)
         elif sym == "space":
-            self._held.add("space")
+            with self._held_lock:
+                self._held.add("space")
         else:
             key_map = {"q": ord("q"), "e": ord("e"), "p": ord("p"), "t": ord("t"), "escape": 27}
             key_map.update({str(digit): ord(str(digit)) for digit in range(10)})
@@ -165,9 +187,8 @@ class DashboardWindow:
                     self._request_close()
 
     def _on_key_release(self, event) -> None:
-        self._held.discard(event.keysym.lower())
-        if event.keysym.lower() == "space":
-            self._held.discard("space")
+        with self._held_lock:
+            self._held.discard(event.keysym.lower())
 
     def show(self, frame_bgr) -> bool:
         """False once the window has been closed."""
@@ -217,8 +238,15 @@ class DashboardWindow:
         display = self._prepare_frame_for_display(frame_bgr, target_w, target_h, self._background)
         rgb = cv2.cvtColor(display, cv2.COLOR_BGR2RGB)
         image = Image.fromarray(rgb)
-        self._photo = self._image_tk.PhotoImage(image=image)
-        self._label.configure(image=self._photo)
+        if (
+            self._photo is None
+            or self._photo.width() != target_w
+            or self._photo.height() != target_h
+        ):
+            self._photo = self._image_tk.PhotoImage(image=image, master=self._root)
+            self._label.configure(image=self._photo)
+        else:
+            self._photo.paste(image)
         try:
             self._root.update_idletasks()
             self._root.update()
@@ -251,6 +279,8 @@ class DashboardWindow:
 
         target_w = max(int(target_w), 1)
         target_h = max(int(target_h), 1)
+        if (src_w, src_h) == (target_w, target_h):
+            return frame_bgr
         scale = min(target_w / src_w, target_h / src_h)
         new_w = max(1, int(round(src_w * scale)))
         new_h = max(1, int(round(src_h * scale)))
@@ -259,11 +289,19 @@ class DashboardWindow:
         if new_w == target_w and new_h == target_h:
             return resized
 
-        canvas = np.full((target_h, target_w, 3), background, dtype=np.uint8)
         off_x = (target_w - new_w) // 2
         off_y = (target_h - new_h) // 2
-        canvas[off_y : off_y + new_h, off_x : off_x + new_w] = resized
-        return canvas
+        # OpenCV fills only the padding in native code; NumPy broadcasting
+        # filled an entire large RGB canvas before overwriting its centre.
+        return cv2.copyMakeBorder(
+            resized,
+            off_y,
+            target_h - new_h - off_y,
+            off_x,
+            target_w - new_w - off_x,
+            cv2.BORDER_CONSTANT,
+            value=background,
+        )
 
     def _request_close(self) -> None:
         self._closed = True
@@ -297,8 +335,14 @@ class DashboardWindow:
             return
 
         if self._backend == "tkinter" and self._root is not None:
+            # Tcl-backed objects must lose their final references on the
+            # owner thread, before the worker exits and the main thread GCs.
+            self._photo = None
+            self._label = None
             try:
                 self._root.destroy()
             except Exception as exc:
                 logger.debug("Tkinter window was already gone: %s", exc)
             self._root = None
+            self._tk = None
+            self._image_tk = None

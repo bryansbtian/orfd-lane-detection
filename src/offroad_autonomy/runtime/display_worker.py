@@ -182,7 +182,9 @@ class DisplayWorker:
                     return
                 remaining = self._period - (time.perf_counter() - self._last_draw_time)
                 if remaining > 0.0:
-                    self._cond.wait(remaining)
+                    # New snapshots replace pending work without waking the
+                    # rate limiter early and stealing extra CPU from inference.
+                    self._cond.wait_for(lambda: self._stop, timeout=remaining)
                 if self._stop:
                     return
                 state = self._pending

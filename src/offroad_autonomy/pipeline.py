@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import time
 
 import numpy as np
@@ -18,15 +19,19 @@ from offroad_autonomy.runtime.timing import RuntimeStats
 from offroad_autonomy.types import (
     CameraFrame,
     ControlCommand,
+    PathPlan,
     PipelineConfig,
     PipelineStepResult,
+    PlanningStepResult,
     VehicleState,
 )
 
 logger = logging.getLogger("offroad_autonomy.pipeline")
 
 
-class AutonomyPipeline:
+class RGBPlanningPipeline:
+    """RGB and calibration to a trajectory, with no actuation or simulator."""
+
     def __init__(self, config: PipelineConfig) -> None:
         logger.info("Initialising pipeline stages")
         self.stats = RuntimeStats()
@@ -37,12 +42,7 @@ class AutonomyPipeline:
         self.segmenter = RoadSegmenter(config)
         self.stabilizer = TemporalStabilizer(config)
         self.planner = CenterlinePlanner(config, camera=self.view.camera)
-        if config.control_mode == "stanley":
-            self.controller = StanleyController(config, camera=self.view.camera)
-        else:
-            self.controller = build_controller(
-                config, camera=self.view.camera, grid_source=lambda: self.planner.grid
-            )
+        self._max_frame_age_ms = config.max_frame_age_ms
 
     @property
     def ego_coverage(self) -> float:
@@ -52,18 +52,11 @@ class AutonomyPipeline:
         capture = self._as_capture(frames)
         return capture.image is not None
 
-    def step(
+    def plan_result(
         self,
         frames: CameraFrame | np.ndarray,
-        vehicle_state: VehicleState,
-    ) -> ControlCommand:
-        return self.step_result(frames, vehicle_state).command
-
-    def step_result(
-        self,
-        frames: CameraFrame | np.ndarray,
-        vehicle_state: VehicleState,
-    ) -> PipelineStepResult:
+        vehicle_state: VehicleState | None = None,
+    ) -> PlanningStepResult:
         capture = self._as_capture(frames)
         timings: dict[str, float] = {}
 
@@ -76,6 +69,7 @@ class AutonomyPipeline:
         t1 = time.perf_counter()
 
         frame = self.preprocessor.process(image)
+        frame.timestamp = capture.timestamp
         t2 = time.perf_counter()
         timings["preprocess"] = (t2 - t1) * 1000.0
 
@@ -93,32 +87,36 @@ class AutonomyPipeline:
         )
         t5 = time.perf_counter()
         timings["planning"] = (t5 - t4) * 1000.0
-
-        command = self.controller.compute(plan, vehicle_state)
-        t6 = time.perf_counter()
-        timings["control"] = (t6 - t5) * 1000.0
-
-        self.stats.record_many(timings)
-
-        if logger.isEnabledFor(logging.DEBUG):
-            logger.debug(
-                "step %d: seg=%.0fms road=%.1f%% stability=%.3f steer=%.3f",
-                capture.frame_id,
-                timings["segmentation"],
-                perception.road_fraction * 100.0,
-                stabilized.stability_score,
-                command.steering,
+        timings["perception_planning"] = (t5 - t1) * 1000.0
+        frame_age_ms = None
+        invalid_timestamp = not math.isfinite(capture.timestamp) or capture.timestamp < 0
+        if capture.timestamp > 0 and math.isfinite(capture.timestamp):
+            frame_age_ms = (t5 - capture.timestamp) * 1000.0
+            timings["frame_age"] = frame_age_ms
+            invalid_timestamp = frame_age_ms < 0 or (
+                self._max_frame_age_ms > 0 and frame_age_ms > self._max_frame_age_ms
             )
-
-        return PipelineStepResult(
+        if invalid_timestamp:
+            self.planner.reset()
+            self.stabilizer.reset()
+            plan = PathPlan(
+                centerline=np.empty((0, 2), dtype=np.float32),
+                fallback_active=True,
+                fallback_reason="frame timestamp is stale or ahead of the monotonic clock",
+                speed_scale=0.0,
+                valid=False,
+                status="stale",
+            )
+        self.stats.record_many(timings)
+        return PlanningStepResult(
             frame=frame,
             perception=perception,
             stabilized=stabilized,
             plan=plan,
-            command=command,
             capture=capture,
             timings_ms=timings,
-            bev=self.planner.bev_snapshot(),
+            generated_timestamp=t5,
+            frame_age_ms=frame_age_ms,
         )
 
     def _as_capture(self, frames: CameraFrame | np.ndarray) -> CameraFrame:
@@ -130,4 +128,52 @@ class AutonomyPipeline:
     def reset(self) -> None:
         self.stabilizer.reset()
         self.planner.reset()
+
+
+class AutonomyPipeline(RGBPlanningPipeline):
+    """BeamNG compatibility wrapper around RGB perception and planning."""
+
+    def __init__(self, config: PipelineConfig) -> None:
+        super().__init__(config)
+        if config.control_mode == "stanley":
+            self.controller = StanleyController(config, camera=self.view.camera)
+        else:
+            self.controller = build_controller(
+                config, camera=self.view.camera, grid_source=lambda: self.planner.grid
+            )
+
+    def step(self, frames: CameraFrame | np.ndarray, vehicle_state: VehicleState) -> ControlCommand:
+        return self.step_result(frames, vehicle_state).command
+
+    def step_result(
+        self, frames: CameraFrame | np.ndarray, vehicle_state: VehicleState
+    ) -> PipelineStepResult:
+        result = self.plan_result(frames, vehicle_state)
+        start = time.perf_counter()
+        command = self.controller.compute(result.plan, vehicle_state)
+        elapsed = (time.perf_counter() - start) * 1000.0
+        result.timings_ms["control"] = elapsed
+        self.stats.record("control", elapsed)
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "step %d: seg=%.0fms road=%.1f%% stability=%.3f steer=%.3f",
+                result.capture.frame_id,
+                result.timings_ms["segmentation"],
+                result.perception.road_fraction * 100.0,
+                result.stabilized.stability_score,
+                command.steering,
+            )
+        return PipelineStepResult(
+            frame=result.frame,
+            perception=result.perception,
+            stabilized=result.stabilized,
+            plan=result.plan,
+            command=command,
+            capture=result.capture,
+            timings_ms=result.timings_ms,
+            bev=self.planner.bev_snapshot(),
+        )
+
+    def reset(self) -> None:
+        super().reset()
         self.controller.reset()

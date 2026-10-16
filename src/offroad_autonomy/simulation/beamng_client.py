@@ -90,7 +90,9 @@ class BeamNGClient:
             self._bng.open(launch=cfg.beamng_launch)
         except (BNGDisconnectedError, OSError) as exc:
             local = cfg.beamng_host in LOCAL_HOSTS
-            listen_ip = "127.0.0.1" if local else "*"
+            listen_ip = "*"
+            if local:
+                listen_ip = "127.0.0.1"
             remedy = (
                 "Start BeamNG.tech on the simulator machine with "
                 f'-tcom -tport {cfg.beamng_port} -tcom-listen-ip "{listen_ip}". '
@@ -188,7 +190,13 @@ class BeamNGClient:
         is_new = signature != self._last_signature
         self._last_signature = signature
         self._frame_id += 1
-        return CameraFrame(image=image, timestamp=timestamp, frame_id=self._frame_id, is_new=is_new)
+        return CameraFrame(
+            image=image,
+            timestamp=timestamp,
+            frame_id=self._frame_id,
+            is_new=is_new,
+            timestamp_source="host_receive",
+        )
 
     def capture_orbit(self) -> np.ndarray | None:
         """For the presentation view and video; no pipeline stage reads it.

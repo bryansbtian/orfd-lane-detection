@@ -53,9 +53,9 @@ class DashboardThresholds:
     values that actually trigger them.
     """
 
-    target_fps: float = 7.0
+    target_fps: float = 20.0
     fps_warn_fraction: float = 0.8
-    latency_budget_ms: float = 143.0
+    latency_budget_ms: float = 50.0
     confidence_floor: float = 0.18
     confidence_good: float = 0.5
     road_floor: float = 0.015
@@ -184,6 +184,8 @@ class CameraSpec:
     up: tuple[float, float, float] = (0.0, 0.0, 1.0)
     sensor: CameraSensor = GMSL2_SENSOR
     ego_mask: EgoMaskSpec = EgoMaskSpec()
+    #: Measured fx, fy, cx, cy at sensor resolution, for rectified RGB.
+    intrinsics: tuple[float, float, float, float] | None = None
 
     @property
     def width(self) -> int:
@@ -250,6 +252,9 @@ class CameraFrame:
     timestamp: float = 0.0
     frame_id: int = 0
     is_new: bool = True
+    #: Capture means exposure time mapped into time.perf_counter()'s clock.
+    #: Host receive is only a lower bound on exposure-to-path age.
+    timestamp_source: str = "capture"
 
 
 @dataclass
@@ -276,6 +281,8 @@ class PerceptionResult:
     inference_time_ms: float = 0.0
     valid_roi: np.ndarray | None = None
     road_fraction: float = 0.0
+    #: Probability of the selected road class (instance scores for YOLOE).
+    confidence_map: np.ndarray | None = None
 
 
 @dataclass
@@ -305,6 +312,24 @@ class PathPlan:
     #: (positive turns right). The controller follows these as planned.
     ground_path: np.ndarray | None = None
     ground_curvature: np.ndarray | None = None
+    #: Held trajectories remain available to the simulator, but are not a
+    #: currently observed valid corridor for a downstream planning consumer.
+    valid: bool = True
+    status: str = "valid"
+    boundary_clearance_px: float | None = None
+    vehicle_width_validated: bool = False
+
+
+@dataclass
+class PlanningStepResult:
+    frame: FramePacket
+    perception: PerceptionResult
+    stabilized: StabilizedResult
+    plan: PathPlan
+    capture: CameraFrame
+    timings_ms: dict[str, float] = field(default_factory=dict)
+    generated_timestamp: float = 0.0
+    frame_age_ms: float | None = None
 
 
 @dataclass
@@ -423,6 +448,7 @@ class PipelineConfig:
     model_weights: str = "models/yoloe-26x-seg.pt"
     confidence_threshold: float = 0.25
     perception_input_size: int = 640
+    perception_half: bool = False
     perception_prompts: list[str] = field(default_factory=lambda: DEFAULT_PERCEPTION_PROMPTS.copy())
     preprocess_width: int = 720
     preprocess_height: int = 465
@@ -443,6 +469,14 @@ class PipelineConfig:
     planner_roi_height: float = 0.50
     baseline_temporal_blend: float = 0.0
     baseline_max_shift_m: float = 0.5
+    validate_path_corridor: bool = True
+    path_min_clearance_px: float = 1.0
+    path_half_width_m: float = 0.0
+    path_boundary_margin_m: float = 0.0
+    projection_max_range_m: float = 30.0
+    projection_pitch_uncertainty_deg: float = 1.0
+    projection_max_relative_error: float = 0.3
+    max_frame_age_ms: float = 200.0
 
     gate_min_confidence: float = 0.18
     gate_min_mask_area: float = 0.05

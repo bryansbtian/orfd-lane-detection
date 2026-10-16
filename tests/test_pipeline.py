@@ -159,6 +159,8 @@ def test_rgb_stage_outputs_reach_control_without_depth(capture_kwargs):
             "postprocess",
             "planning",
             "control",
+            "perception_planning",
+            "frame_age",
         }
         assert not hasattr(result, "depth")
         assert not hasattr(pipeline, "stereo_worker")

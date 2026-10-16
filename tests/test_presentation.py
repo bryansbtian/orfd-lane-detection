@@ -145,7 +145,7 @@ def test_safe_stop_hides_a_plan_even_if_one_is_passed(renderer):
 
 @pytest.mark.parametrize(
     ("fps", "expected"),
-    [(7.0, "GOOD"), (6.9, "WARN"), (3.0, "BAD")],
+    [(20.0, "GOOD"), (19.9, "WARN"), (15.9, "BAD")],
 )
 def test_fps_colour_follows_the_dashboard_bands(renderer, fps, expected):
     result = _result()
@@ -164,8 +164,8 @@ def test_fps_colour_follows_the_dashboard_bands(renderer, fps, expected):
 @pytest.mark.parametrize(
     ("overrides", "expected"),
     [
-        ({"latency_p95_ms": 143.0}, "GOOD"),
-        ({"latency_p95_ms": 150.0}, "BAD"),
+        ({"latency_p95_ms": 50.0}, "GOOD"),
+        ({"latency_p95_ms": 50.1}, "BAD"),
         ({"road_fraction": 0.01}, "BAD"),
         ({"perception_confidence": 0.3}, "WARN"),
         ({"perception_confidence": 0.1}, "BAD"),

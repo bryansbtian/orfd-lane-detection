@@ -126,3 +126,37 @@ def test_a_failing_recorder_is_disabled_and_the_dashboard_keeps_drawing():
     assert len(calls) == 1
     assert worker.rendered == 3
     assert worker.failed == 0
+
+
+def test_publish_does_not_bypass_display_rate_limit():
+    import threading
+    import time
+
+    times = []
+    first = threading.Event()
+    second = threading.Event()
+
+    def render(state):
+        times.append(time.perf_counter())
+        if len(times) == 1:
+            first.set()
+        if len(times) == 2:
+            second.set()
+        return np.zeros((4, 4, 3), dtype=np.uint8)
+
+    worker = DisplayWorker(render=render, show=lambda frame: True, read_key=lambda: -1, rate_hz=5)
+    worker.start()
+    try:
+        state = DisplayState(result=object(), telemetry=object())
+        worker.publish(state)
+        assert first.wait(5)
+        # Multiple new frames must update the snapshot, not cancel the delay.
+        deadline = time.perf_counter() + 0.05
+        while time.perf_counter() < deadline:
+            worker.publish(state)
+            time.sleep(0.002)
+        assert second.wait(5)
+        assert times[1] - times[0] >= 0.19
+        assert worker.dropped > 0
+    finally:
+        worker.stop()

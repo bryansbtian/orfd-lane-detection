@@ -44,6 +44,11 @@ class BaselinePlanner:
         self._min_points = max(4, int(round(self._n_samples * 0.3)))
         self._temporal_blend = float(np.clip(config.baseline_temporal_blend, 0.0, 1.0))
         self._max_shift_m = float(max(config.baseline_max_shift_m, 0.0))
+        self._projection_options = {
+            "max_range_m": config.projection_max_range_m,
+            "pitch_uncertainty_deg": config.projection_pitch_uncertainty_deg,
+            "max_relative_error": config.projection_max_relative_error,
+        }
         self._camera = camera or CameraModel(
             config.camera, config.preprocess_width, config.preprocess_height
         )
@@ -63,8 +68,8 @@ class BaselinePlanner:
         right_pts: list[float] = []
         gap = 0
         for y in rows:
-            row_f, _, row_ok = self._camera.image_to_ground(
-                np.array([[self._camera.cx, y]], dtype=np.float64)
+            row_f, _, row_ok = self._camera.reliable_ground(
+                np.array([[self._camera.cx, y]], dtype=np.float64), **self._projection_options
             )
             if not row_ok[0]:
                 break

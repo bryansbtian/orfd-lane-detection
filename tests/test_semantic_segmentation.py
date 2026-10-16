@@ -10,10 +10,13 @@ from offroad_autonomy.perception.semantic_predictor import RoadSemanticPredictor
 from offroad_autonomy.types import FramePacket, PipelineConfig
 
 
-def _segmenter(names=None, threshold=0.15):
+def _segmenter(names=None, threshold=0.15, prompts=None):
     model = Mock(task="semantic", names=names or {0: "background", 1: "traversable road"})
+    config = PipelineConfig(confidence_threshold=threshold)
+    if prompts is not None:
+        config.perception_prompts = prompts
     with patch("offroad_autonomy.perception.road_segmenter.YOLO", return_value=model):
-        segmenter = RoadSegmenter(PipelineConfig(confidence_threshold=threshold))
+        segmenter = RoadSegmenter(config)
     model.set_classes.assert_not_called()
     return segmenter, model
 
@@ -34,12 +37,20 @@ def test_semantic_road_selection_threshold_and_ego_exclusion():
     assert result.confidences == pytest.approx([0.85])
     assert result.num_detections == 1
     assert result.road_fraction == pytest.approx(2 / 5)
+    np.testing.assert_allclose(result.confidence_map, [[0, 0.8, 0], [0, 0.9, 0]])
     assert model.predict.call_args.kwargs["predictor"] is RoadSemanticPredictor
 
 
 def test_unknown_semantic_class_fails_instead_of_treating_everything_as_road():
     with pytest.raises(ValueError, match="No semantic road class"):
         _segmenter({0: "background", 1: "vehicle"})
+
+
+@pytest.mark.parametrize("road_name", ["traversable road", "traversable_road"])
+@pytest.mark.parametrize("prompt", ["traversable road", "traversable_road", " Traversable  Road "])
+def test_semantic_class_selection_accepts_space_and_underscore_names(road_name, prompt):
+    seg, _ = _segmenter({0: "background", 1: "Final-Demo", 2: road_name}, prompts=[prompt])
+    assert seg._road_ids == [2]
 
 
 def test_single_logit_model_selects_foreground_mask_id():
@@ -58,9 +69,14 @@ def test_empty_semantic_result_has_no_confidence():
 @pytest.mark.parametrize("binary", [False, True])
 def test_semantic_predictor_preserves_probability_and_removes_letterbox(binary):
     predictor = RoadSemanticPredictor.__new__(RoadSemanticPredictor)
-    predictor.model = SimpleNamespace(names={0: "road"} if binary else {0: "bg", 1: "road"})
+    names = {0: "bg", 1: "road"}
+    channels = 2
+    if binary:
+        names = {0: "road"}
+        channels = 1
+    predictor.model = SimpleNamespace(names=names)
     predictor.batch = (["frame.png"],)
-    logits = torch.full((1, 1 if binary else 2, 8, 8), -8.0)
+    logits = torch.full((1, channels, 8, 8), -8.0)
     if not binary:
         logits[:, 0] = 0
     logits[:, -1, 2:6] = 2.0  # content between two rows of padding on either side
@@ -86,4 +102,24 @@ def test_instance_model_retains_prompting_and_mask_path():
     result = seg.predict(FramePacket(raw=image, preprocessed=image, timestamp=0, height=2, width=3))
     assert result.mask.all()
     assert result.confidences == [0.75]
+    np.testing.assert_allclose(result.confidence_map, 0.75)
     model.set_classes.assert_called_once_with(cfg.perception_prompts)
+
+
+@pytest.mark.parametrize(
+    "requested,cuda,expected", [(False, True, False), (True, False, False), (True, True, True)]
+)
+def test_half_precision_is_opt_in_and_falls_back_on_cpu(requested, cuda, expected):
+    cfg = PipelineConfig(perception_half=requested)
+    model = Mock(task="semantic", names={0: "background", 1: "traversable road"})
+    model.predict.return_value = []
+    with (
+        patch("offroad_autonomy.perception.road_segmenter.YOLO", return_value=model),
+        patch(
+            "offroad_autonomy.perception.road_segmenter.torch.cuda.is_available", return_value=cuda
+        ),
+    ):
+        seg = RoadSegmenter(cfg)
+    image = np.zeros((2, 3, 3), dtype=np.uint8)
+    seg.predict(FramePacket(raw=image, preprocessed=image, timestamp=0, height=2, width=3))
+    assert model.predict.call_args.kwargs["half"] is expected

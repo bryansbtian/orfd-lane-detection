@@ -17,6 +17,7 @@ from offroad_autonomy.perception.camera_geometry import CameraModel
 from offroad_autonomy.planning.arc_planner import ArcPlanner
 from offroad_autonomy.planning.baseline_planner import BaselinePlanner
 from offroad_autonomy.planning.bev_grid import TraversabilityGrid, ground_pose
+from offroad_autonomy.planning.corridor_validation import validate_corridor
 from offroad_autonomy.planning.perception_gate import GateDecision, PerceptionGate
 from offroad_autonomy.types import (
     BEVSnapshot,
@@ -268,6 +269,16 @@ class CenterlinePlanner:
         self._heading_origin: float | None = None
         self._heading: float | None = None
         self._direction_warned = False
+        self._validate_corridor = config.validate_path_corridor
+        self._path_clearance_px = config.path_min_clearance_px
+        self._path_half_width_m = config.path_half_width_m
+        if self._path_half_width_m > 0:
+            self._path_half_width_m += config.path_boundary_margin_m
+        self._projection_options = {
+            "max_range_m": config.projection_max_range_m,
+            "pitch_uncertainty_deg": config.projection_pitch_uncertainty_deg,
+            "max_relative_error": config.projection_max_relative_error,
+        }
         self._arcs = ArcPlanner(
             config.grid,
             wheelbase_m=config.wheelbase_m,
@@ -318,6 +329,36 @@ class CenterlinePlanner:
                 decision.reason = "advanced planner found no path"
                 return self._hold(decision)
 
+        if self._validate_corridor:
+            footprint_evidence = None
+            if self._path_half_width_m > 0:
+                footprint_evidence = self._gate.connected_evidence(stabilized, decision.component)
+            check = validate_corridor(
+                plan.centerline,
+                decision.component,
+                self._path_clearance_px,
+                camera=self._camera,
+                half_width_m=self._path_half_width_m,
+                footprint_component=footprint_evidence,
+            )
+            if not check.ok:
+                decision.reason = check.reason
+                self._baseline.reset()
+                self._prev_centerline = None
+                return self._hold(decision)
+            plan.boundary_clearance_px = check.min_clearance_px
+            plan.vehicle_width_validated = self._path_half_width_m > 0
+            if not plan.vehicle_width_validated:
+                plan.status = "centerline_only"
+            _, _, reliable = self._camera.reliable_ground(
+                plan.centerline, **self._projection_options
+            )
+            if not reliable.all():
+                decision.reason = "camera-ground projection exceeds uncertainty bound"
+                self._baseline.reset()
+                return self._hold(decision)
+        else:
+            plan.status = "unchecked"
         plan.planner_mask = decision.component
         plan.roi_top = decision.roi_top
         self._last_good = plan
@@ -334,7 +375,6 @@ class CenterlinePlanner:
         frame that passed the gate adds evidence: a rejected mask must not
         teach the grid road that perception itself did not trust."""
         self._grid_path = None
-        mask = stabilized.mask.astype(bool)
         if self._grid is None:
             self._grid = TraversabilityGrid(
                 self._grid_config,
@@ -351,7 +391,9 @@ class CenterlinePlanner:
         self._check_direction(vehicle_state)
         observation = None
         if decision.ok:
-            observation = mask
+            # Only the trusted road connected to the gate's chosen corridor
+            # may teach the grid. Keep its continuation beyond the gate ROI.
+            observation = self._gate.connected_evidence(stabilized, decision.component)
         pose = ground_pose(vehicle_state, self._camera)
         self._track_heading(pose)
         self._grid.update(observation, pose, dt)
@@ -380,6 +422,7 @@ class CenterlinePlanner:
         plan.roi_top = decision.roi_top
         plan.ground_path = self._grid_path.copy()
         plan.ground_curvature = np.asarray(curvature, dtype=np.float64).copy()
+        plan.status = "grid_estimate"
         self._last_good = plan
         self._held = 0
         return plan
@@ -464,6 +507,8 @@ class CenterlinePlanner:
                 speed_scale=self._hold_speed_scale,
                 planner_mask=decision.component,
                 roi_top=decision.roi_top,
+                valid=False,
+                status="held",
             )
         # Out of held path: forget it, so the next road seen is taken as-is
         # rather than blended toward a stale one.
@@ -475,6 +520,8 @@ class CenterlinePlanner:
             speed_scale=0.0,
             planner_mask=decision.component,
             roi_top=decision.roi_top,
+            valid=False,
+            status="unavailable",
         )
 
     def _plan_advanced(
