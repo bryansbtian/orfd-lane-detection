@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Evaluate identical recorded RGB sequences with manual label images.
 
 No annotation is ever passed to a perception or planning stage. ORFD's

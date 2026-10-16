@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Deterministic mask stress test, not a real-world trajectory benchmark.
 
 Analytic corridors use measured-style camera parameters. The planner only

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Interleave saved-baseline and current postprocessing on identical RGB labels.
 
 This isolates CPU postprocessing cost from GPU clocks and inference noise.
