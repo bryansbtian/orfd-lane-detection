@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Lint, Format, Test, And Build
+    name: Lint, Format, Test, and Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
