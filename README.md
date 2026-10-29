@@ -18,7 +18,7 @@ Requires Python 3.10+, BeamNG.tech 0.38 on Windows, and model weights at
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,r3]"
 ```
 
 On Linux or macOS, activate with `source .venv/bin/activate`. Semantic road class
@@ -33,11 +33,40 @@ $env:BEAMNG_HOME = "<your BeamNG.tech folder>"
 offroad-autonomy
 ```
 
-The simulator connection uses port **64256**. For an existing server or a remote
-Windows host, see [Connection Setup](docs/usage.md#connect-to-beamng).
+The simulator connection uses port **64256**. To attach to an existing server,
+set `BEAMNG_LAUNCH=false`. For a remote Windows simulator host, also set
+`BEAMNG_HOST` to its address and allow that port through the host firewall.
+Use `BEAMNG_PORT` if the server listens on a different port. Keep these local
+environment settings out of committed configs.
 
 Dashboard keys: `E` safe stop, `P` resume, `0/1/6/9` debug views, `T` timing, `Q` quit.
 Use `--headless` to run without a window or `--config <file>` for a config overlay.
+
+## R3 Evaluation Setup
+
+`reports/` and `results/` contain generated local evidence and are ignored by Git.
+On a fresh checkout, survey the installed simulator map and freeze the road selected
+by the route config before running R3 evaluation:
+
+```powershell
+python scripts/r3_centerline.py survey --config configs/r3_approved_bends_driving.yaml --out results/r3/road_survey.json
+python scripts/r3_centerline.py select-road --survey results/r3/road_survey.json --route configs/r3_approved_bends.yaml
+python scripts/r3_verify.py qualify --out results/r3/qualification
+python scripts/r3_verify.py run --qualification results/r3/qualification/qualification.json --out results/r3/verification
+```
+
+Surveying and qualification connect to BeamNG. Qualification deliberately injects
+inputs to test the guard; scored runs drive the vehicle. Road selection works offline
+and refuses to overwrite an existing geometry snapshot. A new snapshot does not
+replace route or physical-boundary approval. If the installed map differs, review
+the surveyed route and spawn before driving. For preliminary routes, repeat road
+selection with `configs/r3_provisional.yaml`.
+
+Verification thresholds and diagnostic snapshot timing are configured under
+`r3_verification` in [Default Config](configs/default.yaml). Presentation results
+come from the supplied measurement batches, including failed attempts and recorded
+interventions. Zero-input verification requires complete final native counters and
+an intact physics recording, including the interval after the finish gate.
 
 ## Build
 
@@ -49,22 +78,22 @@ Creates the wheel and source archive in `dist/`.
 
 ## Testing
 
-| Command | What It Runs | Needs BeamNG |
-| --- | --- | --- |
-| `pytest` | Unit and integration tests with mocked models and simulator | No |
-| `pytest --cov` | The same suite with a 70% coverage gate | No |
-| `python scripts/sbend_sim.py` | Existing controller regression on a synthetic S-bend | No |
-| `offroad-autonomy --benchmark-seconds 30` | Live timing benchmark | Yes |
+| Command                                   | What It Runs                                                | Needs BeamNG |
+| ----------------------------------------- | ----------------------------------------------------------- | ------------ |
+| `pytest`                                  | Unit and integration tests with mocked models and simulator | No           |
+| `pytest --cov`                            | The same suite with a 70% coverage gate                     | No           |
+| `python scripts/sbend_sim.py`             | Existing controller regression on a synthetic S-bend        | No           |
+| `offroad-autonomy --benchmark-seconds 30` | Live timing benchmark                                       | Yes          |
 
 ## Common Commands
 
-| Command | Purpose |
-| --- | --- |
-| `ruff check src tests scripts` | Check lint |
-| `ruff format --check src tests scripts` | Check formatting |
-| `offroad-autonomy --record-video` | Record the dashboard; requires ffmpeg with libx264 |
-| `offroad-autonomy --presentation-view` | Show the presentation layout |
-| `python scripts/derive_ego_mask.py` | Regenerate hood exclusion after camera changes |
+| Command                                 | Purpose                                            |
+| --------------------------------------- | -------------------------------------------------- |
+| `ruff check src tests scripts`          | Check lint                                         |
+| `ruff format --check src tests scripts` | Check formatting                                   |
+| `offroad-autonomy --record-video`       | Record the dashboard; requires ffmpeg with libx264 |
+| `offroad-autonomy --presentation-view`  | Show the presentation layout                       |
+| `python scripts/derive_ego_mask.py`     | Regenerate hood exclusion after camera changes     |
 
 ## Development Notes
 
@@ -73,9 +102,6 @@ Creates the wheel and source archive in `dist/`.
 - Tuning belongs in `configs/default.yaml`; platform-specific simulator settings resolve automatically.
 - CUDA FP16 is configurable with `perception.half`. Supported Windows GUIs render asynchronously.
 - Camera mount or lens changes require recalibration and a new ego mask.
-- [Usage And Architecture](docs/usage.md) covers remote connections, recording, and Jetson setup.
-- [RGB Pipeline Audit](docs/rgb_pipeline_audit.md) covers accuracy, planning validation, and sim-to-real limits.
-- [Performance Results](docs/fps_optimization.md) covers measured improvements and reproducible benchmarks.
 
 Current validation does **not** meet the 0.85 mIoU, sustained 20 FPS, or 50 ms
 latency targets. Ingestion of 28 unique camera exposures per second is not certified.
@@ -83,6 +109,6 @@ latency targets. Ingestion of 28 unique camera exposures per second is not certi
 ## Contribution Rules
 
 - Create a branch from `main` and open a focused pull request; do not commit directly to `main`.
-- Follow [CLAUDE.md](CLAUDE.md): no ternaries, inline `if` bodies, or em dashes; comments explain why.
+- Follow [AGENTS.md](AGENTS.md): no ternaries, inline `if` bodies, or em dashes; comments explain why.
 - Run lint, formatting, tests with coverage, the S-bend regression, and the build before review.
 - Do not create commits unless explicitly asked.

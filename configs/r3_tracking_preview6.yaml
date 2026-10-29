@@ -1,0 +1,4 @@
+# Development Ablation: Observe Beyond The Clipped Near-Field Road Midpoint.
+extends: r3_approved_bends_driving.yaml
+control:
+  lookahead_min_m: 6.0

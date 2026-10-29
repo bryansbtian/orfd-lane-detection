@@ -44,6 +44,9 @@ class BaselinePlanner:
         self._min_points = max(4, int(round(self._n_samples * 0.3)))
         self._temporal_blend = float(np.clip(config.baseline_temporal_blend, 0.0, 1.0))
         self._max_shift_m = float(max(config.baseline_max_shift_m, 0.0))
+        self._visible_edges = config.baseline_require_visible_edges
+        self._edge_margin_px = config.baseline_edge_margin_px
+        self._censored_weight = config.baseline_censored_row_weight
         self._projection_options = {
             "max_range_m": config.projection_max_range_m,
             "pitch_uncertainty_deg": config.projection_pitch_uncertainty_deg,
@@ -66,6 +69,7 @@ class BaselinePlanner:
         x_prev = w / 2.0
         forward_pts: list[float] = []
         right_pts: list[float] = []
+        weights: list[float] = []
         gap = 0
         for y in rows:
             row_f, _, row_ok = self._camera.reliable_ground(
@@ -76,6 +80,10 @@ class BaselinePlanner:
             px_per_m = self._camera.focal_px / max(float(row_f[0]), 0.1)
             run = self._nearest_run(component[y], x_prev, _MERGE_GAP_M * px_per_m)
             accepted = run is not None
+            if accepted and self._visible_edges:
+                # A viewport edge is a censored observation, not a trail edge.
+                # Its midpoint biases the fit toward the vehicle's current view.
+                accepted = run[0] > self._edge_margin_px and run[1] < w - 1 - self._edge_margin_px
             if accepted:
                 x = 0.5 * (run[0] + run[1])
                 f, r, ok = self._camera.image_to_ground(np.array([[x, y]], dtype=np.float64))
@@ -116,6 +124,10 @@ class BaselinePlanner:
             x_prev = x
             forward_pts.append(float(f[0]))
             right_pts.append(float(r[0]))
+            weight = 1.0
+            if run[0] <= self._edge_margin_px or run[1] >= w - 1 - self._edge_margin_px:
+                weight = self._censored_weight
+            weights.append(weight)
 
         if len(forward_pts) < self._min_points:
             return np.empty((0, 2), dtype=np.float32)
@@ -124,7 +136,9 @@ class BaselinePlanner:
         degree = 1
         if len(forward) >= 6:
             degree = 2
-        coeffs = np.polyfit(forward, right, deg=degree)
+        # Weight squared residuals by observation reliability. A clipped run
+        # still establishes continuity, but does not establish its true midpoint.
+        coeffs = np.polyfit(forward, right, deg=degree, w=np.sqrt(weights))
         # Padded to [c, b, a] so the temporal blend can mix fits of either degree.
         coeffs = np.pad(coeffs, (3 - len(coeffs), 0))
 

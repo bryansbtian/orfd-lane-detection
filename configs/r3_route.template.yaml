@@ -1,0 +1,28 @@
+# Copy this file, then fill null fields using a saved BeamNG road survey.
+# Coordinates must be measured in BeamNG world metres, never inferred from RGB.
+name: null
+provisional: true
+route_approved: false
+boundary_status: null
+map: null
+vehicle: null
+spawn_position: null
+spawn_rotation: null
+road_persistent_id: null
+geometry_file: null
+reverse: false
+point_a_xyz_m: null
+point_b_xyz_m: null
+start_station_m: null
+finish_station_m: null
+# These are proposed protocol settings, not official centering acceptance limits.
+start_radius_m: 3.0
+finish_radius_m: 2.5
+association_window_m: 15.0
+max_height_error_m: 3.0
+max_run_sim_s: 90.0
+max_run_wall_s: 180.0
+weather_preset: sunny_noon
+time_of_day: 0.0
+seed: 0
+restart_delay_s: 10.0

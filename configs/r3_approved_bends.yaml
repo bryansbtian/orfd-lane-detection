@@ -1,0 +1,56 @@
+name: Approved Green Bends Open A To B Traversal
+provisional: false
+route_approved: true
+route_approval: User Confirmed Open Traversal Through Highlighted Bends
+exact_a_b_mentor_approved: false
+physical_boundaries_approved: false
+boundary_status: BeamNG Authored Dirt DecalRoad Edges; Physical Trail Edge Qualification
+  Pending
+map: automation_test_track
+vehicle: hopper
+road_persistent_id: ccc97201-4b41-4e28-8f93-afd97e6c2d41
+road_id_at_survey: '23528.0'
+road_material: m_dirt_road_01
+geometry_file: ../results/r3/final_verification/approved_route_geometry.json
+reverse: false
+start_node_index: 27
+finish_node_index: 144
+point_a_xyz_m:
+- -529.2654418945312
+- 65.6030502319336
+- 115.00106048583984
+point_b_xyz_m:
+- -525.0646362304688
+- 131.52455139160156
+- 112.98221588134766
+start_station_m: 129.40945544141377
+finish_station_m: 461.9532579620671
+route_length_m: 332.54380252065334
+spawn_position:
+- -529.2654418945312
+- 65.6030502319336
+- 115.50106048583984
+spawn_height_above_authored_centerline_m: 0.5
+spawn_rotation:
+- 0
+- 0
+- 0.6582353857991731
+- 0.7528121790206465
+start_radius_m: 1.5
+finish_radius_m: 2.0
+association_window_m: 12.0
+max_height_error_m: 3.0
+max_run_sim_s: 420.0
+max_run_wall_s: 900.0
+weather_preset: sunny_noon
+time_of_day: 0.0
+seed: 0
+restart_delay_s: 10.0
+mean_absolute_offset_target_m: 0.5
+std_signed_offset_target_m: 0.5
+centering_targets_mentor_approved: false
+max_speed_mph: 10.0
+# Conservative envelope padding covers calibration/render-pose uncertainty.
+envelope_margin_m: 0.05
+# Initialise inference while parked, then reset planning and odometry for each run.
+warmup_frames: 2

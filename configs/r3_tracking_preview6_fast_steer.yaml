@@ -1,0 +1,4 @@
+# Development Ablation Relative To Preview6: Reduce Only Command-EMA Delay.
+extends: r3_tracking_preview6.yaml
+control:
+  steering_ema_alpha: 0.75

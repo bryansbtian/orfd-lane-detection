@@ -1,0 +1,4 @@
+# Development Ablation: Do Not Treat Viewport-Clipped Runs As Road Widths.
+extends: r3_approved_bends_driving.yaml
+planning:
+  baseline_require_visible_edges: true

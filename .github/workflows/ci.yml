@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Lint, Format, Test, and Build
+    name: Lint, Format, Test, And Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,7 +35,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          pip install -e ".[dev]"
+          pip install -e ".[dev,r3]"
 
       - name: Lint
         run: ruff check src tests scripts
@@ -57,7 +57,7 @@ jobs:
 
       # ----------------------------------------------------------------------
 
-      - name: Test with Coverage
+      - name: Test With Coverage
         run: pytest --cov --cov-report=term --cov-report=html:coverage
 
       - name: Build

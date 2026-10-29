@@ -48,6 +48,13 @@ def _positive(raw: dict, key: str, default: float) -> float:
     return value
 
 
+def _positive_count(raw: dict, key: str, default: int) -> int:
+    value = _positive(raw, key, default)
+    if not value.is_integer():
+        raise ValueError(f"{key} Must Be A Positive Integer")
+    return int(value)
+
+
 def _parse_color(raw: object, default: tuple[int, int, int]) -> tuple[int, int, int]:
     if not isinstance(raw, (list, tuple)) or len(raw) != 3:
         return default
@@ -370,6 +377,7 @@ def load_config(path: str | Path) -> PipelineConfig:
     plan = _section(raw, "planning")
     gate = _section(plan, "gate")
     ctrl = _section(raw, "control")
+    r3 = _section(raw, "r3_verification")
     if "controller" in ctrl:
         raise ValueError("Remove control.controller: Stanley is the only controller")
     dashboard = _section(_section(raw, "visualization"), "dashboard")
@@ -413,6 +421,9 @@ def load_config(path: str | Path) -> PipelineConfig:
         planner_roi_height=float(plan.get("roi_height", 0.50)),
         baseline_temporal_blend=float(plan.get("baseline_temporal_blend", 0.0)),
         baseline_max_shift_m=float(plan.get("baseline_max_shift_m", 0.5)),
+        baseline_require_visible_edges=bool(plan.get("baseline_require_visible_edges", False)),
+        baseline_edge_margin_px=_nonnegative(plan, "baseline_edge_margin_px", 3.0),
+        baseline_censored_row_weight=_positive(plan, "baseline_censored_row_weight", 1.0),
         validate_path_corridor=bool(plan.get("validate_path_corridor", True)),
         path_min_clearance_px=_nonnegative(plan, "path_min_clearance_px", 1.0),
         path_half_width_m=_nonnegative(plan, "path_half_width_m", 0.0),
@@ -468,6 +479,7 @@ def load_config(path: str | Path) -> PipelineConfig:
         curve_decel_mps2=float(ctrl.get("curve_decel_mps2", 0.8)),
         control_latency_s=float(ctrl.get("control_latency_s", 0.35)),
         lookahead_curvature_gain=float(ctrl.get("lookahead_curvature_gain", 2.0)),
+        lookahead_from_visible_path=bool(ctrl.get("lookahead_from_visible_path", False)),
         curvature_feedforward_gain=float(ctrl.get("curvature_feedforward_gain", 1.0)),
         saturation_start=float(ctrl.get("saturation_start", 0.5)),
         saturation_min_speed_scale=float(ctrl.get("saturation_min_speed_scale", 0.35)),
@@ -506,5 +518,10 @@ def load_config(path: str | Path) -> PipelineConfig:
         ui_display_async=bool(ui.get("display_async", True)),
         ui_display_rate_hz=float(ui.get("display_rate_hz", 20.0)),
         runtime_log_interval_s=float(ui.get("log_interval_s", 5.0)),
+        r3_max_buffered_samples=_positive_count(r3, "max_buffered_samples", 100000),
+        r3_startup_min_samples=_positive_count(r3, "startup_min_samples", 100),
+        r3_clean_min_samples=_positive_count(r3, "clean_min_samples", 1000),
+        r3_stationary_speed_limit_mph=_nonnegative(r3, "stationary_speed_limit_mph", 0.5),
+        r3_snapshot_interval_s=_positive(r3, "snapshot_interval_s", 5.0),
         **_load_recording(_section(raw, "recording")),
     )

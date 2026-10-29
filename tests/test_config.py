@@ -15,6 +15,23 @@ REPO = Path(__file__).resolve().parents[1]
 DEFAULT_YAML = REPO / "configs" / "default.yaml"
 
 
+@pytest.mark.parametrize(
+    "setting",
+    [
+        "max_buffered_samples: 0",
+        "startup_min_samples: 0.5",
+        "clean_min_samples: 1.5",
+        "stationary_speed_limit_mph: -1",
+        "snapshot_interval_s: 0",
+    ],
+)
+def test_invalid_r3_verification_limits_are_refused(tmp_path, setting):
+    path = tmp_path / "config.yaml"
+    path.write_text(f"r3_verification:\n  {setting}\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_config(path)
+
+
 def test_load_config_reads_perception_prompts(tmp_path):
     config_path = tmp_path / "config.yaml"
     config_path.write_text(

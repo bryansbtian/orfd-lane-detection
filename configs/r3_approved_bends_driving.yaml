@@ -1,0 +1,17 @@
+extends: default.yaml
+beamng:
+  map: automation_test_track
+  vehicle: hopper
+  spawn_index: 0
+  maps:
+    automation_test_track:
+      spawns:
+      - pos:
+        - -529.2654418945312
+        - 65.6030502319336
+        - 115.50106048583984
+        rot:
+        - 0
+        - 0
+        - 0.6582353857991731
+        - 0.7528121790206465

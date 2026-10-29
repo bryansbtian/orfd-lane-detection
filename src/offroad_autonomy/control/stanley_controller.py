@@ -163,7 +163,9 @@ class _SampledPath:
         self._f = forward[:keep]
         self._r = right[:keep]
         self._k = curvature[:keep]
-        self._slope = np.gradient(self._r, self._f) if keep >= 2 else np.zeros(keep)
+        self._slope = np.zeros(keep)
+        if keep >= 2:
+            self._slope = np.gradient(self._r, self._f)
         self.start = float(self._f[0])
         self.end = float(self._f[-1])
 
@@ -294,6 +296,7 @@ class StanleyController:
         self._la_min = float(max(config.lookahead_min_m, 0.5))
         self._la_max = float(max(config.lookahead_max_m, self._la_min))
         self._la_curvature_gain = float(max(config.lookahead_curvature_gain, 0.0))
+        self._la_from_visible = config.lookahead_from_visible_path
         self._latency = float(max(config.control_latency_s, 0.0))
         self._cte_tolerance = float(max(config.cross_track_tolerance_m, 0.0))
         self._full_authority_speed = float(max(config.steer_full_authority_speed_mps, 0.0))
@@ -423,7 +426,13 @@ class StanleyController:
         trust = self._curvature_trust(path, visible_start)
         kappa = lambda f: path.curvature(f, self._max_curvature, trust)
         lookahead = self.lookahead_distance(speed, float(kappa(visible_start)))
-        f_end = float(np.clip(f0 + lookahead, path.start, path.end))
+        preview_origin = f0
+        if self._la_from_visible:
+            # A hidden near field must not consume the entire preview. Retain
+            # the curvature-adaptive span inside the observed path, bounded by
+            # its end, rather than repeatedly targeting its first noisy point.
+            preview_origin = visible_start
+        f_end = float(np.clip(preview_origin + lookahead, path.start, path.end))
         window = np.linspace(visible_start, f_end, 8)
         kappa_ff = float(np.mean(kappa(window)))
 

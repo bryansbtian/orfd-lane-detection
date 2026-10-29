@@ -33,6 +33,8 @@ datasets/
 output/
 runs/
 benchmark/
+/reports/
+/results/
 
 # Media files (test data, results)
 test_videos/
