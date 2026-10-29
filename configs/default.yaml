@@ -526,18 +526,6 @@ ui:
   timing_overlay: false
   log_interval_s: 5.0
 
-r3_verification:
-  # Bound observer memory when the client cannot drain native physics samples.
-  max_buffered_samples: 100000
-  # Reject a verifier that has not produced a meaningful startup interval.
-  startup_min_samples: 100
-  # A longer clean interval exercises the input guard across physics updates.
-  clean_min_samples: 1000
-  # Allow stationary sensor jitter while detecting motion from rejected inputs.
-  stationary_speed_limit_mph: 0.5
-  # Keep optional development snapshots sparse enough to limit disk overhead.
-  snapshot_interval_s: 5.0
-
 recording:
   # --record-video writes the dashboard, as drawn, to an H.264 mp4 through the
   # ffmpeg binary, because OpenCV's bundled encoder cannot produce H.264 and

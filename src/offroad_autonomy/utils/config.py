@@ -48,13 +48,6 @@ def _positive(raw: dict, key: str, default: float) -> float:
     return value
 
 
-def _positive_count(raw: dict, key: str, default: int) -> int:
-    value = _positive(raw, key, default)
-    if not value.is_integer():
-        raise ValueError(f"{key} Must Be A Positive Integer")
-    return int(value)
-
-
 def _parse_color(raw: object, default: tuple[int, int, int]) -> tuple[int, int, int]:
     if not isinstance(raw, (list, tuple)) or len(raw) != 3:
         return default
@@ -377,7 +370,6 @@ def load_config(path: str | Path) -> PipelineConfig:
     plan = _section(raw, "planning")
     gate = _section(plan, "gate")
     ctrl = _section(raw, "control")
-    r3 = _section(raw, "r3_verification")
     if "controller" in ctrl:
         raise ValueError("Remove control.controller: Stanley is the only controller")
     dashboard = _section(_section(raw, "visualization"), "dashboard")
@@ -518,10 +510,5 @@ def load_config(path: str | Path) -> PipelineConfig:
         ui_display_async=bool(ui.get("display_async", True)),
         ui_display_rate_hz=float(ui.get("display_rate_hz", 20.0)),
         runtime_log_interval_s=float(ui.get("log_interval_s", 5.0)),
-        r3_max_buffered_samples=_positive_count(r3, "max_buffered_samples", 100000),
-        r3_startup_min_samples=_positive_count(r3, "startup_min_samples", 100),
-        r3_clean_min_samples=_positive_count(r3, "clean_min_samples", 1000),
-        r3_stationary_speed_limit_mph=_nonnegative(r3, "stationary_speed_limit_mph", 0.5),
-        r3_snapshot_interval_s=_positive(r3, "snapshot_interval_s", 5.0),
         **_load_recording(_section(raw, "recording")),
     )

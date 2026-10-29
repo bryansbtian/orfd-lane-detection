@@ -1,4 +1,0 @@
-# Development Ablation: Reduce Only The Influence Of Viewport-Cropped Midpoints.
-extends: r3_approved_bends_driving.yaml
-planning:
-  baseline_censored_row_weight: 0.1

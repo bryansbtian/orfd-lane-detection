@@ -1,4 +1,0 @@
-# Development Ablation Relative To Preview6: Lower Only The Curve-Speed Budget.
-extends: r3_tracking_preview6.yaml
-control:
-  max_lateral_accel_mps2: 0.3

@@ -571,11 +571,6 @@ class PipelineConfig:
     ui_display_async: bool = True
     ui_display_rate_hz: float = 20.0
     runtime_log_interval_s: float = 5.0
-    r3_max_buffered_samples: int = 100000
-    r3_startup_min_samples: int = 100
-    r3_clean_min_samples: int = 1000
-    r3_stationary_speed_limit_mph: float = 0.5
-    r3_snapshot_interval_s: float = 5.0
     recording_fps: float = 20.0
     recording_crf: int = 23
     recording_preset: str = "veryfast"

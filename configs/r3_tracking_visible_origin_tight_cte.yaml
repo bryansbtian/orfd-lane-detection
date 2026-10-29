@@ -1,4 +1,0 @@
-# Development Ablation Relative To Visible-Origin Preview: Reduce Only Soft Deadzone.
-extends: r3_tracking_visible_origin.yaml
-control:
-  cross_track_tolerance_m: 0.1

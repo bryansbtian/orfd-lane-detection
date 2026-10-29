@@ -1,4 +1,4 @@
-"""Synthetic Safety And Observability Regressions, Not Driving Evidence."""
+"""Visibility-Aware Planner And Controller Regressions."""
 
 from dataclasses import replace
 

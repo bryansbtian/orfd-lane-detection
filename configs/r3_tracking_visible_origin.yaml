@@ -1,4 +1,0 @@
-# Development Ablation: Keep Curvature Adaptation, But Preview From Observed Road.
-extends: r3_approved_bends_driving.yaml
-control:
-  lookahead_from_visible_path: true

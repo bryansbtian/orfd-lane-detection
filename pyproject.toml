@@ -22,7 +22,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-r3 = ["matplotlib>=3.8", "shapely>=2.0,<3"]
 dev = [
     "build>=1.0",
     "pytest>=7.0",
@@ -41,7 +40,6 @@ where = ["src"]
 [tool.setuptools.package-data]
 # The dashboard loads its fonts from disk at startup and never falls back to another face.
 offroad_autonomy = ["visualization/fonts/*"]
-"offroad_autonomy.simulation" = ["*.lua"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -18,7 +18,7 @@ Requires Python 3.10+, BeamNG.tech 0.38 on Windows, and model weights at
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev,r3]"
+python -m pip install -e ".[dev]"
 ```
 
 On Linux or macOS, activate with `source .venv/bin/activate`. Semantic road class
@@ -41,32 +41,6 @@ environment settings out of committed configs.
 
 Dashboard keys: `E` safe stop, `P` resume, `0/1/6/9` debug views, `T` timing, `Q` quit.
 Use `--headless` to run without a window or `--config <file>` for a config overlay.
-
-## R3 Evaluation Setup
-
-`reports/` and `results/` contain generated local evidence and are ignored by Git.
-On a fresh checkout, survey the installed simulator map and freeze the road selected
-by the route config before running R3 evaluation:
-
-```powershell
-python scripts/r3_centerline.py survey --config configs/r3_approved_bends_driving.yaml --out results/r3/road_survey.json
-python scripts/r3_centerline.py select-road --survey results/r3/road_survey.json --route configs/r3_approved_bends.yaml
-python scripts/r3_verify.py qualify --out results/r3/qualification
-python scripts/r3_verify.py run --qualification results/r3/qualification/qualification.json --out results/r3/verification
-```
-
-Surveying and qualification connect to BeamNG. Qualification deliberately injects
-inputs to test the guard; scored runs drive the vehicle. Road selection works offline
-and refuses to overwrite an existing geometry snapshot. A new snapshot does not
-replace route or physical-boundary approval. If the installed map differs, review
-the surveyed route and spawn before driving. For preliminary routes, repeat road
-selection with `configs/r3_provisional.yaml`.
-
-Verification thresholds and diagnostic snapshot timing are configured under
-`r3_verification` in [Default Config](configs/default.yaml). Presentation results
-come from the supplied measurement batches, including failed attempts and recorded
-interventions. Zero-input verification requires complete final native counters and
-an intact physics recording, including the interval after the finish gate.
 
 ## Build
 
@@ -100,6 +74,7 @@ Creates the wheel and source archive in `dist/`.
 - Package code is in `src/offroad_autonomy/`; `pipeline.py` orders the stages.
 - BeamNG dependencies stay in `simulation/`. RGB-only callers use `RGBPlanningPipeline`.
 - Tuning belongs in `configs/default.yaml`; platform-specific simulator settings resolve automatically.
+- Optional visible-path preview and cropped-road fit settings live under `control` and `planning`.
 - CUDA FP16 is configurable with `perception.half`. Supported Windows GUIs render asynchronously.
 - Camera mount or lens changes require recalibration and a new ego mask.
 
