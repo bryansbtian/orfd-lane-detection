@@ -58,6 +58,7 @@ from __future__ import annotations
 import logging
 import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
 
@@ -284,7 +285,14 @@ def measure_trail(
 
 
 class StanleyController:
-    def __init__(self, config: PipelineConfig, camera: CameraModel | None = None) -> None:
+    def __init__(
+        self,
+        config: PipelineConfig,
+        camera: CameraModel | None = None,
+        *,
+        clock: Callable[[], float] = time.perf_counter,
+    ) -> None:
+        self._clock = clock
         self._k = config.stanley_gain_k
         self._k_soft = config.stanley_softening
         self._heading_gain = config.stanley_heading_gain
@@ -719,7 +727,7 @@ class StanleyController:
         return throttle, brake
 
     def _update_cte_rate(self, abs_cte: float) -> None:
-        now = time.perf_counter()
+        now = self._clock()
         if self._prev_abs_cte is not None and self._prev_time is not None:
             dt = float(np.clip(now - self._prev_time, 0.1, 0.5))
             rate = (abs_cte - self._prev_abs_cte) / dt

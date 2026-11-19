@@ -1,11 +1,8 @@
-"""Settings for the predictive steering controllers (``control.mode: mppi``
-or ``mpc``), in SI units; vehicle geometry stays in PipelineConfig."""
+"""Settings for the predictive steering controllers (``experiment.controller:
+mppi`` or ``mpc``), in SI units; vehicle geometry stays in PipelineConfig."""
 
 import math
 from dataclasses import dataclass, fields
-
-#: Steering controllers ``control.mode`` can select.
-CONTROL_MODES = ("stanley", "mppi", "mpc")
 
 
 @dataclass

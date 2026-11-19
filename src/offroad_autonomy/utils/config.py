@@ -9,8 +9,6 @@ from pathlib import Path
 
 import yaml
 
-from offroad_autonomy.control.predictive_config import CONTROL_MODES, PredictiveConfig
-from offroad_autonomy.planning.grid_config import GridPlannerConfig
 from offroad_autonomy.runtime.video_recorder import X264_PRESETS
 from offroad_autonomy.types import (
     CAMERA_TRANSPORTS,
@@ -239,11 +237,16 @@ def _section(raw: dict, key: str) -> dict:
     return {}
 
 
-def _planner_mode(raw: object) -> str:
-    mode = str(raw).lower()
-    if mode not in ("baseline", "advanced", "grid"):
-        raise ValueError(f"planning.mode must be 'baseline', 'advanced' or 'grid', got {mode!r}")
-    return mode
+def _reject_experiment_settings(raw: dict, plan: dict, ctrl: dict) -> None:
+    """An experiment config read here would silently drive the baseline
+    planner and Stanley while the operator believes the experiment is running."""
+    hint = "run it with python -m experiment.run --config <file>"
+    if "experiment" in raw:
+        raise ValueError(f"This config selects an experiment; {hint}")
+    if str(plan.get("mode", "baseline")).lower() != "baseline":
+        raise ValueError(f"planning.mode {plan['mode']!r} is an experiment; {hint}")
+    if str(ctrl.get("mode", "stanley")).lower() != "stanley":
+        raise ValueError(f"control.mode {ctrl['mode']!r} is an experiment; {hint}")
 
 
 def _camera_transport(raw: object) -> str:
@@ -274,28 +277,6 @@ def _load_recording(raw: dict) -> dict:
         "recording_preset": preset,
         "recording_queue_frames": queue_frames,
     }
-
-
-def _control_mode(value) -> str:
-    mode = str(value).lower()
-    if mode not in CONTROL_MODES:
-        raise ValueError(f"control.mode must be one of {CONTROL_MODES}, got {value!r}")
-    return mode
-
-
-def _load_predictive(raw: dict) -> PredictiveConfig:
-    try:
-        return PredictiveConfig(**raw)
-    except TypeError as exc:
-        raise ValueError(f"control.predictive: {exc}") from exc
-
-
-def _load_grid(raw: dict) -> GridPlannerConfig:
-    try:
-        return GridPlannerConfig(**raw)
-    except TypeError as exc:
-        # A misspelled key would otherwise surface as a bare dataclass error.
-        raise ValueError(f"planning.grid: {exc}") from exc
 
 
 def _apply_env_overrides(bng: dict) -> dict:
@@ -349,9 +330,18 @@ def _resolve_platform_settings(bng: dict, ui: dict) -> tuple[dict, dict]:
     return bng, ui
 
 
-def load_config(path: str | Path) -> PipelineConfig:
-    raw = _read_yaml(Path(path))
+def read_config_dict(path: str | Path) -> dict:
+    """The merged YAML, for callers that read sections this loader does not own."""
+    return _read_yaml(Path(path))
 
+
+def load_config(path: str | Path) -> PipelineConfig:
+    raw = read_config_dict(path)
+    _reject_experiment_settings(raw, _section(raw, "planning"), _section(raw, "control"))
+    return config_from_dict(raw)
+
+
+def config_from_dict(raw: dict) -> PipelineConfig:
     bng, ui = _resolve_platform_settings(
         _apply_env_overrides(_section(raw, "beamng")), _section(raw, "ui")
     )
@@ -409,7 +399,6 @@ def load_config(path: str | Path) -> PipelineConfig:
         morphology_kernel_size=post.get("morphology_kernel_size", 5),
         enable_morphology=bool(post.get("enable_morphology", True)),
         enable_ema=bool(post.get("enable_ema", True)),
-        planner_mode=_planner_mode(plan.get("mode", "baseline")),
         planner_roi_height=float(plan.get("roi_height", 0.50)),
         baseline_temporal_blend=float(plan.get("baseline_temporal_blend", 0.0)),
         baseline_max_shift_m=float(plan.get("baseline_max_shift_m", 0.5)),
@@ -431,25 +420,7 @@ def load_config(path: str | Path) -> PipelineConfig:
         gate_hold_frames=int(gate.get("hold_frames", 10)),
         gate_hold_speed_scale=float(gate.get("hold_speed_scale", 0.4)),
         centerline_samples=plan.get("centerline_samples", 20),
-        planner_backend=plan.get("backend", "heuristic"),
-        planner_horizon_fraction=plan.get("horizon_fraction", 0.82),
-        planner_smoothing_window=plan.get("smoothing_window", 7),
-        planner_clearance_weight=plan.get("clearance_weight", 0.65),
-        planner_prior_std_fraction=plan.get("prior_std_fraction", 0.10),
-        planner_min_confidence=plan.get("min_confidence", 0.18),
-        planner_segment_center_weight=plan.get("segment_center_weight", 0.68),
-        planner_temporal_blend=plan.get("temporal_blend", 0.58),
-        planner_max_lateral_step_px=plan.get("max_lateral_step_px", 32.0),
-        planner_straight_blend=plan.get("straight_blend", 0.72),
-        planner_straight_residual_px=plan.get("straight_residual_px", 4.0),
-        planner_straight_heading_threshold=plan.get("straight_heading_threshold", 0.08),
-        kalman_process_noise=plan.get("kalman_process_noise", 1e-3),
-        kalman_measurement_noise=plan.get("kalman_measurement_noise", 1e-1),
-        fallback_after_n_misses=plan.get("fallback_after_n_misses", 3),
         min_road_pixels=plan.get("min_road_pixels", 500),
-        grid=_load_grid(_section(plan, "grid")),
-        control_mode=_control_mode(ctrl.get("mode", "stanley")),
-        predictive=_load_predictive(_section(ctrl, "predictive")),
         stanley_gain_k=ctrl.get("stanley_gain_k", 1.5),
         stanley_softening=ctrl.get("stanley_softening", 2.4),
         stanley_heading_gain=ctrl.get("stanley_heading_gain", 0.85),

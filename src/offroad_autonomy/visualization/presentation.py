@@ -113,9 +113,11 @@ class PresentationRenderer:
         colors: dict[str, tuple[int, int, int]] | None = None,
         sensor: CameraSensor | None = None,
         thresholds: DashboardThresholds | None = None,
+        run_label: str = "Demonstration Run",
     ) -> None:
         self.width = PRESENTATION_WIDTH
         self.height = PRESENTATION_HEIGHT
+        self._run_label = run_label
         if thresholds is None:
             thresholds = DashboardThresholds()
         self._thresholds = thresholds
@@ -167,7 +169,7 @@ class PresentationRenderer:
         )
         self._text.draw(
             canvas,
-            "Demonstration Run",
+            self._run_label,
             title_x + title_w + 16,
             baseline,
             SUBTITLE,

@@ -3,8 +3,9 @@
 ## Introduction
 
 RGB road segmentation and trajectory planning for unmarked trails, with BeamNG.tech
-for simulation testing. YOLO26 predicts traversable road; the planner generates a
-trajectory and validity status. The existing Stanley controller handles simulation actuation.
+for simulation testing. YOLO26 predicts traversable road, a baseline planner fits the
+trail's centreline, and a Stanley controller steers. Alternative planners and learned
+controllers live in [Experiments](experiment/README.md) and never run by default.
 
 Perception and planning use camera images and calibration, without simulator road
 geometry, depth buffers, GPS, or perfect vehicle pose. Flat-ground projection and
@@ -42,6 +43,37 @@ environment settings out of committed configs.
 Dashboard keys: `E` safe stop, `P` resume, `0/1/6/9` debug views, `T` timing, `Q` quit.
 Use `--headless` to run without a window or `--config <file>` for a config overlay.
 
+## Default Run
+
+`offroad-autonomy` with [Default Config](configs/default.yaml) runs one pipeline:
+
+1. The GMSL2 dashcam frame is resized to 720x465 and segmented by `perception.model_weights`.
+2. The perception gate in `planning.gate` accepts the frame only if the road component
+   touching the vehicle is confident and large enough.
+3. The baseline planner takes the centre of each sampled row, fits one curve, and
+   blends it with the previous path on the ground.
+4. Corridor and ground-projection checks reject paths that cross mask holes or reach
+   past the projection's uncertainty bound.
+5. Stanley steers with curvature feedforward and latency compensation, and the speed
+   law caps cruise at 5.5 mph under a 6 mph limit.
+
+Fallbacks, from mildest to strongest:
+
+| Trigger                                          | Response                                            | Setting                                             |
+| ------------------------------------------------ | --------------------------------------------------- | --------------------------------------------------- |
+| Gate or path check fails                         | Hold the last good path at 0.4x speed for 10 frames | `planning.gate.hold_frames`, `hold_speed_scale`     |
+| Still failing after the hold                     | Stop: empty path, zero speed, brake                 | `planning.gate`                                     |
+| Frame older than 200 ms or from the future       | Reset the planner and stop for that frame           | `runtime.max_frame_age_ms`                          |
+| Under 1.5% road for 2 s, stuck 3 s, stale motion | Safe stop: park, manual control until `P` resumes   | `safety.min_road_fraction`, `safety.no_road_time_s` |
+
+## Experiments
+
+The bird's-eye grid and advanced planners, MPC and MPPI steering, the RL residual and
+the imitation learning pipeline are in [Experiments](experiment/README.md). They reuse
+this stack's loop and safe stop through `python -m experiment.run`, keep their settings
+in `experiment/configs/`, and are not part of the installed package. The default
+loader refuses an experiment config, so a run cannot silently fall back to the baseline.
+
 ## Build
 
 ```bash
@@ -57,6 +89,7 @@ Creates the wheel and source archive in `dist/`.
 | `pytest`                                  | Unit and integration tests with mocked models and simulator | No           |
 | `pytest --cov`                            | The same suite with a 70% coverage gate                     | No           |
 | `python scripts/sbend_sim.py`             | Existing controller regression on a synthetic S-bend        | No           |
+| `pytest experiment/tests`                 | Experiment tests; not part of the coverage gate             | No           |
 | `offroad-autonomy --benchmark-seconds 30` | Live timing benchmark                                       | Yes          |
 
 ## Common Commands
@@ -84,6 +117,5 @@ latency targets. Ingestion of 28 unique camera exposures per second is not certi
 ## Contribution Rules
 
 - Create a branch from `main` and open a focused pull request; do not commit directly to `main`.
-- Follow [AGENTS.md](AGENTS.md): no ternaries, inline `if` bodies, or em dashes; comments explain why.
 - Run lint, formatting, tests with coverage, the S-bend regression, and the build before review.
 - Do not create commits unless explicitly asked.

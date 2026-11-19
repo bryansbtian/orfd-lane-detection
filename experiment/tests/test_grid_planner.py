@@ -6,15 +6,16 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
+from experiment.config import ExperimentConfig
+from experiment.grid.arc_planner import ArcPlanner, road_centre_offset
+from experiment.grid.bev_grid import GroundPose, TraversabilityGrid, ground_pose
+from experiment.grid.config import GridPlannerConfig
+from experiment.grid.planner import GridPlanner
 from offroad_autonomy.control.stanley_controller import StanleyController, path_to_ground
 from offroad_autonomy.perception.perception_view import PerceptionView
-from offroad_autonomy.planning.arc_planner import ArcPlanner, road_centre_offset
-from offroad_autonomy.planning.bev_grid import GroundPose, TraversabilityGrid, ground_pose
-from offroad_autonomy.planning.centerline_planner import CenterlinePlanner
-from offroad_autonomy.planning.grid_config import GridPlannerConfig
-from offroad_autonomy.types import PerceptionResult, PipelineConfig, StabilizedResult, VehicleState
+from offroad_autonomy.types import PerceptionResult, StabilizedResult, VehicleState
 
-CONFIG = replace(PipelineConfig(), planner_mode="grid")
+CONFIG = replace(ExperimentConfig(), planner_mode="grid")
 VIEW = PerceptionView(CONFIG)
 CAMERA = VIEW.camera
 VALID = VIEW.valid_roi
@@ -278,7 +279,7 @@ def _stabilized(mask):
 
 
 def test_grid_mode_hands_the_controller_a_usable_path():
-    planner = CenterlinePlanner(CONFIG, camera=CAMERA)
+    planner = GridPlanner(CONFIG, camera=CAMERA)
     state = VehicleState(direction=(1.0, 0.0, 0.0), speed_mps=3.0, velocity=(3.0, 0.0, 0.0))
 
     plan = _plan_settled(planner, _stabilized(_road_mask(_straight(2.0))), state)
@@ -294,7 +295,7 @@ def test_grid_mode_hands_the_controller_a_usable_path():
 def test_grid_mode_stops_when_no_arc_fits_the_vehicle():
     """A 2.0 m trail passes the gate but is narrower than the 2.1 m the
     vehicle needs, so the planner, not the gate, refuses it."""
-    planner = CenterlinePlanner(CONFIG, camera=CAMERA)
+    planner = GridPlanner(CONFIG, camera=CAMERA)
     narrow = _stabilized(_road_mask(_straight(1.0)))
     state = VehicleState(direction=(1.0, 0.0, 0.0))
 
@@ -305,7 +306,7 @@ def test_grid_mode_stops_when_no_arc_fits_the_vehicle():
 
 
 def test_memory_keeps_the_path_through_one_bad_frame():
-    planner = CenterlinePlanner(CONFIG, camera=CAMERA)
+    planner = GridPlanner(CONFIG, camera=CAMERA)
     state = VehicleState(direction=(1.0, 0.0, 0.0))
     planner.plan(_stabilized(_road_mask(_straight(2.0))), vehicle_state=state)
 
@@ -315,7 +316,7 @@ def test_memory_keeps_the_path_through_one_bad_frame():
 
 
 def test_a_frame_the_gate_rejects_adds_no_evidence():
-    planner = CenterlinePlanner(CONFIG, camera=CAMERA)
+    planner = GridPlanner(CONFIG, camera=CAMERA)
     state = VehicleState(direction=(1.0, 0.0, 0.0))
     rejected = StabilizedResult(
         mask=_road_mask(_straight(2.0)),
@@ -373,7 +374,7 @@ def test_model_false_positive_can_persist_but_corrected_evidence_clears_it():
 
 
 def test_grid_mode_hands_the_controller_its_metric_path_and_sees_past_the_gate_roi():
-    planner = CenterlinePlanner(CONFIG, camera=CAMERA)
+    planner = GridPlanner(CONFIG, camera=CAMERA)
     state = VehicleState(direction=(1.0, 0.0, 0.0), speed_mps=3.0, velocity=(3.0, 0.0, 0.0))
 
     plan = _plan_settled(planner, _stabilized(_road_mask(_straight(2.0))), state)

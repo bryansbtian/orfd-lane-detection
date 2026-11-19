@@ -18,6 +18,7 @@ import argparse
 import math
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -148,6 +149,10 @@ def simulate(
     trail_width: float = 6.0,
     completion_margin_m: float = 0.0,
     start_lateral_m: float = 0.0,
+    mirror: bool = False,
+    terminate_off_trail: bool = False,
+    controller_factory: Callable[[CameraModel, Callable[[], float]], StanleyController]
+    | None = None,
 ) -> SimResult:
     """Closed loop on an S-bend.
 
@@ -158,8 +163,19 @@ def simulate(
     """
     rng = np.random.default_rng(seed)
     camera = CameraModel(config.camera, config.preprocess_width, config.preprocess_height)
-    controller = StanleyController(config, camera=camera)
+    sim_time = 0.0
+
+    def clock() -> float:
+        return sim_time
+
+    # Policy comparisons must not change drift estimates when one policy takes longer to compute.
+    if controller_factory is None:
+        controller = StanleyController(config, camera=camera)
+    else:
+        controller = controller_factory(camera, clock)
     road = s_bend(radius)
+    if mirror:
+        road[:, 1] *= -1.0
     tangent = np.gradient(road, axis=0)
     tangent /= np.linalg.norm(tangent, axis=1, keepdims=True)
     normals = np.stack([-tangent[:, 1], tangent[:, 0]], axis=1)  # to the left
@@ -177,6 +193,7 @@ def simulate(
     wheel_cmd = 0.0
     log, max_err, lock_frames = [], 0.0, 0
     for _ in range(int(120 * fps)):
+        sim_time += dt
         # Visible road in the camera frame: forward f, right r.
         cx, cy = x + cam_ahead * math.cos(yaw), y + cam_ahead * math.sin(yaw)
         d = road - np.array([cx, cy])
@@ -246,6 +263,8 @@ def simulate(
                 "control_ms": control_ms,
             }
         )
+        if terminate_off_trail and err_now + config.vehicle_half_width_m > trail_width / 2.0:
+            return _finish(log, max_err, lock_frames, False, trail_width)
     return _finish(log, max_err, lock_frames, False, trail_width)
 
 

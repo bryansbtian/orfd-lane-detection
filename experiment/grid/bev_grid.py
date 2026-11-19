@@ -27,8 +27,8 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
+from experiment.grid.config import GridPlannerConfig
 from offroad_autonomy.perception.camera_geometry import CameraModel
-from offroad_autonomy.planning.grid_config import GridPlannerConfig
 from offroad_autonomy.types import VehicleState
 
 

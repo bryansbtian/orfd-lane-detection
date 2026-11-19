@@ -1,0 +1,43 @@
+# Residual steering correction learned on the S-bend model and added to Stanley.
+#
+#   python -m experiment.rl.train
+#   python -m experiment.run --config experiment/configs/rl.yaml
+extends: ../../configs/default.yaml
+
+experiment:
+  controller: rl
+
+control:
+  rl:
+    # Missing checkpoints fail before simulator connection; no random live driving.
+    policy_path: models/rl_policy.npz
+    # Bound learned corrections before the existing steering cap and smoothing.
+    max_residual: 0.2
+    # Fixed normalization keeps offline training and live inference identical.
+    cross_track_scale_m: 2.0
+    heading_scale_rad: 0.5
+    curvature_scale_inv_m: 0.15
+    speed_scale_mps: 5.0
+    # Small ARS runs let us screen the idea without adding a training framework.
+    iterations: 12
+    directions: 4
+    top_directions: 2
+    learning_rate: 0.03
+    exploration_std: 0.1
+    # Separate seeds keep the reported comparison out of policy selection.
+    train_episodes: 2
+    eval_episodes: 6
+    seed: 42
+    # Vary bends, loop timing and initial misalignment instead of fitting one run.
+    radius_min_m: 8.0
+    radius_max_m: 16.0
+    fps_min: 3.0
+    fps_max: 6.0
+    start_yaw_max_rad: 0.3
+    start_lateral_max_m: 0.5
+    delay_max_frames: 3
+    # Penalize tracking error and edge exposure; failure must outweigh a smooth stop.
+    weight_error: 1.0
+    weight_edge: 5.0
+    weight_steer_change: 0.1
+    failure_penalty: 100.0

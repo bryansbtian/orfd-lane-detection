@@ -28,6 +28,8 @@ models/
 
 # Datasets (too large for git)
 datasets/
+# Original driving archives must stay out of source history.
+/bag*.zip
 
 # Generated outputs
 output/

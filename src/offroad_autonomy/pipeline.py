@@ -8,7 +8,6 @@ import time
 
 import numpy as np
 
-from offroad_autonomy.control.factory import build_controller
 from offroad_autonomy.control.stanley_controller import StanleyController
 from offroad_autonomy.perception.perception_view import PerceptionView
 from offroad_autonomy.perception.road_segmenter import RoadSegmenter
@@ -41,8 +40,12 @@ class RGBPlanningPipeline:
         self.preprocessor = ImagePreprocessor(config, target_size=self.view.size)
         self.segmenter = RoadSegmenter(config)
         self.stabilizer = TemporalStabilizer(config)
-        self.planner = CenterlinePlanner(config, camera=self.view.camera)
+        self.planner = self._build_planner(config)
         self._max_frame_age_ms = config.max_frame_age_ms
+
+    def _build_planner(self, config: PipelineConfig) -> CenterlinePlanner:
+        """Experiments override this to plan with something other than the baseline."""
+        return CenterlinePlanner(config, camera=self.view.camera)
 
     @property
     def ego_coverage(self) -> float:
@@ -135,12 +138,17 @@ class AutonomyPipeline(RGBPlanningPipeline):
 
     def __init__(self, config: PipelineConfig) -> None:
         super().__init__(config)
-        if config.control_mode == "stanley":
-            self.controller = StanleyController(config, camera=self.view.camera)
-        else:
-            self.controller = build_controller(
-                config, camera=self.view.camera, grid_source=lambda: self.planner.grid
-            )
+        self.controller = self._build_controller(config)
+
+    def _build_controller(self, config: PipelineConfig) -> StanleyController:
+        """Experiments override this to steer with something other than Stanley."""
+        return StanleyController(config, camera=self.view.camera)
+
+    def _compute_command(
+        self, result: PlanningStepResult, vehicle_state: VehicleState
+    ) -> ControlCommand:
+        """Experiments override this when a controller needs more than the plan."""
+        return self.controller.compute(result.plan, vehicle_state)
 
     def step(self, frames: CameraFrame | np.ndarray, vehicle_state: VehicleState) -> ControlCommand:
         return self.step_result(frames, vehicle_state).command
@@ -150,7 +158,7 @@ class AutonomyPipeline(RGBPlanningPipeline):
     ) -> PipelineStepResult:
         result = self.plan_result(frames, vehicle_state)
         start = time.perf_counter()
-        command = self.controller.compute(result.plan, vehicle_state)
+        command = self._compute_command(result, vehicle_state)
         elapsed = (time.perf_counter() - start) * 1000.0
         result.timings_ms["control"] = elapsed
         self.stats.record("control", elapsed)

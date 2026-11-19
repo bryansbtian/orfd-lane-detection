@@ -11,9 +11,6 @@ from dataclasses import dataclass, field, replace
 
 import numpy as np
 
-from offroad_autonomy.control.predictive_config import PredictiveConfig
-from offroad_autonomy.planning.grid_config import GridPlannerConfig
-
 DEFAULT_PERCEPTION_PROMPTS = [
     "traversable road",
     "dirt road",
@@ -465,7 +462,6 @@ class PipelineConfig:
     enable_morphology: bool = True
     enable_ema: bool = True
 
-    planner_mode: str = "baseline"
     planner_roi_height: float = 0.50
     baseline_temporal_blend: float = 0.0
     baseline_max_shift_m: float = 0.5
@@ -487,27 +483,8 @@ class PipelineConfig:
     gate_hold_speed_scale: float = 0.4
 
     centerline_samples: int = 20
-    planner_backend: str = "heuristic"
-    planner_horizon_fraction: float = 0.82
-    planner_smoothing_window: int = 7
-    planner_clearance_weight: float = 0.65
-    planner_prior_std_fraction: float = 0.10
-    planner_min_confidence: float = 0.18
-    planner_segment_center_weight: float = 0.68
-    planner_temporal_blend: float = 0.58
-    planner_max_lateral_step_px: float = 32.0
-    planner_straight_blend: float = 0.72
-    planner_straight_residual_px: float = 4.0
-    planner_straight_heading_threshold: float = 0.08
-    kalman_process_noise: float = 1e-3
-    kalman_measurement_noise: float = 1e-1
-    fallback_after_n_misses: int = 3
     min_road_pixels: int = 500
 
-    grid: GridPlannerConfig = field(default_factory=GridPlannerConfig)
-    #: Steering controller: stanley | mppi | mpc (control.mode).
-    control_mode: str = "stanley"
-    predictive: PredictiveConfig = field(default_factory=PredictiveConfig)
     stanley_gain_k: float = 1.5
     stanley_softening: float = 2.4
     stanley_heading_gain: float = 0.85

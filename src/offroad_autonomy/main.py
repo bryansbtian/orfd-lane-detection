@@ -10,6 +10,7 @@ import logging
 import signal
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -403,18 +404,8 @@ def _log_video(video: VideoRecorder) -> None:
     )
 
 
-def main() -> None:
-    global _shutdown
-    _shutdown = False
-    args = build_parser().parse_args()
-
-    setup_logger(level=getattr(logging, args.log_level))
-
-    config_path = Path(args.config)
-    if not config_path.exists():
-        sys.exit(f"Configuration file not found: {config_path}")
-
-    config = load_config(config_path)
+def apply_overrides(config: PipelineConfig, args: argparse.Namespace) -> None:
+    """Per-run command line choices that sit on top of any loaded config."""
     if args.weights:
         try:
             config.model_weights = str(resolve_weights(args.weights))
@@ -424,6 +415,34 @@ def main() -> None:
         config.perception_prompts = args.road_class
     if args.headless:
         config.ui_headless = True
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = build_parser().parse_args(argv)
+    setup_logger(level=getattr(logging, args.log_level))
+
+    config_path = Path(args.config)
+    if not config_path.exists():
+        sys.exit(f"Configuration file not found: {config_path}")
+    try:
+        config = load_config(config_path)
+    except ValueError as exc:
+        sys.exit(str(exc))
+    apply_overrides(config, args)
+    run(args, config)
+
+
+def run(
+    args: argparse.Namespace,
+    config: PipelineConfig,
+    build_pipeline: Callable[[PipelineConfig], AutonomyPipeline] = AutonomyPipeline,
+    run_label: str = "Demonstration Run",
+) -> None:
+    """The control loop, safe stop and shutdown. Experiments call this with
+    their own pipeline so they drive under the same safety handling."""
+    global _shutdown
+    _shutdown = False
+    config_path = Path(args.config)
     logger.info("Configuration loaded from %s", config_path)
 
     # SIGTERM is what `docker stop` sends; without a handler the process dies
@@ -434,7 +453,7 @@ def main() -> None:
     show_presentation = args.presentation_view and not config.ui_headless
     use_presentation = args.presentation or show_presentation
     client = BeamNGClient(config, orbit=use_presentation)
-    pipeline = AutonomyPipeline(config)
+    pipeline = build_pipeline(config)
     dashboard_window: DashboardWindow | None = None
     display: DisplayWorker | None = None
     presentation_display: DisplayWorker | None = None
@@ -552,6 +571,7 @@ def main() -> None:
                 colors=config.dashboard_colors,
                 sensor=config.camera.sensor,
                 thresholds=config.dashboard_thresholds,
+                run_label=run_label,
             )
 
             def _render_presentation(state: DisplayState) -> np.ndarray:

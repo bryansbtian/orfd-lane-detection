@@ -10,7 +10,7 @@ from offroad_autonomy.visualization.bev import PATH, render_bev
 
 
 def test_demo_caps_at_6_mph_and_coasting_band_is_off_by_default():
-    cfg = load_config("configs/grid.yaml")
+    cfg = load_config("configs/default.yaml")
     assert cfg.speed_limit_mph == 6
     assert cfg.target_speed_mph < 6
     # Measured at the cap, the band let descents run past 6 mph.
@@ -18,7 +18,7 @@ def test_demo_caps_at_6_mph_and_coasting_band_is_off_by_default():
 
 
 def test_coasting_band_coasts_small_routine_error_but_brakes_above_cap():
-    cfg = replace(load_config("configs/grid.yaml"), comfort_brake_deadband_mps=0.15)
+    cfg = replace(load_config("configs/default.yaml"), comfort_brake_deadband_mps=0.15)
     controller = StanleyController(cfg)
     plan = PathPlan(centerline=np.empty((0, 2)))
     target = cfg.target_speed_mph * 0.44704
@@ -34,7 +34,7 @@ def test_coasting_band_coasts_small_routine_error_but_brakes_above_cap():
 
 
 def test_demo_preserves_gate_and_clearance_braking():
-    cfg = load_config("configs/grid.yaml")
+    cfg = load_config("configs/default.yaml")
     controller = StanleyController(cfg)
     plan = PathPlan(centerline=np.empty((0, 2)), speed_scale=0)
     state = VehicleState(speed_mps=2)

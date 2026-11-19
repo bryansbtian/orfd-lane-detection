@@ -1,0 +1,91 @@
+# Steering proxy learned from MCAP recordings; see experiment/imitation/.
+#
+#   python -m experiment.imitation extract | train | evaluate | calibrate | compare
+#   python -m experiment.run --config experiment/configs/imitation.yaml --imitation-calibration <file>
+extends: ../../configs/default.yaml
+
+experiment:
+  controller: imitation
+
+imitation:
+  # Keep frames, logs, downloaded backbones and checkpoints outside Git.
+  dataset_dir: datasets/imitation
+  run_dir: output/imitation/baseline
+  checkpoint: models/imitation_best.pt
+  # A measured steering adapter is required before simulation actuation is enabled.
+  calibration_path: ""
+  # Opt in explicitly for simulator experiments with unverified recording conventions.
+  allow_simulation_experiment: false
+  # An odd sweep includes neutral and both locks; repeats expose steering hysteresis.
+  calibration_points: 11
+  calibration_settle_s: 1.0
+  calibration_samples: 5
+  calibration_sample_interval_s: 0.05
+  # Reject neutral bias and excessive repeat disagreement instead of inventing a fit.
+  calibration_neutral_tolerance_rad: 0.005
+  calibration_repeatability_rad: 0.035
+  # A moving chassis invalidates the parked sweep; experimental drives stay slow.
+  calibration_stationary_speed_mps: 0.1
+  experiment_max_speed_mps: 2.0
+  # Explicit topic names make additions from future recordings reviewable.
+  image_topic: /image_processing/image_compressed
+  camera_info_topic: /image_processing/camera_info
+  can_topic: /CAN
+  # Decode every video frame, but retain fewer correlated training images.
+  sample_hz: 10.0
+  image_width: 256
+  image_height: 144
+  # Remove the dashboard foreground consistently in extraction and inference.
+  crop_top: 0.0
+  crop_bottom: 0.28
+  jpeg_quality: 92
+  # Keep target joins close and vehicle-state inputs causal.
+  max_alignment_ms: 20.0
+  max_state_age_ms: 40.0
+  max_gap_ms: 100.0
+  # Reserve complete chronological recordings when at least three exist;
+  # otherwise use temporal blocks with guard intervals around boundaries.
+  split_guard_s: 5.0
+  temporal_train_fraction: 0.6
+  temporal_validation_fraction: 0.2
+  # Raw radians is a dynamics-supported proxy hypothesis, not publisher confirmation.
+  label_scale: 1.0
+  real_wheelbase_m: 2.815
+  physics_min_correlation: 0.9
+  physics_min_scale: 0.7
+  physics_max_scale: 1.3
+  # Separate modest turns from near-straight samples and reject impossible targets.
+  min_turn_rad: 0.03
+  max_angle_rad: 0.5585053606381855
+  speed_scale_mps: 10.0
+  # A small pretrained network fits the initial dataset and a Jetson-sized target.
+  batch_size: 64
+  epochs: 8
+  frozen_epochs: 2
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  dropout: 0.1
+  # Increase exposure to turns without altering the held-out evaluation distribution.
+  turn_sampling_weight: 4.0
+  flip_probability: 0.5
+  color_jitter: 0.15
+  # Deterministic seeds and single-process image loading simplify repeatability.
+  seed: 42
+  workers: 0
+  cpu_threads: 4
+  pretrained: true
+  device: auto
+  # Exclude warmup and synchronize CUDA when measuring inference latency.
+  latency_warmup: 10
+  latency_samples: 100
+  max_inference_ms: 100.0
+  # Enforce a time-based steering slew limit in addition to the existing per-frame cap.
+  steering_slew_per_s: 0.9
+  # Report geographical overlap without persisting identifying coordinates.
+  route_cell_m: 30.0
+  # Short, bounded simulation trials should fail clearly when no simulator is listening.
+  evaluation_seconds: 30.0
+  connection_timeout_s: 2.0
+  # Step all comparison controllers through the same nominal physics interval.
+  comparison_physics_hz: 60
+  comparison_steps: 15
