@@ -183,12 +183,11 @@ def test_missing_dashcam_is_not_accepted():
             pipeline.step_result(capture, VehicleState())
 
 
-@pytest.mark.parametrize("planner_mode", ["baseline", "advanced"])
 @pytest.mark.parametrize("road_half_width", [120, 300])
-def test_rgb_pipeline_plans_and_controls_in_every_mode(planner_mode, road_half_width):
+def test_rgb_pipeline_plans_and_controls(road_half_width):
     from offroad_autonomy.pipeline import AutonomyPipeline
 
-    config = _make_config(planner_mode=planner_mode)
+    config = _make_config()
 
     def segment(frame, valid_roi):
         mask = np.zeros((frame.height, frame.width), dtype=bool)

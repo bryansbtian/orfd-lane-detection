@@ -25,9 +25,9 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
-from offroad_autonomy.planning.bev_grid import TraversabilityGrid
-from offroad_autonomy.planning.grid_config import GridPlannerConfig
-from offroad_autonomy.planning.trajectory_continuity import trajectory_distance, transform_path
+from experiment.grid.bev_grid import TraversabilityGrid
+from experiment.grid.config import GridPlannerConfig
+from experiment.grid.trajectory_continuity import trajectory_distance, transform_path
 
 
 def road_centre_offset(road: np.ndarray, blocked: np.ndarray) -> np.ndarray:

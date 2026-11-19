@@ -207,23 +207,25 @@ def test_invalid_recording_settings_are_refused(tmp_path, block):
         load_config(config_path)
 
 
-def test_grid_profile_selects_the_grid_planner():
-    config = load_config(REPO / "configs" / "grid.yaml")
-
-    assert config.planner_mode == "grid"
-    assert config.grid.arc_count == PipelineConfig().grid.arc_count
-
-
 @pytest.mark.parametrize(
-    ("block", "match"),
-    [("    arc_size: 3", "arc_size"), ("    arc_count: 40", "odd"), ("    cell_m: 0", "cell_m")],
+    "text",
+    ["experiment:\n  planner: grid\n", "planning:\n  mode: grid\n", "control:\n  mode: mpc\n"],
 )
-def test_invalid_grid_settings_are_refused(tmp_path, block, match):
+def test_experiment_configs_are_refused_by_the_default_loader(tmp_path, text):
+    """Ignoring them would drive the baseline while the operator expects the experiment."""
     config_path = tmp_path / "config.yaml"
-    config_path.write_text("planning:\n  grid:\n" + block + "\n", encoding="utf-8")
+    config_path.write_text(text, encoding="utf-8")
 
-    with pytest.raises(ValueError, match=match):
+    with pytest.raises(ValueError, match="experiment.run"):
         load_config(config_path)
+
+
+@pytest.mark.parametrize("text", ["planning:\n  mode: baseline\n", "control:\n  mode: stanley\n"])
+def test_explicit_default_modes_still_load(tmp_path, text):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(text, encoding="utf-8")
+
+    load_config(config_path)
 
 
 def test_orbit_camera_defaults_match_the_shipped_config():

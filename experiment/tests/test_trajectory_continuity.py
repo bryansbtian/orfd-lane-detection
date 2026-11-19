@@ -4,9 +4,9 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from offroad_autonomy.planning.arc_planner import ArcChoice
-from offroad_autonomy.planning.trajectory_continuity import trajectory_distance, transform_path
-from tests.test_grid_planner import _arcs, _grid, _pose, _road_mask, _straight
+from experiment.grid.arc_planner import ArcChoice
+from experiment.grid.trajectory_continuity import trajectory_distance, transform_path
+from experiment.tests.test_grid_planner import _arcs, _grid, _pose, _road_mask, _straight
 
 
 def test_distance_is_metric_and_independent_of_point_order_and_density():

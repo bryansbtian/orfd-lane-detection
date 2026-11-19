@@ -134,8 +134,7 @@ preprocessing:
 postprocessing:
   # Re-enable ONE stage at a time, once the baseline drives cleanly:
   #   stage 1 enable_morphology   stage 2 enable_ema
-  #   stage 3 planning.baseline_temporal_blend   stage 4 planning.mode: advanced
-  #   stage 5 control tuning
+  #   stage 3 planning.baseline_temporal_blend   stage 4 control tuning
   enable_morphology: false
   enable_ema: false
   ema_alpha: 0.7
@@ -143,13 +142,10 @@ postprocessing:
   morphology_kernel_size: 5
 
 planning:
-  # baseline: largest road component touching the vehicle -> centre of each
-  #           sampled row -> one quadratic fit. No scoring, clearance, Kalman
-  #           or straightening.
-  # advanced: the scoring / clearance / Kalman planner configured below.
-  # grid:     bird's-eye traversability grid with memory + arc planner, see
-  #           planning.grid. configs/grid.yaml switches to it.
-  mode: baseline
+  # Baseline planner: largest road component touching the vehicle -> centre
+  # of each sampled row -> one quadratic fit. No scoring, clearance, Kalman or
+  # straightening. The advanced and bird's-eye grid planners are experiments,
+  # configured and run from experiment/ (see experiment/README.md).
   # ROI_HEIGHT: share of the frame, up from the bottom edge, the planner reads.
   # Dashcam at 1.85 m, pitch -8 deg, 120 deg horizontal FOV:
   # ROI starts at row 232, about 13 m ahead and below the horizon (row 203).
@@ -188,125 +184,9 @@ planning:
     min_mask_area: 0.05 # MIN_MASK_AREA: road component / planner ROI
     hold_frames: 10 # ~0.5 s at 20 Hz
     hold_speed_scale: 0.4
-  # --- advanced mode only below, except min_road_pixels (also a gate check)
+  # Rows the baseline samples between the ROI top and the bumper.
   centerline_samples: 20
-  backend: heuristic
-  horizon_fraction: 0.82
-  smoothing_window: 7
-  clearance_weight: 0.65
-  prior_std_fraction: 0.14
-  min_confidence: 0.18
-  segment_center_weight: 0.68
-  temporal_blend: 0.65
-  max_lateral_step_px: 32.0
-  straight_blend: 0.72
-  straight_residual_px: 4.0
-  straight_heading_threshold: 0.08
-  kalman_process_noise: 5.0e-4
-  kalman_measurement_noise: 1.0e-1
-  fallback_after_n_misses: 3
   min_road_pixels: 2000 # valid traversable pixels inside the ROI
-  # --- grid mode only: bird's-eye traversability grid + arc ("tentacle") planner.
-  # The road mask is projected onto flat ground, fused over time with the
-  # vehicle's motion, and a fan of steerable arcs is scored on it. Cells the
-  # camera cannot see (under the hood, off the image sides) are unknown, never
-  # "not road", and memory carries the road the hood now hides. Values below
-  # were checked on one recorded run only; judge them on a multi-map set.
-  grid:
-    # 0.1 m cells: a 1.9 m wide vehicle spans 19 cells. A 200 x 200 grid
-    # planned in about 3 ms per frame on an i9-12900K in an offline replay;
-    # 195 one- and two-part candidates take ~9 ms on this laptop.
-    cell_m: 0.10
-    # Holds everything observed out to max_range_m below, with room to spare.
-    ahead_m: 26.0
-    # The grid reads ground out to this range, past the gate ROI (~15 m). At
-    # 24 m one image row already spans ~1.5 m of ground and a small pitch
-    # shifts it by metres more, so further would add mostly noise. Planning
-    # still uses lookahead_m; the extra range is memory and the BEV view.
-    max_range_m: 24.0
-    # At a split the planner takes the branch whose road (where the vehicle
-    # fits) continues furthest through the grid, out to max_range_m, so a
-    # spur or dead end is not taken because it was nearer. Branches within
-    # this of the deepest count as equal; the closest of those wins, which
-    # keeps it from switching between two branches that both go on.
-    branch_depth_margin_m: 3.0
-    # Behind the camera: the rear axle (control.camera_ahead_of_rear_axle_m)
-    # plus the road the vehicle has just driven over.
-    behind_m: 4.0
-    # Wider than any trail; a full-lock arc (4.2 m radius) stays within 8.4 m sideways.
-    half_width_m: 10.0
-    # Evidence fades with this time constant. At 4 m/s the 3 m hidden by the
-    # hood was in view 0.75 s earlier, well inside the memory.
-    memory_s: 4.0
-    # Log-odds added per frame for road / not road: a cell is marked after two
-    # consistent frames, so one odd frame cannot repaint it. Measured live on
-    # the usual 90 s route by following fixed patches of ground: ~11% of
-    # patches labelled at 15-24 m get the other label once within 8 m whatever
-    # these are - the far view is wrong that often (one image row spans
-    # ~1.5 m there) and memory cannot fix a wrong observation, only stop it
-    # churning. 0.85 per frame with 2 s memory changed each patch's label
-    # 1.04 times over its life; 0.5 with 4 s, 0.95 times, tracking unchanged
-    # in both of its runs. Weighting far evidence down as well (0.3 at 24 m)
-    # cut that to 0.88 but two of its three runs overshot a bend; removed.
-    road_logodds: 0.5
-    offroad_logodds: -0.5
-    logodds_limit: 4.0
-    # A cell is road above road_threshold and an obstacle below
-    # blocked_threshold; between them it is unknown.
-    road_threshold: 0.5
-    blocked_threshold: -0.5
-    # Odd so the straight arc is a candidate. 41 arcs over full lock is a
-    # 0.012 /m curvature step, ~0.5 m sideways at 8 m; finer sets flipped
-    # between near-equal arcs more often on the recorded run.
-    arc_count: 41
-    # Path length planned. Seeing 24 m but planning 14 changed nothing in the
-    # offline closed loop below; planning 17-22 m was no better or worse,
-    # because the far part of a long path dominates its score and cuts bends.
-    lookahead_m: 14.0
-    # Two-part candidates: each arc may switch to another curvature this far
-    # ahead, by +/- count steps of second_curvature_step. In an offline closed
-    # loop (6 m road, dashcam-like view, start 1.2 m off centre) they cut the
-    # mean offset from centre on an S-bend 0.85 -> 0.40 m and the p95 on a
-    # 90 deg turn 1.11 -> 0.58 m, with steadier steering. Switching at 3 m
-    # doubled steering changes; at 6-8 m it was worse.
-    switch_m: 4.0
-    second_curvature_step: 0.04
-    second_curvature_count: 2
-    # Under a third of the vehicle width, so an arc cannot step over an edge.
-    step_m: 0.25
-    # The path starts 1 m ahead of the camera; nearer points are under the car.
-    start_m: 1.0
-    # A supported arc shorter than this is not a path: the gate holds, then stops.
-    min_path_m: 4.0
-    # Required clearance = control.vehicle_half_width_m + this margin.
-    clearance_margin_m: 0.1
-    # Clearance counts up to half a wide trail. A 2 m cap saturated on wide
-    # roads and the planner stopped centring.
-    clearance_cap_m: 4.0
-    # Score = progress ahead on seen road + clearance - change from last path
-    # - bend - distance from the road's middle - distance from the last path.
-    weight_length: 1.0
-    weight_clearance: 1.0
-    # Only breaks near-ties; at 0.4 it locked onto the first arc it picked.
-    weight_consistency: 0.2
-    weight_curvature: 0.1
-    # Penalty for the arc's mean distance from the middle of the road, 0 at
-    # the centre line and 1 at an edge, measured only where both edges have
-    # been seen. Clearance alone does not centre: unseen ground counts as
-    # open. In an offline closed loop (6 m road, straight then an S-bend,
-    # dashcam-like view), 2.0 cut the mean offset from centre 0.94 -> 0.53 m
-    # and the worst 2.27 -> 1.22 m from left, centre and right starts alike;
-    # 3.0 was no better.
-    weight_centering: 2.0
-    # Penalty per metre of RMS separation from the last path (motion
-    # compensated), so near-equal paths do not flicker. At 0.35 it held the
-    # path straight when a bend came into view: replaying 246 recorded frames,
-    # following the road lost ~0.36 here against +0.12 for centring, and 54
-    # frames pointed >8 deg off the road (worst 28 deg). Live on the usual
-    # route, 0.10 cut that to 14 of 281 (worst 14 deg), the path's distance
-    # from the road centre at 8 m from 0.71 to 0.16 m, and the car's offset
-    # from the middle from 0.48 to 0.26 m, with smaller steering changes.
-    weight_trajectory_distance: 0.10
 
 control:
   # Half the vehicle width keeps the road-edge margin outside the bodywork.

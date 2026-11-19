@@ -1,4 +1,4 @@
-"""Predictive steering controllers (control.mode: mppi / mpc)."""
+"""Predictive steering controllers (experiment.controller: mppi / mpc)."""
 
 from dataclasses import replace
 from pathlib import Path
@@ -6,17 +6,17 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from offroad_autonomy.control.factory import build_controller
-from offroad_autonomy.control.mpc_controller import MpcController
-from offroad_autonomy.control.mppi_controller import MppiController
-from offroad_autonomy.control.predictive import SteeringActuator
+from experiment.config import ExperimentConfig, load_experiment_config
+from experiment.pipeline import build_controller
+from experiment.predictive.model import SteeringActuator
+from experiment.predictive.mpc_controller import MpcController
+from experiment.predictive.mppi_controller import MppiController
 from offroad_autonomy.control.stanley_controller import StanleyController
 from offroad_autonomy.perception.camera_geometry import CameraModel
-from offroad_autonomy.types import PathPlan, PipelineConfig, VehicleState
-from offroad_autonomy.utils.config import load_config
+from offroad_autonomy.types import PathPlan, VehicleState
 
 REPO = Path(__file__).resolve().parents[1]
-CONFIG = PipelineConfig()
+CONFIG = ExperimentConfig()
 CAMERA = CameraModel(CONFIG.camera, CONFIG.preprocess_width, CONFIG.preprocess_height)
 
 
@@ -48,9 +48,9 @@ def test_control_mode_selects_the_controller(mode, kind):
 
 
 def test_the_new_configs_select_their_controllers_and_keep_the_planner():
-    base = load_config(REPO / "configs/grid.yaml")
+    base = load_experiment_config(REPO / "configs/grid.yaml")
     for name, mode in (("grid_mpc.yaml", "mpc"), ("grid_mppi.yaml", "mppi")):
-        cfg = load_config(REPO / "configs" / name)
+        cfg = load_experiment_config(REPO / "configs" / name)
         assert cfg.control_mode == mode
         assert cfg.planner_mode == base.planner_mode
         assert cfg.grid == base.grid
@@ -59,9 +59,9 @@ def test_the_new_configs_select_their_controllers_and_keep_the_planner():
 
 def test_a_bad_control_mode_is_refused(tmp_path):
     path = tmp_path / "c.yaml"
-    path.write_text("control:\n  mode: pid\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="control.mode"):
-        load_config(path)
+    path.write_text("experiment:\n  controller: pid\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="experiment.controller"):
+        load_experiment_config(path)
 
 
 def test_actuator_applies_commands_after_the_latency_and_slews():

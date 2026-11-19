@@ -122,7 +122,7 @@ class BeamNGClient:
         vehicle = Vehicle("ego", model=cfg.beamng_vehicle, licence="OFFROAD")
         scenario.add_vehicle(vehicle, pos=spawn_pos, rot_quat=spawn_rot, cling=True)
 
-        scenario.make(self._bng)
+        self._make_scenario(scenario)
         self._bng.scenario.load(scenario)
         self._bng.scenario.start()
         vehicle.connect(self._bng)
@@ -133,7 +133,7 @@ class BeamNGClient:
 
         # Cameras attached while the vehicle is still dropping onto the terrain
         # render a bouncing horizon that the first plans would steer on.
-        time.sleep(_PHYSICS_SETTLE_S)
+        self._settle(_PHYSICS_SETTLE_S)
 
         spec = cfg.camera
         self._cameras["dashcam"] = self._attach_camera(Camera, vehicle, spec)
@@ -144,11 +144,19 @@ class BeamNGClient:
             orbit = cfg.orbit_camera
             self._cameras["orbit"] = self._attach_camera(Camera, vehicle, orbit)
             logger.info("Attaching orbit camera for the presentation: %s", orbit.sensor.describe())
-        time.sleep(_SENSOR_WARMUP_S)
+        self._settle(_SENSOR_WARMUP_S)
 
         self.release_park()
         logger.info("Motion source: wheel speed + body yaw-rate dead reckoning; no global pose")
         logger.info("BeamNG session ready")
+
+    def _make_scenario(self, scenario) -> None:
+        """Evaluation harnesses extend this to add a road and fix the physics rate."""
+        scenario.make(self._bng)
+
+    def _settle(self, seconds: float) -> None:
+        """Waits in wall time; a paused, stepped harness advances physics instead."""
+        time.sleep(seconds)
 
     def _attach_camera(self, camera_cls, vehicle, spec: CameraSpec):
         # beamngpy takes the vertical field of view; handing it the

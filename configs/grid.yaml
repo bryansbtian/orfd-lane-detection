@@ -1,8 +1,0 @@
-# Opt-in planner profile; default.yaml keeps the baseline planner for A/B runs.
-# Settings live in planning.grid in default.yaml.
-extends: default.yaml
-planning:
-  mode: grid
-ui:
-  headless: false
-  debug_view: bev

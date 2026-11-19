@@ -1,4 +1,4 @@
-"""Shared core of the predictive steering controllers (``control.mode: mppi``
+"""Shared core of the predictive steering controllers (``experiment.controller: mppi``
 and ``mpc``).
 
 Both predict the vehicle with a kinematic bicycle about the rear axle, in the
@@ -25,7 +25,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from offroad_autonomy.control.predictive_config import PredictiveConfig
+from experiment.predictive.config import PredictiveConfig
 from offroad_autonomy.control.stanley_controller import StanleyController, _SampledPath
 from offroad_autonomy.perception.camera_geometry import CameraModel
 from offroad_autonomy.types import ControlCommand, PathPlan, PipelineConfig, VehicleState

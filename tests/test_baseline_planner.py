@@ -236,13 +236,6 @@ def test_no_previous_path_means_stop_not_extrapolate():
     assert len(plan.centerline) == 0
 
 
-def test_advanced_mode_is_gated_too():
-    planner = CenterlinePlanner(_config(planner_mode="advanced"))
-    plan = planner.plan(_stabilized(_road(), confidences=(0.05,)))
-    assert plan.fallback_active
-    assert not plan.kalman_active
-
-
 def test_controller_brakes_when_there_is_no_path():
     controller = StanleyController(_config())
     stop = PathPlan(centerline=np.empty((0, 2), np.float32), fallback_active=True, speed_scale=0.0)

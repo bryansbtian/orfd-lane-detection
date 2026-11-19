@@ -1,4 +1,4 @@
-"""Smooth MPPI steering (``control.mode: mppi``).
+"""Smooth MPPI steering (``experiment.controller: mppi``).
 
 Model Predictive Path Integral control samples many steering sequences,
 predicts each through the vehicle model, scores them, and averages them
@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from offroad_autonomy.control.predictive import (
+from experiment.predictive.model import (
     PredictiveSteering,
     rollout,
     tracking_residuals,

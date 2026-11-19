@@ -1,6 +1,6 @@
-# Grid planner + smooth MPPI steering (control/mppi_controller.py).
+# Grid planner + smooth MPPI steering (predictive/mppi_controller.py).
 #
-#   .\run-orfd.cmd --config configs/grid_mppi.yaml
+#   python -m experiment.run --config experiment/configs/grid_mppi.yaml
 #
 # Samples steering-change sequences over a 3 s horizon through the same
 # delay- and slew-aware model as MPC, scores them on tracking the planned path
@@ -8,8 +8,10 @@
 # Speed is the Stanley speed law, unchanged. Everything else is grid.yaml's.
 extends: grid.yaml
 
+experiment:
+  controller: mppi
+
 control:
-  mode: mppi
   predictive:
     dt_s: 0.1
     horizon_steps: 30

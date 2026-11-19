@@ -1,6 +1,6 @@
-# Grid planner + delay-aware tracking MPC steering (control/mpc_controller.py).
+# Grid planner + delay-aware tracking MPC steering (predictive/mpc_controller.py).
 #
-#   .\run-orfd.cmd --config configs/grid_mpc.yaml
+#   python -m experiment.run --config experiment/configs/grid_mpc.yaml
 #
 # Steering is chosen over a 3 s horizon through a kinematic model that replays
 # the commands already in flight (control.control_latency_s) and limits the
@@ -12,8 +12,10 @@
 # (13), centring 0.24 m (0.25 m), 2 ms per frame.
 extends: grid.yaml
 
+experiment:
+  controller: mpc
+
 control:
-  mode: mpc
   predictive:
     dt_s: 0.1
     horizon_steps: 30

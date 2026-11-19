@@ -29,6 +29,8 @@ datasets
 
 # Not part of the product.
 deprecated
+experiment
+bag*.zip
 runs
 benchmark
 *.png

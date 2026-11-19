@@ -1,4 +1,4 @@
-"""Delay-aware tracking MPC steering (``control.mode: mpc``).
+"""Delay-aware tracking MPC steering (``experiment.controller: mpc``).
 
 Chooses the command sequence over the horizon that minimises lateral and
 heading error to the planned path plus the size of each command change,
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from offroad_autonomy.control.predictive import (
+from experiment.predictive.model import (
     PredictiveSteering,
     rollout,
     tracking_residuals,
